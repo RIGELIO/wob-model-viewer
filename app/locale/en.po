@@ -469,3 +469,30 @@ msgstr "The vehicle manifest could not be loaded or no longer lists the current 
 
 msgid "Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
 msgstr "Ctrl+R reloads the model with the same view, lighting and LOD. In Parts and materials, isolate a mesh or surface. Vertex colors and UV checkers are under View."
+
+msgid "Balík herních materiálů má neplatný index.json."
+msgstr "The game material bundle has an invalid index.json."
+
+msgid "V balíku chybí přiřazení herních materiálů pro tento model."
+msgstr "The bundle is missing game material assignments for this model."
+
+msgid "Neplatné přiřazení povrchů v herním prefabu %s."
+msgstr "Invalid surface assignments in game prefab %s."
+
+msgid "Nepodporovaný typ herního materiálu v %s."
+msgstr "Unsupported game material type in %s."
+
+msgid "Herní materiál %s nemá část [resource]."
+msgstr "Game material %s is missing its [resource] section."
+
+msgid "Herní materiál %s · chybí textura %s."
+msgstr "Game material %s · missing texture %s."
+
+msgid "Herní materiál %s · nepodporovaná vlastnost %s."
+msgstr "Game material %s · unsupported property %s."
+
+msgid "Chybí nebo nelze přečíst herní soubor %s."
+msgstr "Game file is missing or unreadable: %s."
+
+msgid "Balík neobsahuje herní materiál pro názvy povrchů v tomto modelu."
+msgstr "The bundle has no game material for the surface names in this model."

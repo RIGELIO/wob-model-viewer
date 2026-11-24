@@ -4,17 +4,23 @@ WoB Model Viewer is an offline desktop viewer for GLB and glTF characters and ma
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, install the `.deb` through the package manager or with `sudo apt install ./wob-model-viewer_1.1.0_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, install the `.deb` through the package manager or with `sudo apt install ./wob-model-viewer_1.2.0_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
 
-To open models and saved views by double-clicking, choose **WoB Model Viewer** for **.glb**, **.gltf**, and **.wobview** in **Settings → Apps → Default apps**. Setup registers all three for your account. In the portable edition, run the bundled **Register-FileTypes.cmd**. Repeat registration if you move the executable.
+Windows Setup and the Linux DEB register **.glb**, **.gltf** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
 The Windows installer and executable are unsigned. If SmartScreen prompts on first use, verify the download against `SHA256SUMS.txt` on the release page. A signed release can display a verified publisher. SmartScreen also considers the reputation of the downloaded file. [Microsoft documentation](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
 Setup displays the installation terms and MIT license. Updates and uninstall prompt you to close the viewer. Uninstall removes the program, shortcuts, registration and known settings and cache files. Your saved models, views and screenshots stay in their existing folders.
 
+To update on Windows, download and run the newer setup. It detects the registered installation, shows its version and updates the existing folder with your settings intact. Running the same version again reinstalls it in place. On Linux, install the newer DEB through the package manager to upgrade the installed package.
+
 ## Vehicle manifests
 
 Open a `vuz_*_manifest.json` or one of the adjacent GLBs. The viewer applies the original wagon shader and resolves the manifest's albedo, normal and ORM maps. Tiled models retain their `UV2` and `COLOR_0` semantics. The viewport toolbar lets you select the vehicle state and level of detail. The `*_atlas.json` file describes the UV atlas.
+
+## Local WoB materials
+
+Keep the local `_materialy-z-hry` folder, including `index.json` and `assets/`, at the root of your finished model collection. Open a building, prop, bridge or road GLB as usual. The viewer uses the model's original import and prefab material assignments and reads the referenced materials and maps. The same folder layout works on Windows and Linux. Check **Materials & diagnostics** for incomplete material data.
 
 ## Inspect a model
 

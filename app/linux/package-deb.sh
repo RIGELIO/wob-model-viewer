@@ -5,9 +5,10 @@ if [ "$#" -ne 1 ]; then
     echo "Usage: $0 BUILD_DIRECTORY" >&2
     exit 2
 fi
+source_dir=$(cd -- "$(dirname -- "$0")" && pwd -P)
 build=$(cd -- "$1" && pwd -P)
 pkg=wob-model-viewer
-version=1.1.0
+version=1.2.0
 prefix="/opt/$pkg"
 
 # Under WSL, TMPDIR uses the Linux filesystem while the export can stay on a
@@ -22,7 +23,7 @@ fi
 umask 022
 chmod 755 "$stage"
 mkdir -p "$stage/DEBIAN" "$stage$prefix" "$stage/usr/bin" \
-    "$stage/usr/share/applications" "$stage/usr/share/doc/$pkg" \
+    "$stage/usr/share/applications" "$stage/usr/share/mime/packages" "$stage/usr/share/doc/$pkg" \
     "$stage/usr/share/icons/hicolor/256x256/apps"
 install -m755 "$build/Linux/$pkg" "$stage$prefix/$pkg"
 ln -s "$prefix/$pkg" "$stage/usr/bin/$pkg"
@@ -33,18 +34,8 @@ install -m644 "$build/Linux/README.en.md" "$build/Linux/README.cs.md" \
     "$build/Linux/RESOURCE-LICENSES.md" "$stage/usr/share/doc/$pkg/"
 install -m644 "$build/Linux/LICENSE" "$stage/usr/share/doc/$pkg/copyright"
 
-cat > "$stage/usr/share/applications/com.rigelio.WoBModelViewer.desktop" <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=WoB Model Viewer
-Comment=Inspect GLB models from Wars of Bohemia
-Comment[cs]=Prohlížení modelů GLB z Wars of Bohemia
-Exec=wob-model-viewer -- %f
-Icon=wob-model-viewer
-Terminal=false
-Categories=Graphics;3DGraphics;Viewer;
-MimeType=model/gltf-binary;
-EOF
+install -m644 "$source_dir/com.rigelio.WoBModelViewer.desktop" "$stage/usr/share/applications/"
+install -m644 "$source_dir/com.rigelio.WoBModelViewer.xml" "$stage/usr/share/mime/packages/"
 size=$(du -sk "$stage" | cut -f1)
 cat > "$stage/DEBIAN/control" <<EOF
 Package: $pkg
@@ -54,7 +45,7 @@ Priority: optional
 Architecture: amd64
 Installed-Size: $size
 Maintainer: RIGELIO Team <admin@rigelio.com>
-Depends: libc6, libstdc++6, libvulkan1, libx11-6, libxext6, libxrandr2, libxcursor1, libxi6
+Depends: libc6, libstdc++6, libvulkan1, libx11-6, libxext6, libxrandr2, libxcursor1, libxi6, shared-mime-info, desktop-file-utils
 Homepage: https://github.com/RIGELIO/wob-model-viewer
 Description: Offline Wars of Bohemia GLB model viewer
  Godot desktop viewer with production material mappings, image-based

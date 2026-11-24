@@ -2,6 +2,7 @@ extends RefCounted
 
 const GlbData = preload("res://glb_data.gd")
 const VehicleManifest = preload("res://vehicle_manifest.gd")
+const GameMaterials = preload("res://game_materials.gd")
 const VEHICLE_DIR := "res://production/vehicles/"
 const SHADER_DIR := "res://production/shaders/"
 const TEXTURE_DIR := "res://production/textures/"
@@ -52,6 +53,8 @@ var _model_path: String
 var _sidecar: Dictionary
 var _notes: Array[Array]
 var _catalog_hair := false
+var _game: GameMaterials
+var _used_game_slots: Dictionary[String, bool]
 
 
 func import_model(path: String, manifest: RefCounted = null) -> String:
@@ -68,6 +71,8 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 	vehicle = manifest if manifest else VehicleManifest.for_model(path)
 	if vehicle:
 		vehicle_state = vehicle.state_for(path)
+	else:
+		_game = GameMaterials.find(path, _file_texture)
 	_read_sidecar()
 	var rewritten := original.duplicate(true)
 	var remapped := false
@@ -94,9 +99,10 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 				return tr("GLB má neplatný povrch sítě.")
 			var attrs: Dictionary = primitive.get("attributes", {})
 			var mat_index := int(primitive.get("material", -1))
-			var tag := ""
+			var material_name := ""
 			if mat_index >= 0 and mat_index < mat_defs.size() and mat_defs[mat_index] is Dictionary:
-				tag = str(mat_defs[mat_index].get("name", "")).to_lower()
+				material_name = str(mat_defs[mat_index].get("name", ""))
+			var tag := material_name.to_lower()
 			var semantics := {}
 			for node_index: int in node_groups[mesh_index]:
 				var node_name := str(nodes[node_index].get("name", mesh_def.get("name", "Síť")))
@@ -104,6 +110,7 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 				if vehicle and tag == vehicle.object_id:
 					profile["shader"] = "vuz"
 				profile["attributes"] = attrs
+				profile["material_name"] = material_name
 				_pairs[Vector2i(node_index, surface)] = profile
 				var semantic := str(profile.get("color", "COLOR_0"))
 				semantics[semantic if attrs.has(semantic) else "COLOR_0"] = true
@@ -134,6 +141,11 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 	if root == null:
 		return tr("Z GLB se nepodařilo vytvořit scénu.")
 	_bind_scene(root)
+	if _game:
+		for issue in _game.notes:
+			_note("", issue[0], issue[1] if issue.size() > 1 else [])
+		if _used_game_slots.is_empty() and _game.notes.is_empty():
+			_note("", "Balík neobsahuje herní materiál pro názvy povrchů v tomto modelu.")
 	if meshes.is_empty():
 		root.free()
 		root = null
@@ -147,12 +159,31 @@ func _bind_scene(node: Node) -> void:
 		var node_index := _node_index(node)
 		for surface: int in range(node.mesh.get_surface_count()):
 			var profile: Dictionary = _pairs.get(Vector2i(node_index, surface), {})
-			if not profile.is_empty():
+			if not _bind_game(node, surface, str(profile.get("material_name", ""))) and not profile.is_empty():
 				_bind(node, surface, profile)
 		if node_index < 0:
 			_note(str(node.name), "Godot nepřiřadil síti původní uzel GLB.")
 	for child in node.get_children():
 		_bind_scene(child)
+
+
+func _bind_game(instance: MeshInstance3D, surface: int, slot: String) -> bool:
+	if not _game:
+		return false
+	if not _game.has_slot(slot):
+		var imported := instance.mesh.surface_get_material(surface)
+		slot = imported.resource_name if imported else ""
+	if slot.is_empty() and instance.mesh is ArrayMesh:
+		slot = instance.mesh.surface_get_name(surface)
+	if not _game.has_slot(slot):
+		return false
+	var material := _game.material(slot)
+	if material:
+		instance.set_surface_override_material(surface, material)
+		_used_game_slots[slot] = true
+		var name := material.resource_name if not material.resource_name.is_empty() else slot
+		counts[name] = int(counts.get(name, 0)) + 1
+	return true
 
 
 func color_layers() -> PackedStringArray:

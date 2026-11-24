@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="model/gltf-binary">
+    <comment>Binary glTF model</comment>
+    <glob pattern="*.glb"/>
+  </mime-type>
+  <mime-type type="model/gltf+json">
+    <comment>glTF model</comment>
+    <sub-class-of type="application/json"/>
+    <glob pattern="*.gltf"/>
+  </mime-type>
+  <mime-type type="application/x-wobview">
+    <comment>WoB Model Viewer saved view</comment>
+    <comment xml:lang="cs">Uložený pohled WoB Model Vieweru</comment>
+    <sub-class-of type="application/json"/>
+    <glob pattern="*.wobview"/>
+  </mime-type>
+</mime-info>

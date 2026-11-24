@@ -7,11 +7,14 @@ SetCompressor /SOLID zlib
 !include "LogicLib.nsh"
 !define APP "WoB Model Viewer"
 !define EXE "WoB Model Viewer.exe"
-!define VERSION "1.1.0"
+!define VERSION "1.2.0"
 !define INSTALLER_SOURCE "${__FILEDIR__}"
 !define UNINSTALL "Software\Microsoft\Windows\CurrentVersion\Uninstall\RIGELIO.WoBModelViewer"
 !define CAP "Software\RIGELIO\WoBModelViewer\Capabilities"
 !define OPEN_COMMAND '$\"$INSTDIR\${EXE}$\" -- $\"%1$\"'
+
+Var ExistingLocation
+Var ExistingVersion
 
 !macro RequireViewerClosed LABEL
     check_${LABEL}:
@@ -42,6 +45,12 @@ SetCompressor /SOLID zlib
 !macro UnregisterType EXT ID
     ReadRegStr $0 HKCU "Software\Classes\RIGELIO.WoBModelViewer.${ID}\shell\open\command" ""
     ${If} $0 == "${OPEN_COMMAND}"
+        !if "${EXT}" == ".wobview"
+            ReadRegStr $1 HKCU "Software\Classes\${EXT}" ""
+            ${If} $1 == "RIGELIO.WoBModelViewer.View"
+                DeleteRegValue HKCU "Software\Classes\${EXT}" ""
+            ${EndIf}
+        !endif
         DeleteRegKey HKCU "Software\Classes\RIGELIO.WoBModelViewer.${ID}"
         DeleteRegValue HKCU "Software\Classes\${EXT}\OpenWithProgids" "RIGELIO.WoBModelViewer.${ID}"
         DeleteRegValue HKCU "${CAP}\FileAssociations" "${EXT}"
@@ -65,9 +74,15 @@ VIAddVersionKey "LegalCopyright" "RIGELIO Studio"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${EXE}"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
+!define MUI_FINISHPAGE_SHOWREADME
+!define MUI_FINISHPAGE_SHOWREADME_TEXT "$(ChooseDefaults)"
+!define MUI_FINISHPAGE_SHOWREADME_FUNCTION OpenDefaultApps
+!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !define MUI_LICENSEPAGE_CHECKBOX
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW ShowExistingInstallation
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "$(ViewerTerms)"
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipManagedDirectory
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -83,6 +98,52 @@ LangString ViewerCheckFailed ${LANG_ENGLISH} "Setup could not check if WoB Model
 LangString ViewerCheckFailed ${LANG_CZECH} "Nepodařilo se ověřit, zda WoB Model Viewer běží. Zvol Opakovat nebo Storno."
 LangString ViewerDataFailed ${LANG_ENGLISH} "Setup could not remove WoB Model Viewer settings or cache. Click Retry or Cancel."
 LangString ViewerDataFailed ${LANG_CZECH} "Nepodařilo se odstranit nastavení nebo mezipaměť. Zvol Opakovat nebo Storno."
+LangString ChooseDefaults ${LANG_ENGLISH} "Choose default file apps in Windows Settings"
+LangString ChooseDefaults ${LANG_CZECH} "Vybrat výchozí aplikaci pro soubory v Nastavení Windows"
+LangString ExistingTitle ${LANG_ENGLISH} "WoB Model Viewer is already installed"
+LangString ExistingTitle ${LANG_CZECH} "WoB Model Viewer už je nainstalovaný"
+LangString ExistingVersionUnknown ${LANG_ENGLISH} "unknown"
+LangString ExistingVersionUnknown ${LANG_CZECH} "neznámá"
+LangString ExistingUpdate ${LANG_ENGLISH} "Setup will update version $ExistingVersion to ${VERSION} in the existing folder.$\r$\n$\r$\n$ExistingLocation$\r$\n$\r$\nYour settings and saved files will be kept."
+LangString ExistingUpdate ${LANG_CZECH} "Instalátor aktualizuje verzi $ExistingVersion na ${VERSION} ve stávající složce.$\r$\n$\r$\n$ExistingLocation$\r$\n$\r$\nNastavení a uložené soubory zůstanou k dispozici."
+LangString ExistingReinstall ${LANG_ENGLISH} "Setup will reinstall version ${VERSION} in the existing folder.$\r$\n$\r$\n$ExistingLocation$\r$\n$\r$\nYour settings and saved files will be kept."
+LangString ExistingReinstall ${LANG_CZECH} "Instalátor znovu nainstaluje verzi ${VERSION} do stávající složky.$\r$\n$\r$\n$ExistingLocation$\r$\n$\r$\nNastavení a uložené soubory zůstanou k dispozici."
+
+Function .onInit
+    ReadRegStr $0 HKCU "${UNINSTALL}" "InstallLocation"
+    ${If} $0 != ""
+        IfFileExists "$0\${EXE}" 0 fresh_install
+        IfFileExists "$0\Uninstall.exe" 0 fresh_install
+        StrCpy $ExistingLocation $0
+        StrCpy $INSTDIR $ExistingLocation
+        ReadRegStr $ExistingVersion HKCU "${UNINSTALL}" "DisplayVersion"
+        ${If} $ExistingVersion == ""
+            StrCpy $ExistingVersion "$(ExistingVersionUnknown)"
+        ${EndIf}
+    ${EndIf}
+    fresh_install:
+FunctionEnd
+
+Function ShowExistingInstallation
+    ${If} $ExistingLocation != ""
+        ${NSD_SetText} $mui.WelcomePage.Title "$(ExistingTitle)"
+        ${If} $ExistingVersion == "${VERSION}"
+            ${NSD_SetText} $mui.WelcomePage.Text "$(ExistingReinstall)"
+        ${Else}
+            ${NSD_SetText} $mui.WelcomePage.Text "$(ExistingUpdate)"
+        ${EndIf}
+    ${EndIf}
+FunctionEnd
+
+Function SkipManagedDirectory
+    ${If} $ExistingLocation != ""
+        Abort
+    ${EndIf}
+FunctionEnd
+
+Function OpenDefaultApps
+    ExecShell "open" "ms-settings:defaultapps?registeredAppUser=WoB%20Model%20Viewer"
+FunctionEnd
 
 !cd "${PAYLOAD}"
 
@@ -90,6 +151,7 @@ Section "WoB Model Viewer"
     SetShellVarContext current
     !insertmacro RequireViewerClosed install
     SetOutPath "$INSTDIR"
+    SetOverwrite on
     File "${EXE}"
     File "README.en.md"
     File "README.cs.md"
@@ -114,6 +176,10 @@ Section "WoB Model Viewer"
     !insertmacro RegisterType ".glb" "GLB" "glTF Binary Model"
     !insertmacro RegisterType ".gltf" "GLTF" "glTF Model"
     !insertmacro RegisterType ".wobview" "View" "WoB Model Viewer View"
+    ReadRegStr $0 HKCR ".wobview" ""
+    ${If} $0 == ""
+        WriteRegStr HKCU "Software\Classes\.wobview" "" "RIGELIO.WoBModelViewer.View"
+    ${EndIf}
     WriteRegStr HKCU "${CAP}" "ApplicationName" "${APP}"
     WriteRegStr HKCU "${CAP}" "ApplicationDescription" "Offline GLB, glTF and saved view viewer"
     WriteRegStr HKCU "Software\RegisteredApplications" "${APP}" "${CAP}"

@@ -4,17 +4,23 @@ Offline desktopový prohlížeč GLB a glTF pro kontrolu modelů a materiálů W
 
 ## Stažení a spuštění
 
-V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček nainstaluješ ve správci balíčků nebo příkazem `sudo apt install ./wob-model-viewer_1.1.0_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Aplikace potřebuje grafický ovladač s podporou Godot Forward+.
+V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček nainstaluješ ve správci balíčků nebo příkazem `sudo apt install ./wob-model-viewer_1.2.0_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Aplikace potřebuje grafický ovladač s podporou Godot Forward+.
 
-Pro otevření dvojklikem vyber ve Windows v **Nastavení → Aplikace → Výchozí aplikace** program **WoB Model Viewer** pro přípony **.glb**, **.gltf** a **.wobview**. Instalátor registruje všechny tři pro tvůj účet. V přenosné verzi spusť přiložený **Register-FileTypes.cmd**. Po přemístění aplikace registraci zopakuj.
+Instalátor Windows a balíček DEB v Linuxu automaticky zaregistrují **.glb**, **.gltf** a **.wobview**. Pro otevírání dvojklikem zvol **WoB Model Viewer** ve výchozích aplikacích systému nebo přes **Otevřít v programu**. Instalátor Windows nastaví Viewer pro dosud neregistrované pohledy `.wobview` a na poslední stránce nabídne otevření nastavení výchozích aplikací. U přenosné verze spusť ve Windows **Register-FileTypes.cmd** nebo v Linuxu `sh register-file-types.sh`. Linuxový skript používá `shared-mime-info` a `desktop-file-utils`. Po přemístění přenosné aplikace registraci zopakuj.
 
 Instalátor a EXE pro Windows jsou bez digitálního podpisu. Pokud Windows zobrazí výstrahu SmartScreen, ověř stažený soubor proti `SHA256SUMS.txt` na stránce vydání. Podpis umožní Windows zobrazit ověřeného vydavatele. SmartScreen při prvních staženích zohledňuje i reputaci nového souboru. [Dokumentace Microsoftu](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
 Instalátor před instalací zobrazí podmínky a licenci MIT. Při aktualizaci a odinstalaci vyzve k zavření otevřených oken prohlížeče. Odinstalátor odstraní program, jeho zástupce, registraci a známé soubory nastavení a mezipaměti. Uložené modely, relace a snímky zůstanou na svých místech.
 
+Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná registrovanou instalaci, ukáže nalezenou verzi a aktualizuje stávající složku se zachováním nastavení. Spuštění stejné verze ji přeinstaluje do stejného umístění. V Linuxu aktualizuje stávající instalaci novější balíček DEB přes správce balíčků.
+
 ## Manifesty vozů
 
 Otevři `vuz_*_manifest.json` nebo jeden z GLB souborů z téže složky. Prohlížeč přiřadí produkční shader vozu, mapy albeda, normál a ORM a u dlaždicových modelů zachová význam `UV2` a `COLOR_0`. Stav vozu a úroveň detailů lze přepínat vedle sebe v nástrojové liště. `*_atlas.json` popisuje rozložení UV atlasu.
+
+## Místní herní materiály
+
+Ponech složku `_materialy-z-hry` se souborem `index.json` a adresářem `assets/` v kořeni kolekce hotových modelů. GLB chalupy, rekvizity, mostu nebo cesty otevři běžným způsobem. Viewer načte původní herní přiřazení materiálů z importu a prefabů, včetně odkazovaných map. Stejné rozložení složek funguje ve Windows i Linuxu. Chybějící podklady se zobrazí v panelu **Materiály a diagnostika**.
 
 ## Ovládání
 

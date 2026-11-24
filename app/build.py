@@ -13,7 +13,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
 VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {
@@ -98,7 +98,7 @@ def run(command, log):
 def prepare(args, stage):
     for name in ("project.godot", "viewer.tscn", "viewer.gd", "stage.gd", "materials.gd",
                  "glb_data.gd", "view_file.gd", "orientation_gizmo.gd", "lod_catalog.gd", "topology_overlay.gd",
-                 "vehicle_manifest.gd", "attribute_preview.gdshader"):
+                 "vehicle_manifest.gd", "game_materials.gd", "attribute_preview.gdshader"):
         shutil.copy2(HERE / name, stage / name)
     shutil.copytree(HERE / "locale", stage / "locale")
     shutil.copytree(HERE / "art", stage / "art", ignore=shutil.ignore_patterns("ui-concept.*"))
@@ -212,11 +212,14 @@ def export(args, stage):
         if name == "Windows":
             for file in (HERE / "windows").glob("Register-FileTypes.*"):
                 shutil.copy2(file, target)
+        else:
+            for file in ("register-file-types.sh", "com.rigelio.WoBModelViewer.xml", "com.rigelio.WoBModelViewer.desktop"):
+                shutil.copy2(HERE / "linux" / file, target)
         archive = args.out / f"WoB-Model-Viewer-{name.lower()}-portable-x86_64.zip"
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=5) as package:
             for file in sorted(target.iterdir()):
                 item = zipfile.ZipInfo.from_file(file, f"WoB Model Viewer/{file.name}")
-                if file == binary and name == "Linux":
+                if name == "Linux" and (file == binary or file.name == "register-file-types.sh"):
                     item.create_system = 3
                     item.external_attr = 0o100755 << 16
                 package.writestr(item, file.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=5)
