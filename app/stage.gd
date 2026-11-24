@@ -14,6 +14,7 @@ const QUADS_MODE := 6
 const COLOR_MODE := 7
 const UV0_MODE := 8
 const UV2_MODE := 9
+const CYCLE_SKY_MODE := 3
 const ATTRIBUTE_SHADER = preload("res://attribute_preview.gdshader")
 const QUAD_LINE_SHADER := """
 shader_type spatial;
@@ -55,6 +56,18 @@ var _show_source := true
 var _hdri_angle := 0.0
 var _direct_strength := 1.25
 var _animation_loop := Animation.LOOP_LINEAR
+var _animation_speed := 1.0
+var _animation_in_place := false
+var _model_anchor: Node3D
+var _motion_node: Node3D
+var _motion_bone := -1
+var _motion_origin := Vector3.ZERO
+var _manual_light := Vector2(-35.0, 42.0)
+var _night_mix := 0.0
+var _source_strength := 1.0
+var _cycle_playing := false
+var _cycle_seconds := 45.0
+var cycle_hour := 12.0
 var _grid: MeshInstance3D
 var _floor: MeshInstance3D
 var _hdri_on := true
@@ -103,6 +116,8 @@ func _ready() -> void:
 	viewport_3d.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	viewport_3d.gui_disable_input = true
 	add_child(viewport_3d)
+	_model_anchor = Node3D.new()
+	viewport_3d.add_child(_model_anchor)
 
 	environment = Environment.new()
 	environment.tonemap_mode = Environment.TONE_MAPPER_AGX
@@ -192,8 +207,10 @@ func apply_prepared_model(pending: Materials) -> String:
 
 func _install_model(pending: Materials) -> void:
 	if model:
-		viewport_3d.remove_child(model.root)
+		_model_anchor.remove_child(model.root)
 		model.root.queue_free()
+	_model_anchor.position = Vector3.ZERO
+	_motion_node = null
 	_point_instances.clear()
 	_quad_instances.clear()
 	_inspection_nodes.clear()
@@ -207,7 +224,7 @@ func _install_model(pending: Materials) -> void:
 	_skeletons.clear()
 	_bone_lines.clear_surfaces()
 	model = pending
-	viewport_3d.add_child(model.root)
+	_model_anchor.add_child(model.root)
 	for mesh in model.meshes:
 		_mesh_layers[mesh] = mesh.layers
 	_inspect_model()
@@ -260,14 +277,21 @@ func _collect_clips(node: Node) -> void:
 
 func select_clip(index: int) -> float:
 	if animation_player:
+		animation_player.mixer_applied.disconnect(_apply_in_place)
 		animation_player.stop()
+	_model_anchor.position = Vector3.ZERO
 	animation_player = clips[index].player
 	current_clip = clips[index].name
 	var clip := animation_player.get_animation(current_clip)
 	clip.loop_mode = _animation_loop
+	animation_player.speed_scale = _animation_speed
 	animation_player.play(current_clip)
 	animation_player.advance(0)
 	animation_player.pause()
+	_find_motion_track(clip)
+	if _motion_node:
+		_motion_origin = _motion_position()
+	animation_player.mixer_applied.connect(_apply_in_place)
 	return clip.length
 
 
@@ -275,6 +299,80 @@ func animation_loop(enabled: bool) -> void:
 	_animation_loop = Animation.LOOP_LINEAR if enabled else Animation.LOOP_NONE
 	if animation_player:
 		animation_player.get_animation(current_clip).loop_mode = _animation_loop
+
+
+func animation_speed(value: float) -> void:
+	_animation_speed = value
+	if animation_player:
+		animation_player.speed_scale = value
+
+
+func animation_in_place(enabled: bool) -> void:
+	_animation_in_place = enabled
+	_apply_in_place()
+
+
+func _find_motion_track(clip: Animation) -> void:
+	_motion_node = null
+	_motion_bone = -1
+	var best_rank := 0
+	var root := animation_player.get_node_or_null(animation_player.root_node)
+	if not root:
+		return
+	for track in range(clip.get_track_count()):
+		if clip.track_get_type(track) != Animation.TYPE_POSITION_3D or not clip.track_is_enabled(track):
+			continue
+		var last := clip.track_get_key_count(track) - 1
+		if last < 1:
+			continue
+		var path := clip.track_get_path(track)
+		var node := root.get_node_or_null(NodePath(path.get_concatenated_names())) as Node3D
+		if not node:
+			continue
+		var bone := -1
+		var rank := 0
+		var basis := Basis.IDENTITY
+		if path.get_subname_count() == 0 and model.meshes.all(func(mesh: MeshInstance3D):
+			return node == mesh or node.is_ancestor_of(mesh)
+		):
+			rank = 2
+			var parent := node.get_parent_node_3d()
+			if parent and not node.top_level:
+				basis = parent.global_basis
+		elif node is Skeleton3D and path.get_subname_count() == 1:
+			var name := str(path.get_subname(0))
+			bone = node.find_bone(name)
+			if bone >= 0:
+				var parent: int = node.get_bone_parent(bone)
+				var label := name.to_lower().replace("_", "").replace("-", "")
+				rank = 3 if parent < 0 or label in ["root", "rootmotion", "motion"] else 0
+				if rank == 0 and (label.ends_with("hips") or label.ends_with("pelvis")):
+					rank = 1
+				basis = node.global_basis
+				if parent >= 0:
+					basis *= node.get_bone_global_pose(parent).basis
+		if rank <= best_rank:
+			continue
+		var displacement: Vector3 = basis * (clip.track_get_key_value(track, last) - clip.track_get_key_value(track, 0))
+		if Vector2(displacement.x, displacement.z).length() > maxf(0.001, bounds.size.length() * 0.008):
+			best_rank = rank
+			_motion_node = node
+			_motion_bone = bone
+
+
+func _motion_position() -> Vector3:
+	var skeleton := _motion_node as Skeleton3D
+	if _motion_bone >= 0 and skeleton:
+		return skeleton.to_global(skeleton.get_bone_global_pose(_motion_bone).origin)
+	return _motion_node.global_position
+
+
+func _apply_in_place() -> void:
+	if _animation_in_place and _motion_node:
+		var shift := _motion_position() - _model_anchor.position - _motion_origin
+		_model_anchor.position = Vector3(-shift.x, 0.0, -shift.z)
+	else:
+		_model_anchor.position = Vector3.ZERO
 
 
 func toggle_play() -> bool:
@@ -384,6 +482,8 @@ func screen_space_panning(enabled: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	if _sky_mode == CYCLE_SKY_MODE and _cycle_playing and not capture_in_progress:
+		sky_cycle_seek(cycle_hour + delta * 24.0 / _cycle_seconds)
 	if not model:
 		return
 	_rotation_hold = maxf(_rotation_hold - delta, 0.0)
@@ -536,13 +636,17 @@ func _grid_line(lines: ImmediateMesh, start: Vector3, finish: Vector3, color: Co
 
 
 func light_direction(azimuth: float, elevation: float) -> void:
-	sunlight.rotation_degrees = Vector3(-elevation, azimuth, 0)
-	_update_light_source()
+	_manual_light = Vector2(azimuth, elevation)
+	if _sky_mode == CYCLE_SKY_MODE:
+		_update_day_cycle()
+	else:
+		sunlight.rotation_degrees = Vector3(-elevation, azimuth, 0)
+		_update_light_source()
 
 
 func light_intensity(value: float) -> void:
 	_direct_strength = value
-	sunlight.light_energy = value * (0.28 if _sky_mode == 2 else 1.0)
+	sunlight.light_energy = value * lerpf(1.0, 0.28, _night_mix) * _source_strength
 
 
 func hdri_orientation(degrees: float) -> void:
@@ -574,12 +678,58 @@ func light_enabled(enabled: bool) -> void:
 
 func sky_mode(index: int) -> void:
 	_sky_mode = index
+	if index == CYCLE_SKY_MODE:
+		environment.sky.radiance_size = Sky.RADIANCE_SIZE_256
+		environment.sky.process_mode = Sky.PROCESS_MODE_REALTIME
+	else:
+		environment.sky.process_mode = Sky.PROCESS_MODE_AUTOMATIC
+		environment.sky.radiance_size = Sky.RADIANCE_SIZE_128
 	environment.sky.sky_material = _sky_material if index == 0 else _celestial_sky
-	_celestial_sky.set_shader_parameter("night", index == 2)
 	hdri_orientation(_hdri_angle)
 	hdri_enabled(_hdri_on)
+	if index == CYCLE_SKY_MODE:
+		_update_day_cycle()
+		return
+	_night_mix = 1.0 if index == 2 else 0.0
+	_source_strength = 1.0
+	_celestial_sky.set_shader_parameter("night_mix", _night_mix)
+	_celestial_sky.set_shader_parameter("source_is_moon", index == 2)
+	_celestial_sky.set_shader_parameter("source_strength", 1.0)
 	sunlight.light_color = Color.WHITE if index == 0 else Color("#a9c6ff" if index == 2 else "#ffe8cb")
 	light_intensity(_direct_strength)
+	light_direction(_manual_light.x, _manual_light.y)
+
+
+func sky_cycle_play(enabled: bool) -> void:
+	_cycle_playing = enabled
+
+
+func sky_cycle_duration(seconds: float) -> void:
+	_cycle_seconds = seconds
+
+
+func sky_cycle_seek(hour: float) -> void:
+	cycle_hour = fposmod(hour, 24.0)
+	if _sky_mode == CYCLE_SKY_MODE:
+		_update_day_cycle()
+
+
+func _update_day_cycle() -> void:
+	var angle := (cycle_hour - 6.0) * TAU / 24.0
+	var altitude := sin(angle)
+	var moon := altitude < 0.0
+	var source := Vector3(cos(angle), altitude * 0.82, altitude * 0.57).normalized()
+	source = source.rotated(Vector3.UP, deg_to_rad(_manual_light.x))
+	if moon:
+		source = -source
+	sunlight.rotation = Vector3(-asin(source.y), atan2(source.x, source.z), 0.0)
+	_night_mix = 1.0 - smoothstep(-0.18, 0.12, altitude)
+	_source_strength = smoothstep(0.0, 0.16, absf(altitude))
+	sunlight.light_color = Color("#ffe8cb").lerp(Color("#a9c6ff"), _night_mix)
+	light_intensity(_direct_strength)
+	_celestial_sky.set_shader_parameter("night_mix", _night_mix)
+	_celestial_sky.set_shader_parameter("source_is_moon", moon)
+	_celestial_sky.set_shader_parameter("source_strength", _source_strength)
 	_update_light_source()
 
 

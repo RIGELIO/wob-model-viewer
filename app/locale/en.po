@@ -553,3 +553,48 @@ msgstr "Aim at source"
 
 msgid "Smyčka"
 msgstr "Loop"
+
+msgid "Na místě"
+msgstr "In place"
+
+msgid "Potlačí vodorovný posun kořene animace."
+msgstr "Suppress horizontal root motion in the animation."
+
+msgid "Rychlost přehrávání animace"
+msgstr "Animation playback speed"
+
+msgid "Cyklus dne a noci"
+msgstr "Day and night cycle"
+
+msgid "Přehrávat cyklus"
+msgstr "Play cycle"
+
+msgid "Délka cyklu"
+msgstr "Cycle duration"
+
+msgid "Čas dne"
+msgstr "Time of day"
+
+msgid "Protokol"
+msgstr "Log"
+
+msgid "Protokol prohlížeče"
+msgstr "Viewer log"
+
+msgid "Protokol je prázdný."
+msgstr "The log is empty."
+
+msgid "Kliknutím otevřeš protokol."
+msgstr "Click to open the log."
+
+msgid "Zkopírovat protokol"
+msgstr "Copy log"
+
+msgid "Zavřít"
+msgstr "Close"
+
+msgid "Quady (odhad) · Pro"
+msgstr "Inferred quads · Pro"
+
+msgid "Odhad quadů je součástí Pro."
+msgstr "Inferred quads are included in Pro."
