@@ -15,6 +15,8 @@ const MUTED := Color("#b8b1a6")
 const GOLD := Color("#edbd7c")
 const LOCALES := ["en", "cs"]
 const HDRI_NAMES := ["Lilienstein", "Kloppenheim 06 · Pure Sky", "Moonlit Golf"]
+const ANIMATION_SPEEDS := [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+const LOG_LIMIT := 200
 const SETTINGS := "user://viewer.cfg"
 enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, FRAME, QUIT }
 
@@ -35,7 +37,12 @@ class LoadingSpinner extends Control:
 
 var stage: Stage
 var _file_name: Label
-var _status: Label
+var _status: Button
+var _log_dialog: AcceptDialog
+var _log_text: TextEdit
+var _log_copy: Button
+var _log_entries := PackedStringArray()
+var _pro_enabled := false
 var _blank: CenterContainer
 var _geometry: Label
 var _lod_table: GridContainer
@@ -47,9 +54,14 @@ var _hdri_name: Label
 var _hdri_picker: OptionButton
 var _sky_picker: OptionButton
 var _aim_light: Button
+var _cycle_controls: VBoxContainer
+var _cycle_clock: HSlider
+var _cycle_time: Label
 var _movie: OptionButton
 var _play: Button
 var _loop: CheckBox
+var _in_place: CheckBox
+var _speed: OptionButton
 var _timeline: HSlider
 var _time: Label
 var _open_dialog: FileDialog
@@ -123,8 +135,18 @@ func _ready() -> void:
 	_make_viewport(left)
 	_make_timeline(left)
 	_make_inspector(split)
-	_status = _label(layout, "Připraveno", 13, MUTED)
-	_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	set_pro_enabled(false)
+	_status = _button(layout, "Připraveno", _show_log)
+	_status.flat = true
+	_status.clip_text = true
+	_status.disabled = true
+	_status.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_status.add_theme_font_size_override("font_size", 13)
+	_status.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	_status.add_theme_color_override("font_disabled_color", MUTED)
+	_status.add_theme_color_override("font_color", GOLD)
+	_status.add_theme_color_override("font_hover_color", WHITE)
+	_status.add_theme_color_override("font_focus_color", GOLD)
 	_make_loading_mask()
 
 	_open_dialog = _dialog("Otevřít model", FileDialog.FILE_MODE_OPEN_FILE, "*.glb,*.gltf,*.wobview,*.json")
@@ -141,6 +163,7 @@ func _ready() -> void:
 	_help = AcceptDialog.new()
 	_help.exclusive = true
 	add_child(_help)
+	_make_log_dialog()
 	_refresh_menu()
 	_refresh_dialogs()
 	get_window().files_dropped.connect(_files_dropped)
@@ -156,10 +179,10 @@ func _make_menu(row: HBoxContainer) -> void:
 	_menu_help = MenuButton.new()
 	_menu_help.text = "Nápověda"
 	_menu_help.get_popup().id_pressed.connect(func(id: int):
-		if id == 0:
-			_show_help()
-		else:
-			_show_about()
+		match id:
+			0: _show_help()
+			1: _show_about()
+			2: _show_log()
 	)
 	row.add_child(_menu_help)
 
@@ -182,6 +205,7 @@ func _refresh_menu() -> void:
 	var help := _menu_help.get_popup()
 	help.clear()
 	help.add_item(tr("Ovládání"), 0, KEY_F1)
+	help.add_item(tr("Protokol"), 2)
 	help.add_separator()
 	help.add_item(tr("O programu"), 1)
 
@@ -214,6 +238,30 @@ func _show_help() -> void:
 		"Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
 	)
 	_help.popup_centered()
+
+
+func _make_log_dialog() -> void:
+	_log_dialog = AcceptDialog.new()
+	_log_dialog.exclusive = true
+	add_child(_log_dialog)
+	_log_text = TextEdit.new()
+	_log_text.editable = false
+	_log_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_log_text.custom_minimum_size = Vector2(600, 330)
+	_log_dialog.add_child(_log_text)
+	_log_copy = _log_dialog.add_button("", true, "copy")
+	_log_dialog.custom_action.connect(func(action: StringName):
+		if action == &"copy":
+			DisplayServer.clipboard_set(_log_text.text)
+	)
+
+
+func _show_log() -> void:
+	_log_copy.disabled = _log_entries.is_empty()
+	_log_text.text = tr("Protokol je prázdný.") if _log_entries.is_empty() else "\n\n".join(_log_entries)
+	_log_text.set_caret_line(0)
+	_log_text.scroll_vertical = 0.0
+	_log_dialog.popup_centered()
 
 
 func _make_header(layout: VBoxContainer) -> void:
@@ -393,17 +441,28 @@ func _run_worker(task: Callable) -> Variant:
 
 
 func _make_timeline(parent: VBoxContainer) -> void:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = 41
-	parent.add_child(row)
-	_heading(row, "Animace", 23, GOLD).custom_minimum_size.x = 105
+	var controls := HBoxContainer.new()
+	parent.add_child(controls)
 	_movie = OptionButton.new()
-	_movie.custom_minimum_size.x = 162
+	_movie.custom_minimum_size.x = 76
+	_movie.size_flags_horizontal = SIZE_EXPAND_FILL
 	_movie.fit_to_longest_item = false
 	_movie.item_selected.connect(_select_clip)
-	row.add_child(_movie)
-	_play = _button(row, "Přehrát", _toggle_play)
-	_loop = _toggle(row, "animation_loop", "Smyčka", true, stage.animation_loop)
+	controls.add_child(_movie)
+	_play = _button(controls, "Přehrát", _toggle_play)
+	_loop = _toggle(controls, "animation_loop", "Smyčka", true, stage.animation_loop)
+	_in_place = _toggle(controls, "animation_in_place", "Na místě", false, stage.animation_in_place)
+	_in_place.tooltip_text = "Potlačí vodorovný posun kořene animace."
+	_speed = OptionButton.new()
+	_speed.tooltip_text = "Rychlost přehrávání animace"
+	for speed in ANIMATION_SPEEDS:
+		_speed.add_item("%s×" % speed)
+	_speed.select(ANIMATION_SPEEDS.find(1.0))
+	_speed.item_selected.connect(_select_animation_speed)
+	controls.add_child(_speed)
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	_heading(row, "Animace", 23, GOLD)
 	_timeline = HSlider.new()
 	_timeline.size_flags_horizontal = SIZE_EXPAND_FILL
 	_timeline.step = 0.001
@@ -449,7 +508,7 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	lighting.add_child(sky)
 	_sky_picker = OptionButton.new()
 	_sky_picker.size_flags_horizontal = SIZE_EXPAND_FILL
-	for name in ["Obloha HDRI", "Den · Slunce", "Noc · Měsíc"]:
+	for name in ["Obloha HDRI", "Den · Slunce", "Noc · Měsíc", "Cyklus dne a noci"]:
 		_sky_picker.add_item(name)
 	_sky_picker.select(0)
 	_sky_picker.item_selected.connect(func(index: int):
@@ -458,6 +517,7 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	sky.add_child(_sky_picker)
 	_aim_light = _button(sky, "Ukázat zdroj", _aim_at_light)
 	_aim_light.disabled = true
+	_make_day_cycle_controls(lighting)
 	_toggle(lighting, "sky_source", "Zobrazit zdroj světla", true, stage.source_visible)
 	var switches := HBoxContainer.new()
 	lighting.add_child(switches)
@@ -590,6 +650,9 @@ func _toggle(parent: Container, id: String, title: String, initial: bool, action
 
 
 func _choose_display(index: int) -> void:
+	if index == Stage.QUADS_MODE and not _pro_enabled:
+		_feedback("Odhad quadů je součástí Pro.", true)
+		return
 	if stage.model and index >= Stage.POINTS_MODE:
 		_with_loading(tr(_display.get_item_text(index)), _set_display.bind(index))
 	else:
@@ -597,6 +660,8 @@ func _choose_display(index: int) -> void:
 
 
 func _set_display(index: int) -> void:
+	if index == Stage.QUADS_MODE and not _pro_enabled:
+		index = 0
 	stage.display_mode(index)
 	_display.select(index)
 	_color_controls.visible = index == Stage.COLOR_MODE
@@ -605,6 +670,14 @@ func _set_display(index: int) -> void:
 	_wire_in_view.set_pressed_no_signal(index == 1)
 	if stage.model:
 		_refresh_geometry()
+
+
+func set_pro_enabled(enabled: bool) -> void:
+	_pro_enabled = enabled
+	_display.set_item_disabled(Stage.QUADS_MODE, not enabled)
+	_display.set_item_text(Stage.QUADS_MODE, "Quady (odhad)" if enabled else "Quady (odhad) · Pro")
+	if not enabled and _display.selected == Stage.QUADS_MODE:
+		_set_display(0)
 
 
 func _refresh_color_layers(requested := "COLOR_0") -> void:
@@ -722,6 +795,37 @@ func _set_background(index: int) -> void:
 func _choose_background_color(color: Color) -> void:
 	stage.custom_background(color)
 	_set_background(4)
+
+
+func _make_day_cycle_controls(parent: VBoxContainer) -> void:
+	_cycle_controls = VBoxContainer.new()
+	parent.add_child(_cycle_controls)
+	_toggle(_cycle_controls, "cycle_play", "Přehrávat cyklus", false, stage.sky_cycle_play)
+	_slider(_cycle_controls, "cycle_seconds", "Délka cyklu", 10.0, 180.0, 1.0, 45.0, stage.sky_cycle_duration, " s")
+	var row := HBoxContainer.new()
+	_cycle_controls.add_child(row)
+	_label(row, "Čas dne", 13, MUTED).custom_minimum_size.x = 111
+	_cycle_clock = HSlider.new()
+	_cycle_clock.max_value = 1439.0 / 60.0
+	_cycle_clock.step = 1.0 / 60.0
+	_cycle_clock.size_flags_horizontal = SIZE_EXPAND_FILL
+	row.add_child(_cycle_clock)
+	_cycle_time = _label(row, "", 13, WHITE)
+	_cycle_time.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_cycle_time.custom_minimum_size.x = 44
+	_cycle_clock.value_changed.connect(func(hour: float):
+		stage.sky_cycle_seek(hour)
+		_refresh_cycle_clock()
+	)
+	_options["cycle_hour"] = _cycle_clock
+	_refresh_cycle_clock()
+	_cycle_controls.hide()
+
+
+func _refresh_cycle_clock() -> void:
+	var minutes := roundi(stage.cycle_hour * 60.0) % 1440
+	_cycle_clock.set_value_no_signal(float(minutes) / 60.0)
+	_cycle_time.text = "%02d:%02d" % [floori(minutes / 60.0), minutes % 60]
 
 
 func _slider(parent: VBoxContainer, id: String, title: String, low: float, high: float, step: float,
@@ -885,7 +989,7 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 		error = stage.apply_prepared_model(loaded.model) if loaded.error.is_empty() else loaded.error
 	if not error.is_empty():
 		_finish_loading()
-		_feedback(error, true)
+		_feedback(error, true, PackedStringArray([path.get_file()]))
 		return false
 	_path = path
 	_view_path = ""
@@ -947,9 +1051,9 @@ func _reload_model() -> void:
 		_toggle_play()
 	var notes := stage.model.notes.size()
 	if notes:
-		_feedback(tr("Model znovu načten · upozornění (%d) v diagnostice.") % notes, true)
+		_set_status(tr("Model znovu načten · upozornění (%d) v diagnostice.") % notes, true)
 	else:
-		_feedback("Model znovu načten.")
+		_set_status("Model znovu načten.", false)
 
 
 func _select_lod(index: int) -> void:
@@ -1083,6 +1187,7 @@ func _save_view_to(path: String) -> void:
 		"camera": stage.camera_state(),
 		"clip": str(stage.current_clip),
 		"time": _timeline.value,
+		"animation_speed": ANIMATION_SPEEDS[_speed.selected],
 	}
 	var status := ViewFile.write(path, state)
 	if status == OK:
@@ -1128,6 +1233,9 @@ func _open_view(path: String) -> bool:
 	_restore_part_selection(isolation, isolation)
 	if state.get("camera") is Dictionary:
 		stage.restore_camera(state["camera"])
+	var saved_speed: Variant = state.get("animation_speed", 1.0)
+	var speed_index := ANIMATION_SPEEDS.find(float(saved_speed)) if saved_speed is float or saved_speed is int else -1
+	_select_animation_speed(speed_index if speed_index >= 0 else ANIMATION_SPEEDS.find(1.0))
 	_restore_clip(str(state.get("clip", "")), state.get("time"))
 	var mode: Variant = state.get("sky_mode", 0)
 	_select_sky(clampi(int(mode), 0, _sky_picker.item_count - 1) if mode is float or mode is int else 0)
@@ -1167,7 +1275,7 @@ func _refresh_geometry() -> void:
 		_geometry.text += "\n" + (tr("Odvozené quady %d · zbývající troj. %d") % [topology.x, topology.y])
 
 
-func _refresh_model_info() -> void:
+func _refresh_model_info(announce := true) -> void:
 	_refresh_geometry()
 	var report := PackedStringArray()
 	for key: String in stage.model.counts:
@@ -1179,18 +1287,25 @@ func _refresh_model_info() -> void:
 		report.append("")
 		report.append_array(notes)
 	_diagnostics.text = "\n".join(report)
+	if not announce:
+		return
+	var details := PackedStringArray([_path.get_file()])
+	details.append_array(notes)
 	if notes.is_empty():
-		_feedback("Model načten.")
+		_feedback("Model načten.", false, details)
 	else:
-		_feedback(tr("Model načten · upozornění (%d) v diagnostice.") % notes.size(), true)
+		_feedback(tr("Model načten · upozornění (%d) v diagnostice.") % notes.size(), true, details)
 
 
 func _refresh_clips() -> void:
 	_movie.clear()
+	_movie.tooltip_text = ""
 	var available := not stage.clips.is_empty()
 	_movie.disabled = not available
 	_play.disabled = not available
 	_loop.disabled = not available
+	_in_place.disabled = not available
+	_speed.disabled = not available
 	_timeline.editable = available
 	_play.text = "Přehrát"
 	_time.text = "0.00 s"
@@ -1206,6 +1321,7 @@ func _refresh_clips() -> void:
 
 func _select_clip(index: int) -> void:
 	_timeline.max_value = stage.select_clip(index)
+	_movie.tooltip_text = _movie.get_item_text(index)
 	_timeline.set_value_no_signal(0.0)
 	_time.text = "0.00 s"
 	_play.text = "Přehrát"
@@ -1215,8 +1331,17 @@ func _toggle_play() -> void:
 	_play.text = "Pozastavit" if stage.toggle_play() else "Přehrát"
 
 
+func _select_animation_speed(index: int) -> void:
+	_speed.select(index)
+	stage.animation_speed(ANIMATION_SPEEDS[index])
+
+
 func _process(_delta: float) -> void:
-	if not stage or not stage.animation_player:
+	if not stage:
+		return
+	if _sky_picker.selected == Stage.CYCLE_SKY_MODE:
+		_refresh_cycle_clock()
+	if not stage.animation_player:
 		return
 	var active := stage.animation_player.is_playing()
 	_play.text = "Pozastavit" if active else "Přehrát"
@@ -1267,6 +1392,8 @@ func _select_sky(index: int, show_panorama := false) -> void:
 	_sky_picker.select(index)
 	stage.sky_mode(index)
 	_aim_light.disabled = index == 0
+	_cycle_controls.visible = index == Stage.CYCLE_SKY_MODE
+	_options["elevation"].editable = index != Stage.CYCLE_SKY_MODE
 	if show_panorama:
 		_show_panorama()
 
@@ -1290,7 +1417,7 @@ func _load_hdri(path: String, show_panorama := false) -> void:
 	var error := stage.apply_hdri(decoded)
 	_finish_loading()
 	if not error.is_empty():
-		_feedback(error, true)
+		_feedback(error, true, PackedStringArray([path.get_file()]))
 		return
 	_hdri_name.text = path.get_file()
 	_hdri_name.show()
@@ -1320,10 +1447,21 @@ func _capture(path: String) -> Error:
 	return error
 
 
-func _feedback(message: String, warning := false) -> void:
+func _set_status(message: String, warning: bool) -> void:
 	_status.text = tr(message)
-	_status.tooltip_text = _status.text
-	_status.add_theme_color_override("font_color", GOLD if warning else MUTED)
+	_status.disabled = not warning
+	_status.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if warning else Control.CURSOR_ARROW
+	_status.tooltip_text = _status.text + ("\n" + tr("Kliknutím otevřeš protokol.") if warning else "")
+
+
+func _feedback(message: String, warning := false, details := PackedStringArray()) -> void:
+	_set_status(message, warning)
+	var entry := "[%s] %s" % [Time.get_time_string_from_system(), _status.text]
+	if not details.is_empty():
+		entry += "\n" + "\n".join(details)
+	_log_entries.insert(0, entry)
+	if _log_entries.size() > LOG_LIMIT:
+		_log_entries.resize(LOG_LIMIT)
 
 
 func _initial_locale() -> String:
@@ -1353,10 +1491,13 @@ func _change_locale(index: int) -> void:
 		_restore_part_selection(selection, isolation)
 		_refresh_vehicle_options()
 		_refresh_lod_options()
-		_refresh_model_info()
+		_refresh_model_info(false)
 
 
 func _refresh_dialogs() -> void:
+	_log_dialog.title = tr("Protokol prohlížeče")
+	_log_dialog.ok_button_text = tr("Zavřít")
+	_log_copy.text = tr("Zkopírovat protokol")
 	_open_dialog.title = tr("Otevřít model")
 	_open_dialog.filters = PackedStringArray(["*.glb,*.gltf,*.wobview,*_manifest.json ; " + tr("Model, relace nebo manifest vozu")])
 	_hdri_dialog.title = tr("Otevřít HDRI")

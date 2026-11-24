@@ -13,7 +13,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
-VERSION = "1.3.0"
+VERSION = "1.4.1"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
 VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {
@@ -138,15 +138,15 @@ def prepare(args, stage):
     add_vehicle_resources(args.repo, commit, args.assets_checkout, stage / "production")
 
 
-def preset(name, platform, template):
+def preset(name, platform, template, *, product_name="WoB Model Viewer", version=VERSION):
     options = f"""
 application/modify_resources=true
 application/icon="res://art/icon.png"
 application/company_name="RIGELIO Studio"
-application/product_name="WoB Model Viewer"
-application/file_description="WoB Model Viewer"
-application/file_version="{VERSION}.0"
-application/product_version="{VERSION}.0"
+application/product_name={json.dumps(product_name)}
+application/file_description={json.dumps(product_name)}
+application/file_version="{version}.0"
+application/product_version="{version}.0"
 application/legal_copyright="Copyright 2026 RIGELIO Studio"
 """ if name == "Windows" else ""
     return f"""
@@ -171,12 +171,12 @@ texture_format/etc2_astc=false
 """
 
 
-def export(args, stage):
-    version = subprocess.check_output([str(args.godot), "--version"]).decode().strip()
+def import_project(godot, stage, logs):
+    version = subprocess.check_output([str(godot), "--version"]).decode().strip()
     if version != "4.7.2.stable.official.ed1daf0bf":
         raise ValueError(f"Expected standard Godot 4.7.2, got {version}")
-    args.logs.mkdir(parents=True, exist_ok=True)
-    run([args.godot, "--headless", "--path", stage, "--editor", "--import"], args.logs / "import.log")
+    logs.mkdir(parents=True, exist_ok=True)
+    run([godot, "--headless", "--path", stage, "--editor", "--import"], logs / "import.log")
     import_settings_changed = False
     for sidecar in (stage / "production" / "textures").glob("*.png.import"):
         metadata = sidecar.read_text(encoding="utf-8")
@@ -188,7 +188,11 @@ def export(args, stage):
             sidecar.write_text(updated, encoding="utf-8")
             import_settings_changed = True
     if import_settings_changed:
-        run([args.godot, "--headless", "--path", stage, "--editor", "--import"], args.logs / "import-mipmaps.log")
+        run([godot, "--headless", "--path", stage, "--editor", "--import"], logs / "import-mipmaps.log")
+
+
+def export(args, stage):
+    import_project(args.godot, stage, args.logs)
     for name, (platform, template_name, executable) in TEMPLATES.items():
         target = args.out / name
         target.mkdir()

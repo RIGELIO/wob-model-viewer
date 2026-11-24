@@ -1,10 +1,10 @@
 # WoB Model Viewer
 
-WoB Model Viewer is an offline desktop viewer for GLB and glTF characters and materials from Wars of Bohemia. It runs on Godot 4.7.2 Forward+ and includes the game's character shaders and shared atlases.
+WoB Model Viewer is an offline desktop viewer for GLB and glTF models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_VERSION_amd64.deb` with the downloaded filename. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_VERSION_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
 
 Windows Setup and the Linux DEB register **.glb**, **.gltf** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
@@ -34,7 +34,11 @@ Godot Forward+ disables subsurface scattering on skin when the background is tra
 
 The viewer starts in a maximized window. Animations repeat after you press **Play**. Clear **Loop** to play the clip once.
 
-The viewer also shows progress feedback when switching panoramas or skies, preparing points, quads or attribute previews, and exporting a 4K image.
+Choose **0.25× to 2×** speed next to the timeline. **In place** suppresses horizontal travel in clips with recognized root motion while preserving height and limb movement. Use it to inspect walk and run cycles.
+
+In **Lighting**, select **Day and night cycle**. Scrub the time of day or enable **Play cycle**. **Cycle duration** controls how many seconds a complete 24-hour day takes. The time and settings are saved in `.wobview`.
+
+The viewer also shows progress feedback when switching panoramas or skies, preparing points or attribute previews, and exporting a 4K image.
 
 ## Inspect parts and attributes
 
@@ -46,14 +50,14 @@ The viewer also shows progress feedback when switching panoramas or skies, prepa
 
 If a model is named like `character_lod0.glb`, the viewer finds matching files in the same folder, including variants such as `character_lod1_helma.glb`. The LOD list shows the triangle and vertex counts from the source GLB scene and the size of each file. Switch levels from the list to compare them while keeping the current camera.
 
-**Wireframe** shows the GLB triangles. **Inferred quads** estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
+**Wireframe** shows the GLB triangles. **Inferred quads** in Pro estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
 
 ## Keyboard shortcuts
 
 | Keys | Action |
 | --- | --- |
 | **1** or **F** · **2** · **3** · **4** | Frame · Front · Side · Top |
-| **W** · **Q** · **P** | Wireframe · Inferred quads · Points |
+| **W** · **P** | Wireframe · Points |
 | **G** · **K** · **A** · **B** · **O** | Grid · Skeleton · Auto-rotate · Show background · Ortho |
 | **Page Up** · **Page Down** | Previous LOD · Next LOD |
 | **Space** | Play or pause |
@@ -67,6 +71,8 @@ If a model is named like `character_lod0.glb`, the viewer finds matching files i
 The viewer matches model and material names to the Wars of Bohemia shaders for skin, eyes, cloth, hair cards, hair and beard microfibers, and StubbleShell. Source files retain their original vertex color streams. Each production shader uses the stream required by that material, including the different density streams used by legacy and 4K StubbleShell.
 
 Check **Materials & diagnostics** for unmatched shaders, missing attributes or missing textures. The viewer keeps the original GLB material where it can. Some material-free exports, including KeenFace heads and the opaque LOD3 hair cap in the v5 reference set, display with a neutral preview and a warning when there is no matching production material.
+
+Click a yellow warning in the status bar to open the log with the individual warnings and errors. **Help → Log** opens the current session history after the status message changes. **Copy log** copies the text to the clipboard.
 
 For custom mappings, create a `your-model.wob.json` beside the model. Keys in `surfaces` combine the glTF node name and zero-based primitive index. Local texture paths are relative to the model directory.
 
