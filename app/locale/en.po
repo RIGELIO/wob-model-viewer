@@ -421,3 +421,51 @@ msgstr "vuz · missing textures %s."
 
 msgid "Vůz používá atlas, protože chybí UV2 nebo COLOR_0 pro dlaždice."
 msgstr "The vehicle uses its baked atlas because UV2 or COLOR_0 for tiling is missing."
+
+msgid "Znovu načíst model"
+msgstr "Reload model"
+
+msgid "Díly a materiály  ▾"
+msgstr "Parts and materials  ▾"
+
+msgid "Díly a materiály  ▸"
+msgstr "Parts and materials  ▸"
+
+msgid "Izolovat"
+msgstr "Isolate"
+
+msgid "Zobrazit vše"
+msgstr "Show all"
+
+msgid "Bez názvu"
+msgstr "Unnamed"
+
+msgid "Vertex barvy"
+msgstr "Vertex colors"
+
+msgid "UV0 · šachovnice"
+msgstr "UV0 · checker"
+
+msgid "UV2 · šachovnice"
+msgstr "UV2 · checker"
+
+msgid "Zdrojová vrstva vertex barev"
+msgstr "Source vertex color layer"
+
+msgid "Barevný kanál"
+msgstr "Color channel"
+
+msgid "Pruhy označují plochy bez vybraného atributu."
+msgstr "Stripes mark surfaces missing the selected attribute."
+
+msgid "Model znovu načten."
+msgstr "Model reloaded."
+
+msgid "Model znovu načten · upozornění (%d) v diagnostice."
+msgstr "Model reloaded · %d warnings in diagnostics."
+
+msgid "Manifest vozu nelze načíst nebo už neobsahuje aktuální LOD."
+msgstr "The vehicle manifest could not be loaded or no longer lists the current LOD."
+
+msgid "Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
+msgstr "Ctrl+R reloads the model with the same view, lighting and LOD. In Parts and materials, isolate a mesh or surface. Vertex colors and UV checkers are under View."

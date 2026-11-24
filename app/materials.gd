@@ -5,6 +5,8 @@ const VehicleManifest = preload("res://vehicle_manifest.gd")
 const VEHICLE_DIR := "res://production/vehicles/"
 const SHADER_DIR := "res://production/shaders/"
 const TEXTURE_DIR := "res://production/textures/"
+const IMPORT_FLAGS := GLTFDocument.IMPORT_FLAG_FORCE_DISABLE_MESH_COMPRESSION \
+	| GLTFDocument.IMPORT_FLAG_GENERATE_TANGENT_ARRAYS
 const ALIASES := {
 	"kuze": "kuze", "kůže": "kuze", "wob_skin": "kuze",
 	"odev": "odev", "oděv": "odev", "wob_cloth": "odev", "vlasy_podklad": "odev",
@@ -123,9 +125,7 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 	state.filename = path.get_file().get_basename()
 	var payload: PackedByteArray = source.with_json(rewritten) \
 		if remapped or path.get_extension().to_lower() == "gltf" else source.bytes
-	var flags := GLTFDocument.IMPORT_FLAG_FORCE_DISABLE_MESH_COMPRESSION \
-		| GLTFDocument.IMPORT_FLAG_GENERATE_TANGENT_ARRAYS
-	var result := document.append_from_buffer(payload, path, state, flags)
+	var result := document.append_from_buffer(payload, path, state, IMPORT_FLAGS)
 	if result != OK:
 		GLTFDocument.unregister_gltf_document_extension(source_nodes)
 		return tr("Godot model nenačetl (%s).") % error_string(result)
@@ -144,7 +144,7 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 func _bind_scene(node: Node) -> void:
 	if node is MeshInstance3D and node.mesh:
 		meshes.append(node)
-		var node_index := int(node.get_meta(&"_wob_gltf_index", -1))
+		var node_index := _node_index(node)
 		for surface: int in range(node.mesh.get_surface_count()):
 			var profile: Dictionary = _pairs.get(Vector2i(node_index, surface), {})
 			if not profile.is_empty():
@@ -153,6 +153,70 @@ func _bind_scene(node: Node) -> void:
 			_note(str(node.name), "Godot nepřiřadil síti původní uzel GLB.")
 	for child in node.get_children():
 		_bind_scene(child)
+
+
+func color_layers() -> PackedStringArray:
+	var layers := PackedStringArray()
+	for profile: Dictionary in _pairs.values():
+		for attribute: String in profile.attributes:
+			if attribute.begins_with("COLOR_") and not layers.has(attribute):
+				layers.append(attribute)
+	layers.sort()
+	return layers
+
+
+func surface_material_name(instance: MeshInstance3D, surface: int) -> String:
+	var material := instance.mesh.surface_get_material(surface)
+	if not material or material.resource_name.is_empty():
+		material = instance.get_active_material(surface)
+	return material.resource_name if material else ""
+
+
+func has_color_alpha(instance: MeshInstance3D, surface: int, layer: String) -> bool:
+	var attrs: Dictionary = _pairs.get(Vector2i(_node_index(instance), surface), {}).get("attributes", {})
+	var index := int(attrs.get(layer, -1))
+	var accessors: Array = source.json.get("accessors", [])
+	return index >= 0 and index < accessors.size() and accessors[index].get("type") == "VEC4"
+
+
+# Import a geometry-only copy with the requested source attribute as COLOR_0.
+# The production mesh and its material remapping stay intact.
+func inspection_meshes(color_layer: String) -> Dictionary[MeshInstance3D, ArrayMesh]:
+	var json := source.json.duplicate(true)
+	for property in ["materials", "textures", "images", "samplers"]:
+		json.erase(property)
+	for definition: Dictionary in json.get("meshes", []):
+		for primitive: Dictionary in definition.get("primitives", []):
+			primitive.erase("material")
+			var attributes: Dictionary = primitive.get("attributes", {})
+			var accessor: Variant = attributes.get(color_layer)
+			attributes.erase("COLOR_0")
+			if accessor != null:
+				attributes["COLOR_0"] = accessor
+	var document := GLTFDocument.new()
+	var state := GLTFState.new()
+	state.filename = _model_path.get_file().get_basename()
+	var result: Dictionary[MeshInstance3D, ArrayMesh]
+	if document.append_from_buffer(source.with_json(json), _model_path, state, IMPORT_FLAGS) != OK:
+		return result
+	var nodes := state.get_nodes()
+	var imported := state.get_meshes()
+	var converted: Dictionary[int, ArrayMesh]
+	for instance in meshes:
+		var index := _node_index(instance)
+		if index < 0 or index >= nodes.size():
+			continue
+		var mesh_index := nodes[index].mesh
+		if mesh_index < 0 or mesh_index >= imported.size():
+			continue
+		if not converted.has(mesh_index):
+			converted[mesh_index] = imported[mesh_index].mesh.get_mesh()
+		result[instance] = converted[mesh_index]
+	return result
+
+
+func _node_index(instance: MeshInstance3D) -> int:
+	return int(instance.get_meta(&"_wob_gltf_index", -1))
 
 
 func _read_sidecar() -> void:

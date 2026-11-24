@@ -8,6 +8,10 @@ const ORBIT_SPEED := 0.008
 const AUTO_ORBIT_SPEED := 0.38
 const POINTS_MODE := 5
 const QUADS_MODE := 6
+const COLOR_MODE := 7
+const UV0_MODE := 8
+const UV2_MODE := 9
+const ATTRIBUTE_SHADER = preload("res://attribute_preview.gdshader")
 const QUAD_LINE_SHADER := """
 shader_type spatial;
 render_mode unshaded, depth_draw_never, shadows_disabled;
@@ -70,6 +74,14 @@ var _quad_instances: Dictionary[MeshInstance3D, MeshInstance3D]
 var _quad_statistics := Vector2i.ZERO
 var _quads_prepared := false
 var _display_mode := 0
+var _isolated: MeshInstance3D
+var _isolated_surface := -1
+var _inspection_nodes: Dictionary[MeshInstance3D, Array]
+var _attribute_meshes: Dictionary[MeshInstance3D, ArrayMesh]
+var _attribute_input := "#"
+var _color_layer := "COLOR_0"
+var _color_channel := 0
+var _attribute_materials: Dictionary[Vector2i, ShaderMaterial]
 
 
 func _ready() -> void:
@@ -159,17 +171,24 @@ func load_model(path: String, manifest: RefCounted = null) -> String:
 	if not error.is_empty():
 		return error
 	if model:
-		_show_point_view(false)
 		viewport_3d.remove_child(model.root)
 		model.root.queue_free()
 	_point_instances.clear()
 	_quad_instances.clear()
+	_inspection_nodes.clear()
+	_mesh_layers.clear()
+	_attribute_meshes.clear()
+	_attribute_input = "#"
+	_isolated = null
+	_isolated_surface = -1
 	_quad_statistics = Vector2i.ZERO
 	_quads_prepared = false
 	_skeletons.clear()
 	_bone_lines.clear_surfaces()
 	model = pending
 	viewport_3d.add_child(model.root)
+	for mesh in model.meshes:
+		_mesh_layers[mesh] = mesh.layers
 	_inspect_model()
 	animation_player = null
 	current_clip = &""
@@ -177,8 +196,7 @@ func load_model(path: String, manifest: RefCounted = null) -> String:
 	_collect_clips(model.root)
 	frame()
 	_make_floor_and_grid()
-	_show_point_view(_display_mode == POINTS_MODE)
-	_show_quad_view(_display_mode == QUADS_MODE)
+	_apply_model_display()
 	if _skeleton_overlay.visible:
 		_draw_skeletons()
 	return ""
@@ -345,6 +363,9 @@ func _process(delta: float) -> void:
 		_sync_debug_morphs(_point_instances)
 	elif _display_mode == QUADS_MODE:
 		_sync_debug_morphs(_quad_instances)
+	for source in _inspection_nodes:
+		for preview: MeshInstance3D in _inspection_nodes[source]:
+			_copy_morphs(source, preview)
 
 
 func _update_camera() -> void:
@@ -396,7 +417,7 @@ func camera_state() -> Dictionary:
 	return {"target": [_center.x, _center.y, _center.z], "yaw": _yaw, "pitch": _pitch, "distance": _distance}
 
 
-func restore_camera(data: Dictionary) -> void:
+func restore_camera(data: Dictionary, limit_distance := true) -> void:
 	var pivot: Variant = data.get("target", [])
 	if not pivot is Array or pivot.size() != 3:
 		return
@@ -407,7 +428,10 @@ func restore_camera(data: Dictionary) -> void:
 	_center = Vector3(pivot[0], pivot[1], pivot[2])
 	_yaw = wrapf(float(data["yaw"]), -PI, PI)
 	_pitch = clampf(float(data["pitch"]), -1.555, 1.555)
-	_distance = clampf(float(data["distance"]), _radius * 0.015, _radius * 150.0)
+	var distance := float(data["distance"])
+	if limit_distance or distance <= 0.0:
+		distance = clampf(distance, _radius * 0.015, _radius * 150.0)
+	_distance = distance
 	_update_camera()
 
 
@@ -538,8 +562,145 @@ func wireframe(enabled: bool) -> void:
 func display_mode(index: int) -> void:
 	_display_mode = index
 	viewport_3d.debug_draw = DRAW_MODES[index] if index < DRAW_MODES.size() else Viewport.DEBUG_DRAW_DISABLED
-	_show_point_view(index == POINTS_MODE)
-	_show_quad_view(index == QUADS_MODE)
+	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR if index >= COLOR_MODE else Environment.TONE_MAPPER_AGX
+	_apply_model_display()
+
+
+func color_preview(layer: String, channel: int) -> void:
+	if layer == _color_layer and channel == _color_channel:
+		return
+	_color_layer = layer
+	_color_channel = channel
+	if _display_mode == COLOR_MODE:
+		_apply_model_display()
+
+
+func isolate(instance: MeshInstance3D, surface := -1) -> void:
+	if instance == _isolated and surface == _isolated_surface:
+		return
+	_isolated = instance
+	_isolated_surface = surface
+	_apply_model_display()
+
+
+func isolation_state() -> Dictionary:
+	if not _isolated:
+		return {}
+	var state := {"node": str(model.root.get_path_to(_isolated)), "surface": _isolated_surface}
+	if _isolated_surface >= 0:
+		state["material"] = model.surface_material_name(_isolated, _isolated_surface)
+	return state
+
+
+func _apply_model_display() -> void:
+	if not model:
+		return
+	for nodes in _inspection_nodes.values():
+		for preview: MeshInstance3D in nodes:
+			preview.hide()
+			preview.queue_free()
+	_inspection_nodes.clear()
+	var attributes := _display_mode >= COLOR_MODE
+	var input := _color_layer if _display_mode == COLOR_MODE else ""
+	if attributes and input != _attribute_input:
+		_attribute_meshes = model.inspection_meshes(input)
+		_attribute_input = input
+	var points := _display_mode == POINTS_MODE
+	var quads := _display_mode == QUADS_MODE
+	if points and _point_instances.is_empty():
+		_make_point_instances()
+	if quads:
+		_prepare_quads()
+	for instance in model.meshes:
+		var visible_part := not _isolated or instance == _isolated
+		var surface := _isolated_surface if instance == _isolated else -1
+		var original_layers := _mesh_layers[instance]
+		instance.layers = original_layers if visible_part and surface == -1 and not attributes else 0
+		var point_view := _point_instances.get(instance) as MeshInstance3D
+		var quad_view := _quad_instances.get(instance) as MeshInstance3D
+		if point_view:
+			point_view.visible = points and visible_part and surface == -1
+			point_view.layers = original_layers
+			if point_view.visible:
+				instance.layers = 0
+		if quad_view:
+			quad_view.visible = quads and visible_part and surface == -1
+			quad_view.layers = original_layers
+		if visible_part and (attributes or surface >= 0):
+			_make_inspection_view(instance, surface, attributes, points, quads)
+
+
+func _make_inspection_view(instance: MeshInstance3D, surface: int, attributes: bool, points: bool, quads: bool) -> void:
+	var mesh := _attribute_meshes.get(instance) as ArrayMesh if attributes else instance.mesh as ArrayMesh
+	var has_mesh := mesh != null
+	if not has_mesh:
+		mesh = instance.mesh as ArrayMesh
+	if not mesh:
+		return
+	if surface >= 0:
+		mesh = _copy_surface(mesh, surface)
+		if not mesh:
+			return
+	if points:
+		_add_inspection_node(instance, _make_point_mesh(mesh), _point_material)
+		return
+	var preview := _add_inspection_node(instance, mesh, null)
+	if attributes:
+		for index in range(mesh.get_surface_count()):
+			var source_index := surface if surface >= 0 else index
+			preview.set_surface_override_material(index, _preview_material(instance, mesh, index, source_index, has_mesh))
+	else:
+		preview.cast_shadow = instance.cast_shadow
+		preview.set_surface_override_material(0, instance.get_active_material(surface))
+	if quads:
+		var outline: ArrayMesh = TopologyOverlay.build(mesh).mesh
+		if outline.get_surface_count() > 0:
+			_add_inspection_node(instance, outline, _quad_material)
+
+
+func _add_inspection_node(instance: MeshInstance3D, mesh: ArrayMesh, material: Material) -> MeshInstance3D:
+	var preview := _make_debug_instance(instance, mesh, material)
+	preview.layers = _mesh_layers[instance]
+	_copy_morphs(instance, preview)
+	if not _inspection_nodes.has(instance):
+		_inspection_nodes[instance] = []
+	_inspection_nodes[instance].append(preview)
+	return preview
+
+
+func _preview_material(instance: MeshInstance3D, mesh: ArrayMesh, surface: int, source_surface: int, imported: bool) -> ShaderMaterial:
+	var flags := mesh.surface_get_format(surface)
+	var mode := _color_channel
+	var present := bool(flags & Mesh.ARRAY_FORMAT_COLOR)
+	if _display_mode == COLOR_MODE and mode == 4:
+		present = present and model.has_color_alpha(instance, source_surface, _color_layer)
+	elif _display_mode == UV0_MODE:
+		mode = 5
+		present = bool(flags & Mesh.ARRAY_FORMAT_TEX_UV)
+	elif _display_mode == UV2_MODE:
+		mode = 6
+		present = bool(flags & Mesh.ARRAY_FORMAT_TEX_UV2)
+	var key := Vector2i(mode, int(present and imported))
+	if not _attribute_materials.has(key):
+		var material := ShaderMaterial.new()
+		material.shader = ATTRIBUTE_SHADER
+		material.set_shader_parameter("mode", mode)
+		material.set_shader_parameter("has_attribute", bool(key.y))
+		_attribute_materials[key] = material
+	return _attribute_materials[key]
+
+
+func _copy_surface(source: ArrayMesh, surface: int) -> ArrayMesh:
+	if surface >= source.get_surface_count():
+		return null
+	var mesh := ArrayMesh.new()
+	mesh.blend_shape_mode = source.blend_shape_mode
+	for shape in range(source.get_blend_shape_count()):
+		mesh.add_blend_shape(source.get_blend_shape_name(shape))
+	var flags := source.surface_get_format(surface)
+	mesh.add_surface_from_arrays(source.surface_get_primitive_type(surface), source.surface_get_arrays(surface),
+		source.surface_get_blend_shape_arrays(surface), {}, flags)
+	return mesh
 
 
 func quad_statistics() -> Vector2i:
@@ -567,41 +728,8 @@ func _prepare_quads() -> void:
 			_quad_instances[instance] = overlay
 
 
-func _show_quad_view(enabled: bool) -> void:
-	if enabled:
-		_prepare_quads()
-	for instance in _quad_instances:
-		var overlay := _quad_instances[instance]
-		if enabled:
-			overlay.layers = instance.layers
-		overlay.visible = enabled
-	if enabled:
-		_sync_debug_morphs(_quad_instances)
-
-
 func set_point_size(value: float) -> void:
 	_point_material.point_size = clampf(value, 1.0, 32.0)
-
-
-func _show_point_view(enabled: bool) -> void:
-	if not model:
-		return
-	if not enabled:
-		for instance in _mesh_layers:
-			instance.layers = _mesh_layers[instance]
-			_point_instances[instance].hide()
-		_mesh_layers.clear()
-		return
-	if _point_instances.is_empty():
-		_make_point_instances()
-	for instance in _point_instances:
-		if not _mesh_layers.has(instance):
-			_mesh_layers[instance] = instance.layers
-		var points := _point_instances[instance]
-		points.layers = _mesh_layers[instance]
-		points.show()
-		instance.layers = 0
-	_sync_debug_morphs(_point_instances)
 
 
 func _make_point_instances() -> void:
@@ -657,9 +785,12 @@ func _make_point_mesh(source: ArrayMesh) -> ArrayMesh:
 
 func _sync_debug_morphs(instances: Dictionary[MeshInstance3D, MeshInstance3D]) -> void:
 	for instance in instances:
-		var overlay := instances[instance]
-		for shape in range(instance.get_blend_shape_count()):
-			overlay.set_blend_shape_value(shape, instance.get_blend_shape_value(shape))
+		_copy_morphs(instance, instances[instance])
+
+
+func _copy_morphs(instance: MeshInstance3D, preview: MeshInstance3D) -> void:
+	for shape in range(mini(instance.get_blend_shape_count(), preview.get_blend_shape_count())):
+		preview.set_blend_shape_value(shape, instance.get_blend_shape_value(shape))
 
 
 func screenshot(path: String) -> Error:

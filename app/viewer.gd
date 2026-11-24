@@ -15,7 +15,7 @@ const MUTED := Color("#b8b1a6")
 const GOLD := Color("#edbd7c")
 const LOCALES := ["en", "cs"]
 const SETTINGS := "user://viewer.cfg"
-enum FileAction { OPEN, SAVE, SAVE_AS, CAPTURE, QUIT }
+enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, QUIT }
 
 var stage: Stage
 var _file_name: Label
@@ -43,6 +43,14 @@ var _menu_help: MenuButton
 var _capture_button: Button
 var _language: OptionButton
 var _display: OptionButton
+var _color_controls: HBoxContainer
+var _color_layer: OptionButton
+var _color_channel: OptionButton
+var _attribute_hint: Label
+var _parts: Tree
+var _isolate_button: Button
+var _show_all_button: Button
+var _part_rows: Dictionary
 var _wire: CheckButton
 var _wire_in_view: CheckBox
 var _gizmo: OrientationGizmo
@@ -134,13 +142,14 @@ func _refresh_menu() -> void:
 	var menu := _menu_file.get_popup()
 	menu.clear()
 	menu.add_item(tr("Otevřít…"), FileAction.OPEN, KEY_MASK_CTRL | KEY_O)
+	menu.add_item(tr("Znovu načíst model"), FileAction.RELOAD, KEY_MASK_CTRL | KEY_R)
 	menu.add_separator()
 	menu.add_item(tr("Uložit"), FileAction.SAVE, KEY_MASK_CTRL | KEY_S)
 	menu.add_item(tr("Uložit jako…"), FileAction.SAVE_AS, KEY_MASK_CTRL | KEY_MASK_SHIFT | KEY_S)
 	menu.add_item(tr("Uložit 4K PNG"), FileAction.CAPTURE, KEY_MASK_CTRL | KEY_E)
 	menu.add_separator()
 	menu.add_item(tr("Konec"), FileAction.QUIT, KEY_MASK_CTRL | KEY_Q)
-	for id in [FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE]:
+	for id in [FileAction.RELOAD, FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE]:
 		menu.set_item_disabled(menu.get_item_index(id), _path.is_empty())
 	var help := _menu_help.get_popup()
 	help.clear()
@@ -152,6 +161,7 @@ func _refresh_menu() -> void:
 func _file_action(id: int) -> void:
 	match id:
 		FileAction.OPEN: _show_open()
+		FileAction.RELOAD: _reload_model()
 		FileAction.SAVE: _save_view()
 		FileAction.SAVE_AS: _show_view_save()
 		FileAction.CAPTURE: _show_capture()
@@ -170,6 +180,9 @@ func _show_help() -> void:
 	_help.title = tr("Ovládání WoB Model Viewer")
 	_help.dialog_text = tr(
 		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na osu XYZ pro pevný pohled.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda."
+	)
+	_help.dialog_text += "\n\n" + tr(
+		"Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
 	)
 	_help.popup_centered()
 
@@ -297,6 +310,7 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	list.size_flags_horizontal = SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 8)
 	scroll.add_child(list)
+	_make_parts(_section(list, "Díly a materiály", true, false))
 	var lighting := _section(list, "Osvětlení")
 	_hdri_name = _label(lighting, "Lilienstein", 13, MUTED)
 	_hdri_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -333,10 +347,31 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	_background_color.color_changed.connect(_choose_background_color)
 	background.add_child(_background_color)
 	_display = OptionButton.new()
-	for item in ["Materiály", "Wireframe", "Bez osvětlení", "Normály", "Overdraw", "Body", "Quady (odhad)"]:
+	for item in ["Materiály", "Wireframe", "Bez osvětlení", "Normály", "Overdraw", "Body", "Quady (odhad)",
+		"Vertex barvy", "UV0 · šachovnice", "UV2 · šachovnice"]:
 		_display.add_item(item)
 	_display.item_selected.connect(_set_display)
 	viewing.add_child(_display)
+	_color_controls = HBoxContainer.new()
+	viewing.add_child(_color_controls)
+	_color_layer = OptionButton.new()
+	_color_layer.tooltip_text = "Zdrojová vrstva vertex barev"
+	_color_layer.size_flags_horizontal = SIZE_EXPAND_FILL
+	_color_layer.add_item("COLOR_0")
+	_color_layer.select(0)
+	_color_layer.item_selected.connect(func(_index: int): _update_color_preview())
+	_color_controls.add_child(_color_layer)
+	_color_channel = OptionButton.new()
+	_color_channel.tooltip_text = "Barevný kanál"
+	for channel in ["RGB", "R", "G", "B", "A"]:
+		_color_channel.add_item(channel)
+	_color_channel.select(0)
+	_color_channel.item_selected.connect(func(_index: int): _update_color_preview())
+	_color_controls.add_child(_color_channel)
+	_color_controls.hide()
+	_attribute_hint = _label(viewing, "Pruhy označují plochy bez vybraného atributu.", 12, MUTED)
+	_attribute_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_attribute_hint.hide()
 	var aids := GridContainer.new()
 	aids.columns = 2
 	aids.add_theme_constant_override("h_separation", 16)
@@ -364,7 +399,7 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	_diagnostics.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
-func _section(parent: VBoxContainer, title: String, foldable := false) -> VBoxContainer:
+func _section(parent: VBoxContainer, title: String, foldable := false, expanded := true) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _box(PANEL, BORDER, 7, 10))
 	parent.add_child(panel)
@@ -375,7 +410,7 @@ func _section(parent: VBoxContainer, title: String, foldable := false) -> VBoxCo
 		_heading(layout, title, 25, GOLD)
 		return layout
 	var heading := Button.new()
-	heading.text = title + "  ▾"
+	heading.text = title + ("  ▾" if expanded else "  ▸")
 	heading.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	heading.flat = true
 	heading.add_theme_color_override("font_color", GOLD)
@@ -385,6 +420,7 @@ func _section(parent: VBoxContainer, title: String, foldable := false) -> VBoxCo
 	heading.add_theme_stylebox_override("hover", _box(PANEL.lightened(0.06), BORDER, 4, 0))
 	layout.add_child(heading)
 	var content := VBoxContainer.new()
+	content.visible = expanded
 	content.add_theme_constant_override("separation", 6)
 	layout.add_child(content)
 	heading.pressed.connect(func():
@@ -412,10 +448,119 @@ func _toggle(parent: Container, id: String, title: String, initial: bool, action
 func _set_display(index: int) -> void:
 	stage.display_mode(index)
 	_display.select(index)
+	_color_controls.visible = index == Stage.COLOR_MODE
+	_attribute_hint.visible = index >= Stage.COLOR_MODE
 	_wire.set_pressed_no_signal(index == 1)
 	_wire_in_view.set_pressed_no_signal(index == 1)
 	if stage.model:
 		_refresh_geometry()
+
+
+func _refresh_color_layers(requested := "COLOR_0") -> void:
+	_color_layer.clear()
+	var layers := stage.model.color_layers()
+	if layers.is_empty():
+		layers.append("COLOR_0")
+	for layer in layers:
+		_color_layer.add_item(layer)
+	_color_layer.select(maxi(0, layers.find(requested)))
+	_update_color_preview()
+
+
+func _update_color_preview() -> void:
+	stage.color_preview(_color_layer.get_item_text(_color_layer.selected), _color_channel.selected)
+
+
+func _make_parts(panel: VBoxContainer) -> void:
+	_parts = Tree.new()
+	_parts.hide_root = true
+	_parts.custom_minimum_size.y = 152
+	_parts.item_selected.connect(_refresh_part_actions)
+	_parts.item_activated.connect(_isolate_selected)
+	panel.add_child(_parts)
+	var buttons := HBoxContainer.new()
+	panel.add_child(buttons)
+	_isolate_button = _button(buttons, "Izolovat", _isolate_selected)
+	_show_all_button = _button(buttons, "Zobrazit vše", _show_all_parts)
+	_refresh_part_actions()
+
+
+func _refresh_parts() -> void:
+	_parts.clear()
+	_part_rows.clear()
+	var root := _parts.create_item()
+	for instance in stage.model.meshes:
+		var path := str(stage.model.root.get_path_to(instance))
+		var row := _add_part_row(root, str(instance.name), path, -1, instance)
+		for surface in range(instance.mesh.get_surface_count()):
+			var material := stage.model.surface_material_name(instance, surface)
+			var name := material if not material.is_empty() else tr("Bez názvu")
+			_add_part_row(row, "%d · %s" % [surface + 1, name], path, surface, instance, material)
+		row.collapsed = true
+	_refresh_part_actions()
+
+
+func _add_part_row(parent: TreeItem, label: String, path: String, surface: int, instance: MeshInstance3D, material := "") -> TreeItem:
+	var item := _parts.create_item(parent)
+	item.set_text(0, label)
+	item.set_tooltip_text(0, path if surface < 0 else "%s · %s" % [path, label])
+	item.set_metadata(0, {"node": path, "surface": surface, "instance": instance, "material": material})
+	if not _part_rows.has(path):
+		_part_rows[path] = {}
+	_part_rows[path][surface] = item
+	return item
+
+
+func _part_row(state: Variant) -> TreeItem:
+	if not state is Dictionary or not state.get("node") is String:
+		return null
+	var surface: Variant = state.get("surface")
+	if not (surface is int or surface is float) or not is_finite(float(surface)) or surface < -1:
+		return null
+	var rows: Dictionary = _part_rows.get(state.node, {})
+	var row := rows.get(int(surface)) as TreeItem
+	var material: Variant = state.get("material", "")
+	if surface < 0 or not material is String or material.is_empty():
+		return row
+	if row and row.get_metadata(0).material == material:
+		return row
+	var match_row: TreeItem
+	for index: int in rows:
+		if index >= 0 and rows[index].get_metadata(0).material == material:
+			if match_row:
+				return null
+			match_row = rows[index]
+	return match_row
+
+
+func _restore_part_selection(selected: Variant, isolated: Variant) -> void:
+	var isolation := _part_row(isolated)
+	if isolation:
+		var data: Dictionary = isolation.get_metadata(0)
+		stage.isolate(data.instance, data.surface)
+	var row := _part_row(selected)
+	if row:
+		row.get_parent().collapsed = false
+		row.select(0)
+	_refresh_part_actions()
+
+
+func _refresh_part_actions() -> void:
+	_isolate_button.disabled = _parts.get_selected() == null
+	_show_all_button.disabled = stage.isolation_state().is_empty()
+
+
+func _isolate_selected() -> void:
+	var row := _parts.get_selected()
+	if row:
+		var data: Dictionary = row.get_metadata(0)
+		stage.isolate(data.instance, data.surface)
+		_refresh_part_actions()
+
+
+func _show_all_parts() -> void:
+	stage.isolate(null)
+	_refresh_part_actions()
 
 
 func _set_background(index: int) -> void:
@@ -597,10 +742,43 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	_refresh_lod_options()
 	_refresh_menu()
 	_refresh_clips()
+	_refresh_parts()
+	_refresh_color_layers(_color_layer.get_item_text(_color_layer.selected))
 	_refresh_model_info()
 	if DisplayServer.get_name() == "headless":
 		print(path.get_file(), " ", stage.geometry, " ", stage.model.counts, " | ", stage.model.notes)
 	return true
+
+
+func _reload_model() -> void:
+	if _path.is_empty() or stage.capture_in_progress:
+		return
+	var camera := stage.camera_state()
+	var isolation := stage.isolation_state()
+	var row := _parts.get_selected()
+	var selection: Variant = row.get_metadata(0) if row else null
+	var view_path := _view_path
+	var clip := str(stage.current_clip)
+	var seconds := _timeline.value
+	var playing := stage.animation_player != null and stage.animation_player.is_playing()
+	var manifest: RefCounted
+	if stage.model.vehicle:
+		manifest = VehicleManifest.read(stage.model.vehicle.path)
+		if not manifest or manifest.state_for(_path).is_empty():
+			_feedback("Manifest vozu nelze načíst nebo už neobsahuje aktuální LOD.", true)
+			return
+	if not _load_model(_path, false, manifest):
+		return
+	_view_path = view_path
+	stage.restore_camera(camera, false)
+	_restore_part_selection(selection, isolation)
+	if _restore_clip(clip, seconds) and playing:
+		_toggle_play()
+	var notes := stage.model.notes.size()
+	if notes:
+		_feedback(tr("Model znovu načten · upozornění (%d) v diagnostice.") % notes, true)
+	else:
+		_feedback("Model znovu načten.")
 
 
 func _select_lod(index: int) -> void:
@@ -722,6 +900,9 @@ func _save_view_to(path: String) -> void:
 		"background": _background_option.selected,
 		"background_color": _background_color.color.to_html(),
 		"display": _display.selected,
+		"vertex_layer": _color_layer.get_item_text(_color_layer.selected),
+		"vertex_channel": _color_channel.selected,
+		"isolation": stage.isolation_state(),
 		"camera": stage.camera_state(),
 		"clip": str(stage.current_clip),
 		"time": _timeline.value,
@@ -759,23 +940,35 @@ func _open_view(path: String) -> bool:
 	if back is float or back is int:
 		_set_background(clampi(int(back), 0, _background_option.item_count - 1))
 	var display: Variant = state.get("display")
-	if display is float or display is int:
+	var channel: Variant = state.get("vertex_channel")
+	if (channel is float or channel is int) and is_finite(float(channel)):
+		_color_channel.select(clampi(int(channel), 0, _color_channel.item_count - 1))
+	var layer: Variant = state.get("vertex_layer", "COLOR_0")
+	_refresh_color_layers(layer if layer is String else "COLOR_0")
+	if (display is float or display is int) and is_finite(float(display)):
 		_set_display(clampi(int(display), 0, _display.item_count - 1))
+	var isolation: Variant = state.get("isolation")
+	_restore_part_selection(isolation, isolation)
 	if state.get("camera") is Dictionary:
 		stage.restore_camera(state["camera"])
-	for index in range(stage.clips.size()):
-		if str(stage.clips[index].name) == state.get("clip", ""):
-			_movie.select(index)
-			_select_clip(index)
-			var seconds: Variant = state.get("time")
-			if seconds is float or seconds is int:
-				_timeline.value = float(seconds)
-			break
+	_restore_clip(str(state.get("clip", "")), state.get("time"))
 	_reset_hdri()
 	var hdri: Variant = state.get("hdri", "")
 	if hdri is String and not hdri.is_empty():
 		_load_hdri(ViewFile.unpack_path(path, hdri))
 	return true
+
+
+func _restore_clip(name: String, seconds: Variant) -> bool:
+	for index in range(stage.clips.size()):
+		if str(stage.clips[index].name) == name:
+			_movie.select(index)
+			_select_clip(index)
+			if (seconds is float or seconds is int) and is_finite(float(seconds)):
+				_timeline.set_value_no_signal(float(seconds))
+				stage.seek(_timeline.value)
+			return true
+	return false
 
 
 func _refresh_geometry() -> void:
@@ -918,6 +1111,11 @@ func _change_locale(index: int) -> void:
 	_refresh_menu()
 	_refresh_dialogs()
 	if stage.model:
+		var row := _parts.get_selected()
+		var selection: Variant = row.get_metadata(0) if row else null
+		var isolation := stage.isolation_state()
+		_refresh_parts()
+		_restore_part_selection(selection, isolation)
 		_refresh_vehicle_options()
 		_refresh_lod_options()
 		_refresh_model_info()
@@ -943,6 +1141,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.ctrl_pressed and not event.alt_pressed:
 		match key:
 			KEY_O: _show_open()
+			KEY_R: _reload_model()
 			KEY_S:
 				if event.shift_pressed:
 					_show_view_save()

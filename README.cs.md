@@ -4,9 +4,9 @@ Offline desktopový prohlížeč GLB a glTF pro kontrolu modelů a materiálů W
 
 ## Stažení a spuštění
 
-V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček nainstaluješ ve správci balíčků nebo příkazem `sudo apt install ./wob-model-viewer_1.0.1_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Aplikace potřebuje grafický ovladač s podporou Godot Forward+.
+V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček nainstaluješ ve správci balíčků nebo příkazem `sudo apt install ./wob-model-viewer_1.1.0_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Aplikace potřebuje grafický ovladač s podporou Godot Forward+.
 
-Pro otevření dvojklikem vyber ve Windows v **Nastavení → Aplikace → Výchozí aplikace** program **WoB Model Viewer** pro přípony **.glb**, **.gltf** a **.wobview**. Instalátor 1.0.1 registruje všechny tři pro tvůj účet. V přenosné verzi spusť přiložený **Register-FileTypes.cmd**. Po přemístění aplikace registraci zopakuj.
+Pro otevření dvojklikem vyber ve Windows v **Nastavení → Aplikace → Výchozí aplikace** program **WoB Model Viewer** pro přípony **.glb**, **.gltf** a **.wobview**. Instalátor registruje všechny tři pro tvůj účet. V přenosné verzi spusť přiložený **Register-FileTypes.cmd**. Po přemístění aplikace registraci zopakuj.
 
 Instalátor a EXE pro Windows jsou bez digitálního podpisu. Pokud Windows zobrazí výstrahu SmartScreen, ověř stažený soubor proti `SHA256SUMS.txt` na stránce vydání. Podpis umožní Windows zobrazit ověřeného vydavatele. SmartScreen při prvních staženích zohledňuje i reputaci nového souboru. [Dokumentace Microsoftu](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
@@ -26,6 +26,12 @@ Otevři `vuz_*_manifest.json` nebo jeden z GLB souborů z téže složky. Prohl�
 
 Při průhledném pozadí Godot Forward+ vypíná podpovrchový rozptyl světla v kůži.
 
+## Kontrola dílů a atributů
+
+- **Ctrl+R** načte aktuální soubor znovu po exportu. Zachová kameru, světla, HDRI, stav vozu a vybraný LOD. Izolace zůstane zapnutá, pokud díl v novém exportu stále existuje.
+- Rozbal **Díly a materiály** a vyber síť nebo jeden z jejích materiálových povrchů. Klikni na **Izolovat** nebo použij dvojklik. **Zobrazit vše** obnoví celý model. Statistika geometrie a LOD dál zahrnuje celý model na vybrané úrovni detailů.
+- V **Zobrazení → Vertex barvy** vyber původní vrstvu, například `COLOR_0` nebo `COLOR_1`. Můžeš zobrazit RGB dohromady nebo jednotlivé kanály R, G, B a A ve stupních šedi. **UV0 · šachovnice** a **UV2 · šachovnice** zobrazí první a druhou UV vrstvu (`TEXCOORD_0` a `TEXCOORD_1` v glTF). Pruhy označí plochy, kde vybraný atribut chybí.
+
 ## Srovnání LOD
 
 U modelu pojmenovaného například `postava_lod0.glb` prohlížeč vyhledá související soubory ve stejné složce, včetně variant jako `postava_lod1_helma.glb`. Seznam LOD ukazuje počty trojúhelníků a vrcholů ze zdrojové scény GLB a velikost každého souboru. Při přepnutí úrovně zůstane kamera na stejném místě.
@@ -42,6 +48,7 @@ U modelu pojmenovaného například `postava_lod0.glb` prohlížeč vyhledá sou
 | **Page Up** · **Page Down** | Předchozí LOD · Další LOD |
 | **Mezerník** | Přehrát nebo pozastavit animaci |
 | **Ctrl+O** · **Ctrl+S** · **Ctrl+Shift+S** | Otevřít · Uložit relaci · Uložit relaci jako |
+| **Ctrl+R** | Znovu načíst model a zachovat pohled |
 | **Ctrl+E** · **Ctrl+Q** · **F1** | Exportovat 4K PNG · Ukončit · Nápověda |
 
 ## Produkční materiály a diagnostika

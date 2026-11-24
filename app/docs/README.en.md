@@ -4,9 +4,9 @@ WoB Model Viewer is an offline desktop viewer for GLB and glTF characters and ma
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, install the `.deb` through the package manager or with `sudo apt install ./wob-model-viewer_1.0.1_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, install the `.deb` through the package manager or with `sudo apt install ./wob-model-viewer_1.1.0_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
 
-To open models and saved views by double-clicking, choose **WoB Model Viewer** for **.glb**, **.gltf**, and **.wobview** in **Settings → Apps → Default apps**. Setup 1.0.1 registers all three for your account. In the portable edition, run the bundled **Register-FileTypes.cmd**. Repeat registration if you move the executable.
+To open models and saved views by double-clicking, choose **WoB Model Viewer** for **.glb**, **.gltf**, and **.wobview** in **Settings → Apps → Default apps**. Setup registers all three for your account. In the portable edition, run the bundled **Register-FileTypes.cmd**. Repeat registration if you move the executable.
 
 The Windows installer and executable are unsigned. If SmartScreen prompts on first use, verify the download against `SHA256SUMS.txt` on the release page. A signed release can display a verified publisher. SmartScreen also considers the reputation of the downloaded file. [Microsoft documentation](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
@@ -26,6 +26,12 @@ Open a `vuz_*_manifest.json` or one of the adjacent GLBs. The viewer applies the
 
 Godot Forward+ disables subsurface scattering on skin when the background is transparent.
 
+## Inspect parts and attributes
+
+- **Ctrl+R** reloads the current model file after a new export. It keeps the camera, lights, HDRI, vehicle state and selected LOD. It restores isolation when the part still exists.
+- Expand **Parts and materials** and select a mesh or one of its material surfaces. Press **Isolate** or double-click the row. **Show all** restores the full model. Geometry and LOD statistics cover the full model at the selected level.
+- In **View**, choose **Vertex colors** and a source layer such as `COLOR_0` or `COLOR_1`. View RGB together or individual R, G, B and A channels in grayscale. **UV0 · checker** and **UV2 · checker** show the first and second UV sets (`TEXCOORD_0` and `TEXCOORD_1` in glTF). Stripes mark surfaces missing the requested attribute.
+
 ## Compare LODs
 
 If a model is named like `character_lod0.glb`, the viewer finds matching files in the same folder, including variants such as `character_lod1_helma.glb`. The LOD list shows the triangle and vertex counts from the source GLB scene and the size of each file. Switch levels from the list to compare them while keeping the current camera.
@@ -42,6 +48,7 @@ If a model is named like `character_lod0.glb`, the viewer finds matching files i
 | **Page Up** · **Page Down** | Previous LOD · Next LOD |
 | **Space** | Play or pause |
 | **Ctrl+O** · **Ctrl+S** · **Ctrl+Shift+S** | Open · Save view · Save view as |
+| **Ctrl+R** | Reload the current model and keep the view |
 | **Ctrl+E** · **Ctrl+Q** · **F1** | Export 4K PNG · Quit · Help |
 
 ## Production materials and diagnostics
