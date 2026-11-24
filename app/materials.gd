@@ -1,6 +1,8 @@
 extends RefCounted
 
 const GlbData = preload("res://glb_data.gd")
+const VehicleManifest = preload("res://vehicle_manifest.gd")
+const VEHICLE_DIR := "res://production/vehicles/"
 const SHADER_DIR := "res://production/shaders/"
 const TEXTURE_DIR := "res://production/textures/"
 const ALIASES := {
@@ -40,6 +42,8 @@ var counts: Dictionary
 var meshes: Array[MeshInstance3D]
 var source: GlbData
 var root: Node
+var vehicle: RefCounted
+var vehicle_state := ""
 var _pairs: Dictionary
 var _resources: Dictionary
 var _model_path: String
@@ -48,7 +52,7 @@ var _notes: Array[Array]
 var _catalog_hair := false
 
 
-func import_model(path: String) -> String:
+func import_model(path: String, manifest: RefCounted = null) -> String:
 	_model_path = path
 	source = GlbData.new(path)
 	if not source.error.is_empty():
@@ -59,6 +63,9 @@ func import_model(path: String) -> String:
 	var mat_defs: Variant = original.get("materials", [])
 	if not mesh_defs is Array or not nodes is Array or not mat_defs is Array:
 		return tr("GLB má neplatnou strukturu uzlů, sítí nebo materiálů.")
+	vehicle = manifest if manifest else VehicleManifest.for_model(path)
+	if vehicle:
+		vehicle_state = vehicle.state_for(path)
 	_read_sidecar()
 	var rewritten := original.duplicate(true)
 	var remapped := false
@@ -92,6 +99,8 @@ func import_model(path: String) -> String:
 			for node_index: int in node_groups[mesh_index]:
 				var node_name := str(nodes[node_index].get("name", mesh_def.get("name", "Síť")))
 				var profile := _profile(node_name, tag, surface)
+				if vehicle and tag == vehicle.object_id:
+					profile["shader"] = "vuz"
 				profile["attributes"] = attrs
 				_pairs[Vector2i(node_index, surface)] = profile
 				var semantic := str(profile.get("color", "COLOR_0"))
@@ -236,6 +245,9 @@ func _shell_parameters(name: String, legacy: bool) -> Dictionary:
 func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
 	var label := str(profile.label)
 	var role := str(profile.shader)
+	if role == "vuz":
+		_bind_vehicle(instance, surface, profile.attributes)
+		return
 	var original := instance.mesh.surface_get_material(surface) as BaseMaterial3D
 	if role.is_empty():
 		if not str(profile.detail).is_empty():
@@ -325,6 +337,33 @@ func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
 	counts[role] = int(counts.get(role, 0)) + 1
 
 
+func _bind_vehicle(instance: MeshInstance3D, surface: int, attrs: Dictionary) -> void:
+	if not attrs.has("NORMAL") or not attrs.has("TEXCOORD_0"):
+		_note(vehicle.object_id, "vuz · chybí nebo nesouhlasí atributy %s.", ["NORMAL / TEXCOORD_0"])
+		return
+	var preset := _resource(VEHICLE_DIR + vehicle.object_id + "_material.tres") as ShaderMaterial
+	if preset == null or preset.shader == null:
+		_note(vehicle.object_id, "Chybí produkční shader %s.", ["vuz"])
+		return
+	var material := preset.duplicate() as ShaderMaterial
+	var missing := PackedStringArray()
+	for key: String in ["albedo", "normal", "orm"]:
+		var texture := _file_texture(vehicle.local_path(vehicle.textures.get(key)))
+		if texture:
+			material.set_shader_parameter(key + "_tex", texture)
+		else:
+			missing.append(str(vehicle.textures.get(key, key)))
+	if not missing.is_empty():
+		_note(vehicle.object_id, "vuz · chybí textury %s.", [", ".join(missing)])
+		return
+	if not vehicle.tiled or (not attrs.has("COLOR_0") or not attrs.has("TEXCOORD_1")):
+		if vehicle.tiled:
+			_note(vehicle.object_id, "Vůz používá atlas, protože chybí UV2 nebo COLOR_0 pro dlaždice.")
+		material.set_shader_parameter("pouzit_dlazdice", false)
+	instance.set_surface_override_material(surface, material)
+	counts["vuz"] = int(counts.get("vuz", 0)) + 1
+
+
 func _neutral_placeholder(instance: MeshInstance3D, surface: int, original: BaseMaterial3D) -> void:
 	if original and original.albedo_texture:
 		return
@@ -349,7 +388,12 @@ func _resource(path: String) -> Resource:
 func _local_texture(uri: String) -> Texture2D:
 	if uri.is_empty() or not GlbData.relative_file(uri):
 		return null
-	var path := _model_path.get_base_dir().path_join(uri.uri_decode().replace("\\", "/"))
+	return _file_texture(_model_path.get_base_dir().path_join(uri.uri_decode().replace("\\", "/")))
+
+
+func _file_texture(path: String) -> Texture2D:
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return null
 	if _resources.has(path):
 		return _resources[path] as Texture2D
 	var image := Image.new()

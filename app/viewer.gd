@@ -4,6 +4,7 @@ const Stage = preload("res://stage.gd")
 const ViewFile = preload("res://view_file.gd")
 const OrientationGizmo = preload("res://orientation_gizmo.gd")
 const LodCatalog = preload("res://lod_catalog.gd")
+const VehicleManifest = preload("res://vehicle_manifest.gd")
 const APP_ICON = preload("res://art/icon.png")
 const TITLE_FONT = preload("res://art/CormorantGaramond.ttf")
 const INK := Color("#121315")
@@ -14,7 +15,6 @@ const MUTED := Color("#b8b1a6")
 const GOLD := Color("#edbd7c")
 const LOCALES := ["en", "cs"]
 const SETTINGS := "user://viewer.cfg"
-const VERSION := "1.0.0"
 enum FileAction { OPEN, SAVE, SAVE_AS, CAPTURE, QUIT }
 
 var stage: Stage
@@ -24,6 +24,7 @@ var _blank: CenterContainer
 var _geometry: Label
 var _lod_table: GridContainer
 var _lod_picker: OptionButton
+var _vehicle_picker: OptionButton
 var _lod_entries: Array[Dictionary]
 var _diagnostics: Label
 var _hdri_name: Label
@@ -90,7 +91,7 @@ func _ready() -> void:
 	_status = _label(layout, "Připraveno", 13, MUTED)
 	_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 
-	_open_dialog = _dialog("Otevřít model", FileDialog.FILE_MODE_OPEN_FILE, "*.glb,*.gltf,*.wobview")
+	_open_dialog = _dialog("Otevřít model", FileDialog.FILE_MODE_OPEN_FILE, "*.glb,*.gltf,*.wobview,*.json")
 	_open_dialog.file_selected.connect(_open_path)
 	_hdri_dialog = _dialog("Otevřít HDRI", FileDialog.FILE_MODE_OPEN_FILE, "*.hdr,*.exr ; Panorama HDRI")
 	_hdri_dialog.file_selected.connect(_load_hdri)
@@ -159,7 +160,7 @@ func _file_action(id: int) -> void:
 
 func _show_about() -> void:
 	_about.title = tr("O programu")
-	_about.dialog_text = "WoB Model Viewer %s\n© 2026 RIGELIO Studio\n\n%s" % [VERSION, tr(
+	_about.dialog_text = "WoB Model Viewer %s\n© 2026 RIGELIO Studio\n\n%s" % [ProjectSettings.get_setting("application/config/version"), tr(
 		"Offline prohlížeč modelů GLB pro Wars of Bohemia.\nGodot 4.7.2 Forward+.\n\nLicence MIT. Licence přiložených prostředků jsou v balíčku aplikace."
 	)]
 	_about.popup_centered()
@@ -214,6 +215,10 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = SIZE_EXPAND_FILL
 	toolbar.add_child(spacer)
+	_vehicle_picker = OptionButton.new()
+	_vehicle_picker.item_selected.connect(_select_vehicle_state)
+	_vehicle_picker.hide()
+	toolbar.add_child(_vehicle_picker)
 	_lod_picker = OptionButton.new()
 	_lod_picker.item_selected.connect(_select_lod)
 	_lod_picker.hide()
@@ -545,23 +550,33 @@ func _show_capture() -> void:
 func _files_dropped(files: PackedStringArray) -> void:
 	for path in files:
 		match path.get_extension().to_lower():
-			"glb", "gltf", "wobview":
+			"glb", "gltf", "wobview", "json":
 				_open_path(path)
 				return
 			"hdr", "exr":
 				_load_hdri(path)
 				return
-	_feedback("Podporované soubory jsou GLB, glTF, WOBVIEW, HDR a EXR.", true)
+	_feedback("Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR.", true)
 
 
 func _open_path(path: String) -> bool:
 	if path.get_extension().to_lower() == "wobview":
 		return _open_view(path)
+	if path.get_extension().to_lower() == "json":
+		if path.get_file().to_lower().ends_with("_atlas.json"):
+			_feedback("Atlasové JSON obsahuje rozložení UV. Otevři manifest vozu nebo GLB.", true)
+			return false
+		var manifest := VehicleManifest.read(path)
+		if not manifest:
+			_feedback("JSON není platný manifest vozu Wars of Bohemia.", true)
+			return false
+		var state := "cely" if manifest.states.has("cely") else str(manifest.states.keys()[0])
+		return _load_model(manifest.states[state][0].path, false, manifest)
 	return _load_model(path)
 
 
-func _load_model(path: String, keep_lod_family := false) -> bool:
-	var error := stage.load_model(path)
+func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = null) -> bool:
+	var error := stage.load_model(path, manifest)
 	if not error.is_empty():
 		_feedback(error, true)
 		return false
@@ -574,7 +589,11 @@ func _load_model(path: String, keep_lod_family := false) -> bool:
 	_gizmo.show()
 	_capture_button.disabled = false
 	if not keep_lod_family:
-		_lod_entries = LodCatalog.discover(path)
+		var vehicle: RefCounted = stage.model.vehicle
+		var state: String = stage.model.vehicle_state
+		_lod_entries = LodCatalog.from_manifest(vehicle.states[state]) if vehicle and not state.is_empty() \
+			else LodCatalog.discover(path)
+	_refresh_vehicle_options()
 	_refresh_lod_options()
 	_refresh_menu()
 	_refresh_clips()
@@ -586,10 +605,45 @@ func _load_model(path: String, keep_lod_family := false) -> bool:
 
 func _select_lod(index: int) -> void:
 	var previous_camera := stage.camera_state()
-	if _load_model(_lod_entries[index]["path"], true):
+	if _load_model(_lod_entries[index]["path"], true, stage.model.vehicle):
 		stage.restore_camera(previous_camera)
 	else:
 		_refresh_lod_options()
+
+
+func _refresh_vehicle_options() -> void:
+	_vehicle_picker.clear()
+	var manifest: RefCounted = stage.model.vehicle
+	_vehicle_picker.visible = manifest != null and manifest.states.size() > 1
+	if not _vehicle_picker.visible:
+		return
+	_vehicle_picker.tooltip_text = tr("Stav vozu")
+	var names := {
+		"cely": "Celý", "poniceny": "Poškozený", "zniceny": "Zničený",
+		"hori": "Hořící", "ohoreli": "Ohořelý",
+	}
+	for state in manifest.states:
+		_vehicle_picker.add_item(tr(names.get(state, state)))
+		if state == stage.model.vehicle_state:
+			_vehicle_picker.select(_vehicle_picker.item_count - 1)
+
+
+func _select_vehicle_state(index: int) -> void:
+	var manifest: RefCounted = stage.model.vehicle
+	var state: String = manifest.states.keys()[index]
+	var levels: Array = manifest.states[state]
+	var path: String = levels[0].path
+	if _lod_picker.selected >= 0:
+		var level: int = _lod_entries[_lod_picker.selected].level
+		for entry: Dictionary in levels:
+			if entry.level == level:
+				path = entry.path
+				break
+	var camera := stage.camera_state()
+	if _load_model(path, false, manifest):
+		stage.restore_camera(camera)
+	else:
+		_refresh_vehicle_options()
 
 
 func _refresh_lod_options() -> void:
@@ -864,13 +918,14 @@ func _change_locale(index: int) -> void:
 	_refresh_menu()
 	_refresh_dialogs()
 	if stage.model:
+		_refresh_vehicle_options()
 		_refresh_lod_options()
 		_refresh_model_info()
 
 
 func _refresh_dialogs() -> void:
 	_open_dialog.title = tr("Otevřít model")
-	_open_dialog.filters = PackedStringArray(["*.glb,*.gltf,*.wobview ; " + tr("Model nebo relace")])
+	_open_dialog.filters = PackedStringArray(["*.glb,*.gltf,*.wobview,*_manifest.json ; " + tr("Model, relace nebo manifest vozu")])
 	_hdri_dialog.title = tr("Otevřít HDRI")
 	_hdri_dialog.filters = PackedStringArray(["*.hdr,*.exr ; " + tr("Panorama HDRI")])
 	_save_dialog.title = tr("Uložit snímek 3840 × 2160")
@@ -945,7 +1000,7 @@ func _process_arguments() -> void:
 	for argument in args:
 		if argument.begins_with("--screenshot="):
 			capture_path = argument.trim_prefix("--screenshot=")
-		elif not argument.begins_with("-") and argument.get_extension().to_lower() in ["glb", "gltf", "wobview"] \
+		elif not argument.begins_with("-") and argument.get_extension().to_lower() in ["glb", "gltf", "wobview", "json"] \
 				and model_path.is_empty():
 			model_path = argument
 	if model_path.is_empty():

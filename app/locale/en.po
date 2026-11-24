@@ -383,3 +383,41 @@ msgstr "The glTF references a resource outside the model folder. Embed the resou
 
 msgid "Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na osu XYZ pro pevný pohled.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda."
 msgstr "Drop a GLB, glTF, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick an XYZ axis to snap to its view.\n\nW: triangle wireframe. Q: inferred quads. P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+Q: quit. F1: help."
+msgid "Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR."
+msgstr "Open GLB, glTF, WOBVIEW, a vehicle manifest, HDR or EXR."
+
+msgid "Atlasové JSON obsahuje rozložení UV. Otevři manifest vozu nebo GLB."
+msgstr "The atlas JSON describes the UV layout. Open the vehicle manifest or a GLB."
+
+msgid "JSON není platný manifest vozu Wars of Bohemia."
+msgstr "This JSON is not a valid Wars of Bohemia vehicle manifest."
+
+msgid "Model, relace nebo manifest vozu"
+msgstr "Model, view or vehicle manifest"
+
+msgid "Stav vozu"
+msgstr "Vehicle state"
+
+msgid "Celý"
+msgstr "Intact"
+
+msgid "Poškozený"
+msgstr "Damaged"
+
+msgid "Zničený"
+msgstr "Destroyed"
+
+msgid "Hořící"
+msgstr "Burning"
+
+msgid "Ohořelý"
+msgstr "Burned"
+
+msgid "vuz · chybí nebo nesouhlasí atributy %s."
+msgstr "vuz · missing or mismatched attributes %s."
+
+msgid "vuz · chybí textury %s."
+msgstr "vuz · missing textures %s."
+
+msgid "Vůz používá atlas, protože chybí UV2 nebo COLOR_0 pro dlaždice."
+msgstr "The vehicle uses its baked atlas because UV2 or COLOR_0 for tiling is missing."

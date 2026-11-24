@@ -63,6 +63,16 @@ static func _read_stats(path: String) -> Dictionary:
 	return result
 
 
+static func from_manifest(levels: Array) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	for level: Dictionary in levels:
+		var entry := _read_stats(level.path)
+		entry.merge(level)
+		entry["label"] = "LOD%d" % level.level
+		entries.append(entry)
+	return entries
+
+
 static func _scene_geometry(document: Dictionary) -> Array[int]:
 	var scenes: Variant = document.get("scenes", [])
 	var nodes: Variant = document.get("nodes", [])

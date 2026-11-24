@@ -151,11 +151,11 @@ func _ready() -> void:
 	_quad_material.shader = line_shader
 
 
-func load_model(path: String) -> String:
+func load_model(path: String, manifest: RefCounted = null) -> String:
 	if not path.get_extension().to_lower() in ["glb", "gltf"]:
 		return tr("Vyber soubor ve formátu GLB nebo glTF.")
 	var pending := Materials.new()
-	var error := pending.import_model(path)
+	var error := pending.import_model(path, manifest)
 	if not error.is_empty():
 		return error
 	if model:

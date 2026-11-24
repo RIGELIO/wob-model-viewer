@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import zipfile
@@ -12,7 +13,9 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
+VERSION = "1.0.1"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
+VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {
     "vlasy/vlasy_mikro_4k": ("atlas", "normal"),
     "vousy/vousy_mikro_4k": ("atlas", "normal"),
@@ -34,6 +37,54 @@ def sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def production_asset(repo, commit, checkout, origin):
+    data = git(repo, "show", f"{commit}:{origin}")
+    if data.startswith(b"version https://git-lfs.github.com/spec/"):
+        expected = data.split(b"oid sha256:", 1)[1].splitlines()[0].decode()
+        data = (checkout / origin).read_bytes()
+        if sha256(data) != expected:
+            raise ValueError(f"Missing or mismatched Git LFS bytes for {origin}")
+    return data
+
+
+def add_vehicle_resources(repo, commit, checkout, production):
+    """Copy the shared wagon shader and presets, leaving each export to provide its own atlas."""
+    manifest_path = production / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    shared = "assets/vozy/spolecne/"
+    target = production / "vehicles"
+    target.mkdir()
+    arrays = [f"vuz_dlazdice_{channel}.png" for channel in ("albedo", "normal", "orm")]
+
+    def write(name, origin, data):
+        (target / name).write_bytes(data)
+        manifest["resources"][f"vehicles/{name}"] = {"source": origin, "sha256": sha256(data)}
+
+    for name in ("vuz.gdshader", "vuz_sum.tres", "vuz_dlazdice.json", *arrays):
+        origin = shared + name
+        write(name, origin, production_asset(repo, commit, checkout, origin))
+    for name in arrays:
+        origin = shared + name + ".import"
+        metadata = git(repo, "show", f"{commit}:{origin}").decode().replace(
+            "res://" + shared, "res://production/vehicles/",
+        )
+        (target / (name + ".import")).write_text(metadata, encoding="utf-8")
+    for style in VEHICLES:
+        name = f"vuz_{style}_material.tres"
+        origin = f"assets/vozy/{style}/{name}"
+        text = git(repo, "show", f"{commit}:{origin}").decode().replace(
+            "res://" + shared, "res://production/vehicles/",
+        )
+        drop = ('id="2_alb"]', 'id="3_nrm"]', 'id="4_orm"]')
+        lines = [line for line in text.splitlines() if not line.endswith(drop)
+                 and not line.startswith(("shader_parameter/albedo_tex", "shader_parameter/normal_tex",
+                                           "shader_parameter/orm_tex"))]
+        count = sum(line.startswith("[ext_resource ") for line in lines)
+        lines[0] = re.sub(r"load_steps=\d+", f"load_steps={count + 1}", lines[0])
+        write(name, origin + " (viewer preset without atlas references)", ("\n".join(lines) + "\n").encode())
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
 def run(command, log):
     with log.open("w", encoding="utf-8") as output:
         result = subprocess.run([str(item) for item in command], stdout=output, stderr=subprocess.STDOUT)
@@ -46,11 +97,14 @@ def run(command, log):
 
 def prepare(args, stage):
     for name in ("project.godot", "viewer.tscn", "viewer.gd", "stage.gd", "materials.gd",
-                 "glb_data.gd", "view_file.gd", "orientation_gizmo.gd", "lod_catalog.gd", "topology_overlay.gd"):
+                 "glb_data.gd", "view_file.gd", "orientation_gizmo.gd", "lod_catalog.gd", "topology_overlay.gd",
+                 "vehicle_manifest.gd"):
         shutil.copy2(HERE / name, stage / name)
     shutil.copytree(HERE / "locale", stage / "locale")
     shutil.copytree(HERE / "art", stage / "art", ignore=shutil.ignore_patterns("ui-concept.*"))
     if args.resources:
+        if not (args.resources / "vehicles" / "vuz.gdshader").is_file():
+            raise ValueError("Use the production resource archive for WoB Model Viewer 1.0.1 or later.")
         shutil.copytree(args.resources, stage / "production")
         return
     commit = git(args.repo, "rev-parse", args.rev).decode().strip()
@@ -67,13 +121,7 @@ def prepare(args, stage):
         copy_production(f"shaders/{shader}.gdshader", origin, git(args.repo, "show", f"{commit}:{origin}"))
     for name in ("kuze_pory_n.png", "vlasy_atlas.png"):
         origin = f"assets/postavy/zizka/textury/{name}"
-        pointer = git(args.repo, "show", f"{commit}:{origin}")
-        data = pointer
-        if pointer.startswith(b"version https://git-lfs.github.com/spec/"):
-            expected_hash = pointer.split(b"oid sha256:", 1)[1].splitlines()[0].decode()
-            data = (args.assets_checkout / origin).read_bytes()
-            if sha256(data) != expected_hash:
-                raise ValueError(f"Missing or mismatched Git LFS bytes for {origin}")
+        data = production_asset(args.repo, commit, args.assets_checkout, origin)
         copy_production(f"textures/{name}", origin, data)
     for atlas, suffixes in ATLASES.items():
         for suffix in suffixes:
@@ -87,17 +135,18 @@ def prepare(args, stage):
     )
     manifest = {"godot": "4.7.2.stable.official.ed1daf0bf", "shader_source_commit": commit, "resources": hashes}
     (stage / "production" / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    add_vehicle_resources(args.repo, commit, args.assets_checkout, stage / "production")
 
 
 def preset(name, platform, template):
-    options = """
+    options = f"""
 application/modify_resources=true
 application/icon="res://art/icon.png"
 application/company_name="RIGELIO Studio"
 application/product_name="WoB Model Viewer"
 application/file_description="WoB Model Viewer"
-application/file_version="1.0.0.0"
-application/product_version="1.0.0.0"
+application/file_version="{VERSION}.0"
+application/product_version="{VERSION}.0"
 application/legal_copyright="Copyright 2026 RIGELIO Studio"
 """ if name == "Windows" else ""
     return f"""
@@ -107,7 +156,7 @@ platform="{platform}"
 runnable=true
 dedicated_server=false
 export_filter="all_resources"
-include_filter="production/manifest.json,art/icon.ico"
+include_filter="production/manifest.json,production/vehicles/vuz_dlazdice.json,art/icon.ico,art/startup.png"
 exclude_filter=""
 
 [preset.0.options]
@@ -161,7 +210,7 @@ def export(args, stage):
         for file in ("LICENSE.txt", "COPYRIGHT.txt"):
             shutil.copy2(args.templates / file, target / f"Godot-{file}")
         if name == "Windows":
-            for file in (HERE / "windows").glob("Register-GLB.*"):
+            for file in (HERE / "windows").glob("Register-FileTypes.*"):
                 shutil.copy2(file, target)
         archive = args.out / f"WoB-Model-Viewer-{name.lower()}-portable-x86_64.zip"
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=5) as package:

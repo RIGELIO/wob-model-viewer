@@ -1,6 +1,6 @@
 # Build WoB Model Viewer from source
 
-Use the source and production resources from the same [tagged release](https://github.com/RIGELIO/wob-model-viewer/releases). For v1.0.0, download `WoB-Model-Viewer-production-resources-v1.0.0.zip` and extract it so the `production` directory sits alongside `app/project.godot`. The resulting path to the resource manifest is `app/production/manifest.json`. The pack contains the production shaders, textures and bundled HDRI. Its manifest records the source revision and SHA-256 hashes.
+Use the source and production resources from the same [tagged release](https://github.com/RIGELIO/wob-model-viewer/releases). For v1.0.1, download `WoB-Model-Viewer-production-resources-v1.0.1.zip` and extract it so the `production` directory sits alongside `app/project.godot`. The resulting path to the resource manifest is `app/production/manifest.json`. The pack contains the production shaders, textures, vehicle presets and bundled HDRI. Its manifest records the source revision and SHA-256 hashes.
 
 ## Open the project
 

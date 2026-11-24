@@ -1,14 +1,20 @@
 # WoB Model Viewer
 
-[Download for Windows and Linux](https://github.com/RIGELIO/wob-model-viewer/releases/latest) · [Česky](README.cs.md) · [Build from source](BUILD.md)
-
 WoB Model Viewer is an offline desktop viewer for GLB and glTF characters and materials from Wars of Bohemia. It runs on Godot 4.7.2 Forward+ and includes the game's character shaders and shared atlases.
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, install the `.deb` through the package manager or with `sudo apt install ./wob-model-viewer_1.0.0_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, install the `.deb` through the package manager or with `sudo apt install ./wob-model-viewer_1.0.1_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
 
-To open GLB files by double-clicking in Windows, select **WoB Model Viewer** as the default for **.glb** in Windows Settings. The installer registers the app for your account. For the portable version, run **Register-GLB.cmd** first. Repeat registration if you move the portable executable.
+To open models and saved views by double-clicking, choose **WoB Model Viewer** for **.glb**, **.gltf**, and **.wobview** in **Settings → Apps → Default apps**. Setup 1.0.1 registers all three for your account. In the portable edition, run the bundled **Register-FileTypes.cmd**. Repeat registration if you move the executable.
+
+The Windows installer and executable are unsigned. If SmartScreen prompts on first use, verify the download against `SHA256SUMS.txt` on the release page. A signed release can display a verified publisher. SmartScreen also considers the reputation of the downloaded file. [Microsoft documentation](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
+
+Setup displays the installation terms and MIT license. Updates and uninstall prompt you to close the viewer. Uninstall removes the program, shortcuts, registration and known settings and cache files. Your saved models, views and screenshots stay in their existing folders.
+
+## Vehicle manifests
+
+Open a `vuz_*_manifest.json` or one of the adjacent GLBs. The viewer applies the original wagon shader and resolves the manifest's albedo, normal and ORM maps. Tiled models retain their `UV2` and `COLOR_0` semantics. The viewport toolbar lets you select the vehicle state and level of detail. The `*_atlas.json` file describes the UV atlas.
 
 ## Inspect a model
 
@@ -93,3 +99,7 @@ Built-in HDRI [Lilienstein by Poly Haven, CC0](https://polyhaven.com/a/lilienste
 ![Czech interface with LOD controls and material diagnostics](screenshots/viewer-czech.png)
 
 [Inferred quad view](screenshots/viewer-lod-quads.png) · [About WoB Model Viewer](screenshots/viewer-about.png)
+
+**Custom startup screen**
+
+![WoB Model Viewer startup screen with bronze 3D medallion](app/art/startup.png)
