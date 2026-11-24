@@ -1,0 +1,362 @@
+extends RefCounted
+
+const GlbData = preload("res://glb_data.gd")
+const SHADER_DIR := "res://production/shaders/"
+const TEXTURE_DIR := "res://production/textures/"
+const ALIASES := {
+	"kuze": "kuze", "kůže": "kuze", "wob_skin": "kuze",
+	"odev": "odev", "oděv": "odev", "wob_cloth": "odev", "vlasy_podklad": "odev",
+	"oci": "oko", "oči": "oko", "oko": "oko", "wob_eye": "oko",
+	"vlasy_karty": "vlasy_karty", "vousy_karty": "vlasy_karty",
+	"rasy_karty": "vlasy_karty", "oboci_karty": "vlasy_karty",
+	"vlasy_mikro_4k": "vlasy_mikro_4k", "vousy_mikro_v2_4k": "vlasy_mikro_4k",
+	"vousy_strniste_shell": "vousy_strniste_shell", "stubble_shell": "vousy_strniste_shell",
+}
+
+class SourceNodes extends GLTFDocumentExtension:
+	var indices: Dictionary
+
+	func _import_post_parse(state: GLTFState) -> Error:
+		var nodes := state.get_nodes()
+		for index in range(nodes.size()):
+			indices[nodes[index]] = index
+		return OK
+
+	func _import_node(_state: GLTFState, gltf_node: GLTFNode, _json: Dictionary, node: Node) -> Error:
+		if gltf_node.mesh >= 0:
+			node.set_meta(&"_wob_gltf_index", indices[gltf_node])
+		return OK
+
+var notes: PackedStringArray:
+	get:
+		var localized := PackedStringArray()
+		for entry in _notes:
+			var message := tr(entry[1])
+			if not entry[2].is_empty():
+				message = message % entry[2]
+			localized.append("%s · %s" % [entry[0], message] if not entry[0].is_empty() else message)
+		return localized
+var counts: Dictionary
+var meshes: Array[MeshInstance3D]
+var source: GlbData
+var root: Node
+var _pairs: Dictionary
+var _resources: Dictionary
+var _model_path: String
+var _sidecar: Dictionary
+var _notes: Array[Array]
+var _catalog_hair := false
+
+
+func import_model(path: String) -> String:
+	_model_path = path
+	source = GlbData.new(path)
+	if not source.error.is_empty():
+		return source.error
+	var original: Dictionary = source.json
+	var mesh_defs: Variant = original.get("meshes", [])
+	var nodes: Variant = original.get("nodes", [])
+	var mat_defs: Variant = original.get("materials", [])
+	if not mesh_defs is Array or not nodes is Array or not mat_defs is Array:
+		return tr("GLB má neplatnou strukturu uzlů, sítí nebo materiálů.")
+	_read_sidecar()
+	var rewritten := original.duplicate(true)
+	var remapped := false
+	var node_groups := {}
+	for node_index: int in range(nodes.size()):
+		if not nodes[node_index] is Dictionary:
+			return tr("GLB má neplatný uzel.")
+		_catalog_hair = _catalog_hair or str(nodes[node_index].get("name", "")).to_lower() == "vlasy_mikro_swept"
+		var mesh_index := int(nodes[node_index].get("mesh", -1))
+		if mesh_index >= 0:
+			if mesh_index >= mesh_defs.size():
+				return tr("GLB odkazuje na chybějící síť.")
+			if not node_groups.has(mesh_index):
+				node_groups[mesh_index] = []
+			node_groups[mesh_index].append(node_index)
+	for mesh_index: int in node_groups:
+		var mesh_def: Variant = mesh_defs[mesh_index]
+		if not mesh_def is Dictionary or not mesh_def.get("primitives", []) is Array:
+			return tr("GLB má neplatnou síť.")
+		var primitives: Array = mesh_def.get("primitives", [])
+		for surface: int in range(primitives.size()):
+			var primitive: Variant = primitives[surface]
+			if not primitive is Dictionary or not primitive.get("attributes", {}) is Dictionary:
+				return tr("GLB má neplatný povrch sítě.")
+			var attrs: Dictionary = primitive.get("attributes", {})
+			var mat_index := int(primitive.get("material", -1))
+			var tag := ""
+			if mat_index >= 0 and mat_index < mat_defs.size() and mat_defs[mat_index] is Dictionary:
+				tag = str(mat_defs[mat_index].get("name", "")).to_lower()
+			var semantics := {}
+			for node_index: int in node_groups[mesh_index]:
+				var node_name := str(nodes[node_index].get("name", mesh_def.get("name", "Síť")))
+				var profile := _profile(node_name, tag, surface)
+				profile["attributes"] = attrs
+				_pairs[Vector2i(node_index, surface)] = profile
+				var semantic := str(profile.get("color", "COLOR_0"))
+				semantics[semantic if attrs.has(semantic) else "COLOR_0"] = true
+			if semantics.size() > 1:
+				for node_index: int in node_groups[mesh_index]:
+					var profile: Dictionary = _pairs[Vector2i(node_index, surface)]
+					if profile.get("color", "COLOR_0") != "COLOR_0":
+						profile["blocked"] = true
+			elif not semantics.is_empty():
+				var semantic: String = semantics.keys()[0]
+				if semantic != "COLOR_0":
+					rewritten["meshes"][mesh_index]["primitives"][surface]["attributes"]["COLOR_0"] = attrs[semantic]
+					remapped = true
+
+	var source_nodes := SourceNodes.new()
+	GLTFDocument.register_gltf_document_extension(source_nodes)
+	var document := GLTFDocument.new()
+	var state := GLTFState.new()
+	state.filename = path.get_file().get_basename()
+	var payload: PackedByteArray = source.with_json(rewritten) \
+		if remapped or path.get_extension().to_lower() == "gltf" else source.bytes
+	var flags := GLTFDocument.IMPORT_FLAG_FORCE_DISABLE_MESH_COMPRESSION \
+		| GLTFDocument.IMPORT_FLAG_GENERATE_TANGENT_ARRAYS
+	var result := document.append_from_buffer(payload, path, state, flags)
+	if result != OK:
+		GLTFDocument.unregister_gltf_document_extension(source_nodes)
+		return tr("Godot model nenačetl (%s).") % error_string(result)
+	root = document.generate_scene(state)
+	GLTFDocument.unregister_gltf_document_extension(source_nodes)
+	if root == null:
+		return tr("Z GLB se nepodařilo vytvořit scénu.")
+	_bind_scene(root)
+	if meshes.is_empty():
+		root.free()
+		root = null
+		return tr("Soubor neobsahuje zobrazitelnou síť.")
+	return ""
+
+
+func _bind_scene(node: Node) -> void:
+	if node is MeshInstance3D and node.mesh:
+		meshes.append(node)
+		var node_index := int(node.get_meta(&"_wob_gltf_index", -1))
+		for surface: int in range(node.mesh.get_surface_count()):
+			var profile: Dictionary = _pairs.get(Vector2i(node_index, surface), {})
+			if not profile.is_empty():
+				_bind(node, surface, profile)
+		if node_index < 0:
+			_note(str(node.name), "Godot nepřiřadil síti původní uzel GLB.")
+	for child in node.get_children():
+		_bind_scene(child)
+
+
+func _read_sidecar() -> void:
+	var path := _model_path.get_basename() + ".wob.json"
+	if not FileAccess.file_exists(path):
+		return
+	var value: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if value is Dictionary and value.get("surfaces", {}) is Dictionary:
+		_sidecar = value.get("surfaces", {})
+	else:
+		_note("", "Neplatné mapování v %s.", [path.get_file()])
+
+
+func _profile(node_name: String, tag: String, surface: int) -> Dictionary:
+	var name := node_name.to_lower()
+	var role: String = ALIASES.get(tag, "")
+	var atlas := ""
+	var color := "COLOR_0"
+	var parameters := {}
+	var detail := ""
+	if name.begins_with("stubbleshell") or role == "vousy_strniste_shell":
+		role = "vousy_strniste_shell"
+		var legacy := name.begins_with("stubbleshell_")
+		atlas = "strniste_shell_2k" if legacy else "strniste_shell_4k"
+		# Both catalog generations inherit the two head masks. The LOD generator exports
+		# BeardDensity first, with the inherited masks shifted to COLOR_1 and COLOR_2.
+		color = "COLOR_2" if legacy or (_catalog_hair and name.begins_with("stubbleshell4k_")) else "COLOR_0"
+		parameters = _shell_parameters(name, legacy)
+	elif name.begins_with("vlasy_lod3_opaque"):
+		detail = "HairShade v COLOR_0. Pro neprůhlednou čepici LOD3 chybí odpovídající produkční shader nebo vložený materiál."
+	elif name.begins_with("vlasy_mikro") or name.begins_with("vlasy_lod") \
+			or name.begins_with("vousy_wiry") or role == "vlasy_mikro_4k":
+		role = "vlasy_mikro_4k"
+		atlas = "vlasy_mikro_4k"
+		if name.begins_with("vousy_wiry") or tag == "vousy_mikro_v2_4k":
+			atlas = "vousy_mikro_v2_4k" if "v2" in name or "v2" in tag else "vousy_mikro_4k"
+		if name.begins_with("vlasy_lod1"):
+			parameters["alfa_boost"] = 1.32
+		elif name.begins_with("vlasy_lod2"):
+			parameters.merge({"alfa_boost": 1.8, "normala_sila": 0.0, "anizotropie": 0.0})
+	elif name == "head_shorthair" and role.is_empty():
+		detail = "KeenFace export bez materiálu kůže. ScalpMask a případná BeardTintMask mají jiný význam než vstupy shaderu kuze."
+	elif role.is_empty() and tag != "usta_vnitrek":
+		detail = "Pro tento povrch není známé mapování produkčního shaderu. Zobrazení podle GLB."
+
+	var override: Variant = _sidecar.get("%s:%d" % [node_name, surface], {})
+	if override is Dictionary:
+		if override.has("shader"):
+			role = str(override["shader"])
+			detail = ""
+		color = str(override.get("color", color))
+		atlas = str(override.get("atlas", atlas))
+		if override.get("parameters", {}) is Dictionary:
+			parameters.merge(override.get("parameters", {}), true)
+	return {
+		"shader": role, "tag": tag, "label": node_name, "atlas": atlas,
+		"color": color, "parameters": parameters, "detail": detail,
+		"textures": override.get("textures", {}) if override is Dictionary else {},
+	}
+
+
+func _shell_parameters(name: String, legacy: bool) -> Dictionary:
+	if name.ends_with("_lod2"):
+		return {"rez_min": 0.0, "rez_max": 1.1, "alfa_boost": 1.8}
+	var suffix := name.get_slice("_", name.get_slice_count("_") - 1)
+	if not suffix.is_valid_int():
+		return {}
+	var index := suffix.to_int()
+	var cuts := [Vector3(0.0, 0.62, 1.0), Vector3(0.28, 0.84, 0.95), Vector3(0.54, 1.08, 0.88)]
+	var is_lod1 := "_lod1" in _model_path.get_file().to_lower()
+	# The catalog also uses the two-shell recipe for its first three presets.
+	var nodes: Array = source.json.get("nodes", [])
+	var two_shells := is_lod1 or not nodes.any(
+		func(node: Variant) -> bool:
+			return node is Dictionary and str(node.get("name", "")).to_lower() == "stubbleshell4k_2"
+	)
+	if legacy:
+		cuts = [Vector3(0.0, 0.75, 1.0), Vector3(0.22, 0.92, 0.92), Vector3(0.48, 1.1, 0.80)]
+	elif two_shells:
+		cuts = [Vector3(0.0, 0.72, 1.0), Vector3(0.34, 1.06, 0.94)]
+	if index < 0 or index >= cuts.size():
+		return {}
+	var cut: Vector3 = cuts[index]
+	return {
+		"rez_min": cut.x, "rez_max": cut.y, "hustota_skala": cut.z,
+		"alfa_boost": 1.32 if is_lod1 else 1.0,
+	}
+
+
+func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
+	var label := str(profile.label)
+	var role := str(profile.shader)
+	var original := instance.mesh.surface_get_material(surface) as BaseMaterial3D
+	if role.is_empty():
+		if not str(profile.detail).is_empty():
+			_note(label, profile.detail)
+		if label.to_lower() == "head_shorthair" or label.to_lower().begins_with("vlasy_lod3_opaque"):
+			_neutral_placeholder(instance, surface, original)
+		return
+	var attrs: Dictionary = profile.attributes
+	var missing := PackedStringArray()
+	for key in ["NORMAL", "TEXCOORD_0", profile.color]:
+		if not attrs.has(key):
+			missing.append(key)
+	var color_index: int = int(attrs.get(profile.color, -1))
+	var accessors: Array = source.json.get("accessors", [])
+	if color_index >= 0 and color_index < accessors.size():
+		var component_type := str(accessors[color_index].get("type", ""))
+		if component_type != "VEC3" and component_type != "VEC4":
+			missing.append("%s (VEC3 / VEC4)" % profile.color)
+		elif (role == "kuze" or role == "odev" or role == "vlasy_karty") and component_type != "VEC4":
+			missing.append("%s (A)" % profile.color)
+	if profile.has("blocked"):
+		_note(label, "%s · sdílená síť používá odlišné barevné vstupy v jednotlivých instancích.", [role])
+		return
+	if not missing.is_empty():
+		_note(label, "%s · chybí nebo nesouhlasí atributy %s.", [role, ", ".join(missing)])
+		return
+	if not role in ALIASES.values():
+		_note(label, "Produkční shader %s není součástí balíčku.", [role])
+		return
+	var shader := _resource(SHADER_DIR + role + ".gdshader") as Shader
+	if shader == null:
+		_note(label, "Chybí produkční shader %s.", [role])
+		return
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.resource_name = role
+	var textures := {}
+	match role:
+		"kuze", "odev", "oko":
+			textures["albedo_tex"] = original.albedo_texture if original else null
+			if role != "oko":
+				textures["normal_tex"] = original.normal_texture if original else null
+			if role == "kuze":
+				textures["pory_tex"] = _resource(TEXTURE_DIR + "kuze_pory_n.png")
+			if role == "odev":
+				var orm: Texture2D
+				if original:
+					orm = original.roughness_texture
+					if orm == null:
+						orm = original.metallic_texture if original.metallic_texture else original.ao_texture
+				textures["orm_tex"] = orm
+		"vlasy_karty":
+			textures["atlas_tex"] = _resource(TEXTURE_DIR + "vlasy_atlas.png")
+		"vlasy_mikro_4k", "vousy_strniste_shell":
+			var atlas := str(profile.atlas)
+			if atlas == atlas.get_file():
+				textures["atlas_tex"] = _resource(TEXTURE_DIR + atlas + "_atlas.png")
+				textures["normal_tex"] = _resource(TEXTURE_DIR + atlas + "_normal.png")
+	var overrides: Variant = profile.textures
+	if overrides is Dictionary:
+		for uniform: String in overrides:
+			if textures.has(uniform):
+				textures[uniform] = _local_texture(str(overrides[uniform]))
+	for uniform: String in textures:
+		if textures[uniform] == null:
+			missing.append(uniform)
+		else:
+			material.set_shader_parameter(uniform, textures[uniform])
+	if not missing.is_empty():
+		_note(label, "%s · chybí textury %s.", [role, ", ".join(missing)])
+		return
+	var parameters: Dictionary = profile.parameters
+	if profile.tag == "vlasy_podklad":
+		parameters.merge({"jas": 0.7, "drsnost_min": 0.85, "odlesk": 0.25, "kov_sila": 0.0})
+	elif profile.tag == "rasy_karty":
+		parameters.merge({
+			"barva_koren": Color(0.08, 0.062, 0.048), "barva_konec": Color(0.17, 0.14, 0.115),
+			"alfa_prah": 0.55, "vrstva_stin": 0.0, "drsnost": 0.5, "anizotropie": 0.3,
+		})
+	for parameter: String in parameters:
+		var value: Variant = parameters[parameter]
+		if value is Array and value.size() == 4:
+			value = Color(float(value[0]), float(value[1]), float(value[2]), float(value[3]))
+		if value is float or value is int or value is bool or value is Color:
+			material.set_shader_parameter(parameter, value)
+	instance.set_surface_override_material(surface, material)
+	counts[role] = int(counts.get(role, 0)) + 1
+
+
+func _neutral_placeholder(instance: MeshInstance3D, surface: int, original: BaseMaterial3D) -> void:
+	if original and original.albedo_texture:
+		return
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("#8b8582")
+	material.roughness = 0.8
+	instance.set_surface_override_material(surface, material)
+
+
+func _note(label: String, message: String, arguments := []) -> void:
+	var entry := [label, message, arguments]
+	if not entry in _notes:
+		_notes.append(entry)
+
+
+func _resource(path: String) -> Resource:
+	if not _resources.has(path):
+		_resources[path] = ResourceLoader.load(path) if ResourceLoader.exists(path) else null
+	return _resources[path]
+
+
+func _local_texture(uri: String) -> Texture2D:
+	if uri.is_empty() or not GlbData.relative_file(uri):
+		return null
+	var path := _model_path.get_base_dir().path_join(uri.uri_decode().replace("\\", "/"))
+	if _resources.has(path):
+		return _resources[path] as Texture2D
+	var image := Image.new()
+	if image.load(path) != OK:
+		return null
+	if not image.has_mipmaps():
+		image.generate_mipmaps()
+	var texture := ImageTexture.create_from_image(image)
+	_resources[path] = texture
+	return texture

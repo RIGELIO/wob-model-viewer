@@ -1,0 +1,4 @@
+app/.godot/
+app/production/
+*.zip
+*.deb

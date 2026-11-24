@@ -1,0 +1,385 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "Připraveno"
+msgstr "Ready"
+
+msgid "Žádný otevřený model"
+msgstr "No model open"
+
+msgid "Otevřít GLB"
+msgstr "Open GLB"
+
+msgid "Uložit 4K PNG"
+msgstr "Save 4K PNG"
+
+msgid "Zarámovat"
+msgstr "Frame"
+
+msgid "Zepředu"
+msgstr "Front"
+
+msgid "Z boku"
+msgstr "Side"
+
+msgid "Přetáhni sem GLB"
+msgstr "Drop a GLB model"
+
+msgid "Vybrat soubor"
+msgstr "Choose file"
+
+msgid "  Levé tlačítko orbit  ·  Pravé nebo prostřední posun  ·  Kolečko zoom"
+msgstr "  Left drag to orbit  ·  Right or middle drag to pan  ·  Scroll to zoom"
+
+msgid "Animace"
+msgstr "Animation"
+
+msgid "Přehrát"
+msgstr "Play"
+
+msgid "Pozastavit"
+msgstr "Pause"
+
+msgid "Bez animací"
+msgstr "No animations"
+
+msgid "Osvětlení"
+msgstr "Lighting"
+
+msgid "Načíst HDRI"
+msgstr "Load HDRI"
+
+msgid "Obnovit HDRI"
+msgstr "Reset HDRI"
+
+msgid "Intenzita HDRI"
+msgstr "HDRI intensity"
+
+msgid "Otočení HDRI"
+msgstr "HDRI rotation"
+
+msgid "Intenzita světla"
+msgstr "Light intensity"
+
+msgid "Azimut světla"
+msgstr "Light azimuth"
+
+msgid "Výška světla"
+msgstr "Light elevation"
+
+msgid "Pozadí"
+msgstr "Background"
+
+msgid "Neutrální"
+msgstr "Neutral"
+
+msgid "Tmavé"
+msgstr "Dark"
+
+msgid "Světlé"
+msgstr "Light"
+
+msgid "Panorama HDRI"
+msgstr "HDRI panorama"
+
+msgid "Geometrie"
+msgstr "Geometry"
+
+msgid "Materiály a diagnostika"
+msgstr "Materials & diagnostics"
+
+msgid "Otevřít model"
+msgstr "Open model"
+
+msgid "Otevřít HDRI"
+msgstr "Open HDRI"
+
+msgid "Uložit snímek 3840 × 2160"
+msgstr "Save 3840 × 2160 screenshot"
+
+msgid "Model glTF Binary"
+msgstr "glTF Binary model"
+
+msgid "Obraz PNG"
+msgstr "PNG image"
+
+msgid "Podporované soubory jsou GLB, HDR a EXR."
+msgstr "Supported files are GLB, HDR and EXR."
+
+msgid "%s sítí   ·   %s povrchů\n%s vrcholů   ·   %s trojúhelníků\n%.3f × %.3f × %.3f m"
+msgstr "%s meshes   ·   %s surfaces\n%s vertices   ·   %s triangles\n%.3f × %.3f × %.3f m"
+
+msgid "Vykreslení podle materiálů GLB."
+msgstr "Rendering with the GLB materials."
+
+msgid "Model načten."
+msgstr "Model loaded."
+
+msgid "Model načten · upozornění (%d) v diagnostice."
+msgstr "Model loaded · %d warning(s) in diagnostics."
+
+msgid "Vestavěné HDRI chybí"
+msgstr "Built-in HDRI missing"
+
+msgid "HDRI načteno."
+msgstr "HDRI loaded."
+
+msgid "Vykresluji snímek 4K…"
+msgstr "Rendering 4K screenshot…"
+
+msgid "Snímek 3840 × 2160 uložen · %s"
+msgstr "3840 × 2160 screenshot saved · %s"
+
+msgid "Snímek nelze uložit (%s)."
+msgstr "Could not save screenshot (%s)."
+
+msgid "Vyber soubor ve formátu GLB."
+msgstr "Choose a GLB file."
+
+msgid "HDRI nelze načíst (%s)."
+msgstr "Could not load HDRI (%s)."
+
+msgid "Použij equirektangulární HDRI s poměrem 2 : 1."
+msgstr "Choose a 2 : 1 equirectangular HDRI."
+
+msgid "Soubor nelze přečíst (%s)."
+msgstr "Could not read file (%s)."
+
+msgid "Velikost souboru je mimo podporovaný rozsah GLB."
+msgstr "The file size is outside the supported GLB range."
+
+msgid "Soubor nemá platnou hlavičku GLB 2.0."
+msgstr "The file has an invalid GLB 2.0 header."
+
+msgid "Soubor má neplatný JSON blok GLB."
+msgstr "The GLB has an invalid JSON chunk."
+
+msgid "Neúplná hlavička bloku GLB."
+msgstr "Truncated GLB chunk header."
+
+msgid "Neplatná délka datového bloku GLB."
+msgstr "Invalid GLB chunk length."
+
+msgid "Neplatný JSON modelu."
+msgstr "Invalid model JSON."
+
+msgid "Neplatný seznam %s v GLB."
+msgstr "Invalid %s list in the GLB."
+
+msgid "Neplatný záznam %s v GLB."
+msgstr "Invalid %s entry in the GLB."
+
+msgid "GLB odkazuje na zdroj mimo složku modelu. Vlož texturu do GLB nebo použij relativní cestu."
+msgstr "The GLB references a resource outside the model folder. Embed the resource or use a relative path."
+
+msgid "GLB má neplatnou strukturu uzlů, sítí nebo materiálů."
+msgstr "Invalid nodes, meshes or materials in the GLB."
+
+msgid "GLB má neplatný uzel."
+msgstr "The GLB contains an invalid node."
+
+msgid "GLB odkazuje na chybějící síť."
+msgstr "The GLB references a missing mesh."
+
+msgid "GLB má neplatnou síť."
+msgstr "The GLB contains an invalid mesh."
+
+msgid "GLB má neplatný povrch sítě."
+msgstr "The GLB contains an invalid surface."
+
+msgid "Godot model nenačetl (%s)."
+msgstr "Godot could not import the model (%s)."
+
+msgid "Z GLB se nepodařilo vytvořit scénu."
+msgstr "Could not build a scene from the GLB."
+
+msgid "Soubor neobsahuje zobrazitelnou síť."
+msgstr "The file contains no displayable mesh."
+
+msgid "Godot nepřiřadil síti původní uzel GLB."
+msgstr "Godot could not link the mesh to its source GLB node."
+
+msgid "Neplatné mapování v %s."
+msgstr "Invalid material mapping in %s."
+
+msgid "HairShade v COLOR_0. Pro neprůhlednou čepici LOD3 chybí odpovídající produkční shader nebo vložený materiál."
+msgstr "HairShade is in COLOR_0. The opaque LOD3 hair cap has no matching production shader or embedded material."
+
+msgid "KeenFace export bez materiálu kůže. ScalpMask a případná BeardTintMask mají jiný význam než vstupy shaderu kuze."
+msgstr "The KeenFace export has no skin material. ScalpMask and BeardTintMask have different semantics from the kuze shader inputs."
+
+msgid "Pro tento povrch není známé mapování produkčního shaderu. Zobrazení podle GLB."
+msgstr "No production shader mapping for this surface. Displaying its GLB material."
+
+msgid "%s · sdílená síť používá odlišné barevné vstupy v jednotlivých instancích."
+msgstr "%s · instances of the shared mesh require different vertex color inputs."
+
+msgid "%s · chybí nebo nesouhlasí atributy %s."
+msgstr "%s · missing or mismatched attributes %s."
+
+msgid "Produkční shader %s není součástí balíčku."
+msgstr "Production shader %s is unavailable in this package."
+
+msgid "Chybí produkční shader %s."
+msgstr "Production shader %s is missing."
+
+msgid "%s · chybí textury %s."
+msgstr "%s · missing textures %s."
+
+msgid "Shora"
+msgstr "Top"
+
+msgid "Přímé světlo"
+msgstr "Direct light"
+
+msgid "Odrazy HDRI"
+msgstr "HDRI reflections"
+
+msgid "Zobrazení"
+msgstr "View"
+
+msgid "Zobrazení  ▾"
+msgstr "View  ▾"
+
+msgid "Zobrazení  ▸"
+msgstr "View  ▸"
+
+msgid "Vlastní barva"
+msgstr "Custom color"
+
+msgid "Materiály"
+msgstr "Shaded"
+
+msgid "Bez osvětlení"
+msgstr "Unlit"
+
+msgid "Normály"
+msgstr "Normals"
+
+msgid "Mřížka"
+msgstr "Grid"
+
+msgid "Podlaha"
+msgstr "Floor"
+
+msgid "Orto"
+msgstr "Ortho"
+
+msgid "Soubor"
+msgstr "File"
+
+msgid "Nápověda"
+msgstr "Help"
+
+msgid "Otevřít…"
+msgstr "Open…"
+
+msgid "Uložit"
+msgstr "Save"
+
+msgid "Uložit jako…"
+msgstr "Save As…"
+
+msgid "Konec"
+msgstr "Quit"
+
+msgid "O programu"
+msgstr "About"
+
+msgid "Offline prohlížeč modelů GLB pro Wars of Bohemia.\nGodot 4.7.2 Forward+.\n\nLicence MIT. Licence přiložených prostředků jsou v balíčku aplikace."
+msgstr "Offline GLB viewer for Wars of Bohemia.\nGodot 4.7.2 Forward+.\n\nMIT license. Bundled resource licenses are included in the application package."
+
+msgid "Uložit relaci jako"
+msgstr "Save view as"
+
+msgid "Model GLB nebo relace"
+msgstr "GLB model or saved view"
+
+msgid "Relace WoB Model Viewer"
+msgstr "WoB Model Viewer view"
+
+msgid "Podporované soubory jsou GLB, WOBVIEW, HDR a EXR."
+msgstr "Supported files are GLB, WOBVIEW, HDR and EXR."
+
+msgid "Relace uložena · %s"
+msgstr "View saved · %s"
+
+msgid "Relaci nelze uložit (%s)."
+msgstr "Could not save the view (%s)."
+
+msgid "Soubor není platná relace WoB Model Viewer."
+msgstr "The file is not a valid WoB Model Viewer view."
+
+msgid "Ovládání"
+msgstr "Controls"
+
+msgid "Ovládání WoB Model Viewer"
+msgstr "WoB Model Viewer controls"
+
+msgid "Přetáhni GLB, HDRI nebo uloženou relaci do okna.\n\nLevé tlačítko myši: otáčení kolem modelu.\nPravé nebo prostřední: posun. Kolečko: zoom.\nF: zarámovat model. Kliknutí na osu: pevný pohled.\n\nCtrl+O: otevřít model nebo relaci.\nCtrl+S: uložit relaci. Ctrl+Shift+S: uložit jako.\nCtrl+E: vykreslit snímek 4K.\n\nV panelu Zobrazení přepni mřížku, kostru, automatické otáčení\nnebo způsob posunu. Velikost bodu se používá v režimu Body."
+msgstr "Drop a GLB, HDRI or saved view into the window.\n\nLeft mouse: orbit around the model.\nRight or middle mouse: pan. Scroll: zoom.\nF: frame the model. Click an axis to snap to its view.\n\nCtrl+O: open a model or view.\nCtrl+S: save view. Ctrl+Shift+S: save as.\nCtrl+E: render a 4K screenshot.\n\nIn View, toggle the grid, skeleton, auto-rotation or pan mode.\nPoint size applies in Points mode."
+
+msgid "Zobrazit pozadí"
+msgstr "Show background"
+
+msgid "Automatické otáčení"
+msgstr "Auto-rotate"
+
+msgid "Kostra"
+msgstr "Skeleton"
+
+msgid "Posun v rovině pohledu"
+msgstr "Screen-space pan"
+
+msgid "Velikost bodu"
+msgstr "Point size"
+
+msgid "Body"
+msgstr "Points"
+
+msgid "Quady (odhad)"
+msgstr "Inferred quads"
+
+msgid "Přepnout LOD při stejném pohledu"
+msgstr "Switch LOD and keep the camera view"
+
+msgid "Vrcholů"
+msgstr "Vertices"
+
+msgid "Troj."
+msgstr "Tris"
+
+msgid "Soubor GLB · %s"
+msgstr "GLB file · %s"
+
+msgid "Odvozené quady %d · zbývající troj. %d"
+msgstr "Inferred quads %d · unpaired tris %d"
+
+msgid "Soubor %s · %s"
+msgstr "%s file · %s"
+
+msgid "Přetáhni sem GLB nebo glTF"
+msgstr "Drop a GLB or glTF model"
+
+msgid "Podporované soubory jsou GLB, glTF, WOBVIEW, HDR a EXR."
+msgstr "Supported files are GLB, glTF, WOBVIEW, HDR and EXR."
+
+msgid "Model nebo relace"
+msgstr "Model or saved view"
+
+msgid "Vyber soubor ve formátu GLB nebo glTF."
+msgstr "Choose a GLB or glTF file."
+
+msgid "Velikost souboru je mimo podporovaný rozsah glTF."
+msgstr "The file size is outside the supported glTF range."
+
+msgid "Soubor se nepodařilo dočíst."
+msgstr "Could not read the full file."
+
+msgid "glTF odkazuje mimo složku modelu. Vlož zdroj do modelu nebo použij relativní cestu."
+msgstr "The glTF references a resource outside the model folder. Embed the resource or use a relative path."
+
+msgid "Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na osu XYZ pro pevný pohled.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda."
+msgstr "Drop a GLB, glTF, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick an XYZ axis to snap to its view.\n\nW: triangle wireframe. Q: inferred quads. P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+Q: quit. F1: help."
