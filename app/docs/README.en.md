@@ -4,7 +4,7 @@ WoB Model Viewer is an offline desktop viewer for GLB and glTF characters and ma
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, install the `.deb` through the package manager or with `sudo apt install ./wob-model-viewer_1.2.0_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_VERSION_amd64.deb` with the downloaded filename. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
 
 Windows Setup and the Linux DEB register **.glb**, **.gltf** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
@@ -24,13 +24,17 @@ Keep the local `_materialy-z-hry` folder, including `index.json` and `assets/`, 
 
 ## Inspect a model
 
-1. Drop a `.glb` or `.gltf` anywhere in the window or press **Ctrl+O**. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Use **EN / CS** to switch the interface language and **F1** to open the controls reference.
-2. Drag with the **left mouse button** to orbit. Drag with the right or middle button to pan and scroll to zoom. **F** frames the whole model. Use **Front**, **Side**, **Top** or the colored orientation axes to align the camera. Enable **Auto-rotate** to orbit continuously. The **Screen-space pan** toggle switches between view-aligned and ground-plane movement.
-3. The **Lighting** panel switches ambient HDRI, direct light and HDRI reflections independently. Adjust HDRI gain and rotation or the direct light's intensity and direction. Load a 2:1 HDR or EXR panorama, or use the built-in Lilienstein HDRI.
+1. Drop a `.glb` or `.gltf` anywhere in the window or press **Ctrl+O**. The viewer shows the filename and a spinner during import. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Use **EN / CS** to switch languages, **F1** for help and **F11** for full screen.
+2. Drag with the **left mouse button** to orbit. Drag with the right or middle button to pan and scroll to zoom. **F** frames the model. Click a face on the view cube to align the camera, or drag the cube to orbit. Enable **Auto-rotate** to orbit continuously. The **Screen-space pan** toggle switches between view-aligned and ground-plane movement.
+3. Under **Lighting**, choose a built-in Poly Haven panorama or load a 2:1 HDR or EXR file. **HDRI** shows the panorama as photographed. **Day · Sun** and **Night · Moon** add a visible light source aligned with the direct light. Adjust its azimuth and elevation to move it, or use **Aim at source** to bring it into view. Ambient HDRI, direct light and HDRI reflections have separate controls.
 4. **View** provides background colors and the HDRI panorama. Turn off **Show background** for transparent PNG exports. Toggle the grid, shadow-catching floor, skeleton overlay and orthographic projection independently. Inspect shaded, wireframe, unlit, normal-buffer, overdraw or **Points** views. **Point size** controls the size of vertex dots in **Points** mode. **Geometry** shows mesh statistics, and the timeline plays and scrubs embedded clips.
 5. Use **File → Save** or **Save As** to save a `.wobview` file with the model reference, camera, lighting, display settings and animation position. Reopen it through **File → Open**. Use **Ctrl+E** or **Save 4K PNG** to render the current 3D view at 3840 × 2160.
 
 Godot Forward+ disables subsurface scattering on skin when the background is transparent.
+
+The viewer starts in a maximized window. Animations repeat after you press **Play**. Clear **Loop** to play the clip once.
+
+The viewer also shows progress feedback when switching panoramas or skies, preparing points, quads or attribute previews, and exporting a 4K image.
 
 ## Inspect parts and attributes
 
@@ -56,6 +60,7 @@ If a model is named like `character_lod0.glb`, the viewer finds matching files i
 | **Ctrl+O** · **Ctrl+S** · **Ctrl+Shift+S** | Open · Save view · Save view as |
 | **Ctrl+R** | Reload the current model and keep the view |
 | **Ctrl+E** · **Ctrl+Q** · **F1** | Export 4K PNG · Quit · Help |
+| **F11** · **Esc** | Enter or leave full screen · Return to window |
 
 ## Production materials and diagnostics
 
@@ -91,7 +96,7 @@ Supported shader IDs are `kuze`, `oko`, `odev`, `vlasy_karty`, `vlasy_mikro_4k` 
 
 Windows accepts the same arguments after `"WoB Model Viewer.exe"`. Automated screenshot capture uses the desktop renderer and exits after saving the PNG.
 
-Built-in HDRI [Lilienstein by Poly Haven, CC0](https://polyhaven.com/a/lilienstein). Godot notices are bundled with each release.
+The three built-in panoramas are available offline. Godot notices are bundled with each release. [Lilienstein](https://polyhaven.com/a/lilienstein), [Kloppenheim 06 (Pure Sky)](https://polyhaven.com/a/kloppenheim_06_puresky), [Moonlit Golf](https://polyhaven.com/a/moonlit_golf) by Poly Haven, CC0.
 
 ## License
 

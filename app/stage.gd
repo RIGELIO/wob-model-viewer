@@ -3,6 +3,9 @@ extends SubViewportContainer
 const Materials = preload("res://materials.gd")
 const TopologyOverlay = preload("res://topology_overlay.gd")
 const BUILTIN_HDRI := "res://production/lighting/lilienstein_2k.hdr"
+const HDRI_PRESETS := [BUILTIN_HDRI, "res://art/lighting/kloppenheim_06_puresky_2k.hdr",
+	"res://art/lighting/moonlit_golf_2k.hdr"]
+const CELESTIAL_SKY = preload("res://celestial_sky.gdshader")
 const SCREENSHOT_SIZE := Vector2i(3840, 2160)
 const ORBIT_SPEED := 0.008
 const AUTO_ORBIT_SPEED := 0.38
@@ -45,7 +48,13 @@ var bounds := AABB()
 var capture_in_progress := false
 
 var _sky_material: PanoramaSkyMaterial
-var _studio_hdri: Texture2D
+var _celestial_sky: ShaderMaterial
+var _hdri_textures: Dictionary[int, Texture2D]
+var _sky_mode := 0
+var _show_source := true
+var _hdri_angle := 0.0
+var _direct_strength := 1.25
+var _animation_loop := Animation.LOOP_LINEAR
 var _grid: MeshInstance3D
 var _floor: MeshInstance3D
 var _hdri_on := true
@@ -102,12 +111,12 @@ func _ready() -> void:
 	environment.sky = Sky.new()
 	environment.sky.radiance_size = Sky.RADIANCE_SIZE_128
 	_sky_material = PanoramaSkyMaterial.new()
+	_celestial_sky = ShaderMaterial.new()
+	_celestial_sky.shader = CELESTIAL_SKY
 	environment.sky.sky_material = _sky_material
 	var world_environment := WorldEnvironment.new()
 	world_environment.environment = environment
 	viewport_3d.add_child(world_environment)
-	if ResourceLoader.exists(BUILTIN_HDRI):
-		_studio_hdri = ResourceLoader.load(BUILTIN_HDRI) as Texture2D
 	reset_hdri()
 	background(0)
 
@@ -115,7 +124,7 @@ func _ready() -> void:
 	sunlight.shadow_enabled = true
 	viewport_3d.add_child(sunlight)
 	light_direction(-35.0, 42.0)
-	sunlight.light_energy = 1.25
+	light_intensity(_direct_strength)
 
 	camera = Camera3D.new()
 	camera.fov = 34.0
@@ -170,6 +179,18 @@ func load_model(path: String, manifest: RefCounted = null) -> String:
 	var error := pending.import_model(path, manifest)
 	if not error.is_empty():
 		return error
+	_install_model(pending)
+	return ""
+
+
+func apply_prepared_model(pending: Materials) -> String:
+	var error := pending.finish_model()
+	if error.is_empty():
+		_install_model(pending)
+	return error
+
+
+func _install_model(pending: Materials) -> void:
 	if model:
 		viewport_3d.remove_child(model.root)
 		model.root.queue_free()
@@ -199,7 +220,6 @@ func load_model(path: String, manifest: RefCounted = null) -> String:
 	_apply_model_display()
 	if _skeleton_overlay.visible:
 		_draw_skeletons()
-	return ""
 
 
 func _inspect_model() -> void:
@@ -243,10 +263,18 @@ func select_clip(index: int) -> float:
 		animation_player.stop()
 	animation_player = clips[index].player
 	current_clip = clips[index].name
+	var clip := animation_player.get_animation(current_clip)
+	clip.loop_mode = _animation_loop
 	animation_player.play(current_clip)
 	animation_player.advance(0)
 	animation_player.pause()
-	return animation_player.get_animation(current_clip).length
+	return clip.length
+
+
+func animation_loop(enabled: bool) -> void:
+	_animation_loop = Animation.LOOP_LINEAR if enabled else Animation.LOOP_NONE
+	if animation_player:
+		animation_player.get_animation(current_clip).loop_mode = _animation_loop
 
 
 func toggle_play() -> bool:
@@ -309,8 +337,9 @@ func _gui_input(event: InputEvent) -> void:
 				up = Vector3(-sin(_yaw), 0.0, -cos(_yaw))
 			_center += (-right * event.relative.x + up * event.relative.y) * scale
 		elif _orbiting:
-			_yaw -= event.relative.x * ORBIT_SPEED
-			_pitch = clampf(_pitch + event.relative.y * ORBIT_SPEED, -1.555, 1.555)
+			orbit_by(event.relative)
+			accept_event()
+			return
 		else:
 			return
 		_update_camera()
@@ -330,14 +359,18 @@ func zoom(inward: bool) -> void:
 
 
 func orient_to(direction: Vector3) -> void:
-	if not model:
+	if direction.is_zero_approx():
 		return
-	if absf(direction.y) == 1.0:
-		_yaw = 0.0
-		_pitch = signf(direction.y) * 1.555
-	else:
-		_yaw = atan2(direction.x, direction.z)
-		_pitch = 0.0
+	var axis := direction.normalized()
+	_yaw = 0.0 if absf(axis.y) >= 0.99999 else atan2(axis.x, axis.z)
+	_pitch = clampf(asin(axis.y), -1.555, 1.555)
+	_rotation_hold = 1.0
+	_update_camera()
+
+
+func orbit_by(relative: Vector2) -> void:
+	_yaw -= relative.x * ORBIT_SPEED
+	_pitch = clampf(_pitch + relative.y * ORBIT_SPEED, -1.555, 1.555)
 	_rotation_hold = 1.0
 	_update_camera()
 
@@ -504,14 +537,23 @@ func _grid_line(lines: ImmediateMesh, start: Vector3, finish: Vector3, color: Co
 
 func light_direction(azimuth: float, elevation: float) -> void:
 	sunlight.rotation_degrees = Vector3(-elevation, azimuth, 0)
+	_update_light_source()
+
+
+func light_intensity(value: float) -> void:
+	_direct_strength = value
+	sunlight.light_energy = value * (0.28 if _sky_mode == 2 else 1.0)
 
 
 func hdri_orientation(degrees: float) -> void:
-	environment.sky_rotation = Vector3(0.0, deg_to_rad(degrees), 0.0)
+	_hdri_angle = degrees
+	environment.sky_rotation = Vector3(0.0, deg_to_rad(degrees), 0.0) if _sky_mode == 0 else Vector3.ZERO
+	_celestial_sky.set_shader_parameter("panorama_rotation", degrees / 360.0)
 
 
 func hdri_intensity(value: float) -> void:
 	_sky_material.energy_multiplier = value
+	_celestial_sky.set_shader_parameter("exposure", value)
 	environment.ambient_light_energy = 1.0 if _sky_material.panorama else value
 
 
@@ -519,7 +561,7 @@ func hdri_enabled(enabled: bool) -> void:
 	_hdri_on = enabled
 	if not enabled:
 		environment.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
-	elif _sky_material.panorama:
+	elif _sky_material.panorama or _sky_mode != 0:
 		environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	else:
 		environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -527,6 +569,44 @@ func hdri_enabled(enabled: bool) -> void:
 
 func light_enabled(enabled: bool) -> void:
 	sunlight.visible = enabled
+	_update_light_source()
+
+
+func sky_mode(index: int) -> void:
+	_sky_mode = index
+	environment.sky.sky_material = _sky_material if index == 0 else _celestial_sky
+	_celestial_sky.set_shader_parameter("night", index == 2)
+	hdri_orientation(_hdri_angle)
+	hdri_enabled(_hdri_on)
+	sunlight.light_color = Color.WHITE if index == 0 else Color("#a9c6ff" if index == 2 else "#ffe8cb")
+	light_intensity(_direct_strength)
+	_update_light_source()
+
+
+func source_visible(enabled: bool) -> void:
+	_show_source = enabled
+	_update_light_source()
+
+
+func _update_light_source() -> void:
+	_celestial_sky.set_shader_parameter("source_direction", sunlight.basis.z.normalized())
+	_celestial_sky.set_shader_parameter("show_source", _show_source and sunlight.visible)
+
+
+func aim_at_light() -> void:
+	var target := sunlight.basis.z.normalized()
+	var side := target.cross(Vector3.UP)
+	if side.is_zero_approx():
+		side = Vector3.RIGHT
+	side = side.normalized()
+	var above := side.cross(target)
+	var half_height := tan(deg_to_rad(camera.fov * 0.5))
+	var half_width := half_height * maxf(0.1, size.x / maxf(1.0, size.y))
+	if model:
+		_center = bounds.get_center()
+		# Leave enough sky beside the model for the disc at any viewport aspect.
+		_distance = maxf(_distance, _radius * (1.0 + 1.0 / (0.58 * minf(half_width, half_height))))
+	orient_to(-(target - side * half_width * 0.76 - above * half_height * 0.38))
 
 
 func reflections_enabled(enabled: bool) -> void:
@@ -535,23 +615,71 @@ func reflections_enabled(enabled: bool) -> void:
 
 
 func reset_hdri() -> bool:
-	_sky_material.panorama = _studio_hdri
-	hdri_intensity(_sky_material.energy_multiplier)
 	environment.ambient_light_color = Color("#bfc7d7")
+	var found := select_hdri(0)
+	if not found:
+		_set_panorama(null)
+	return found
+
+
+func select_hdri(index: int) -> bool:
+	if index < 0 or index >= HDRI_PRESETS.size():
+		return false
+	if not _hdri_textures.has(index):
+		var path: String = HDRI_PRESETS[index]
+		if ResourceLoader.exists(path):
+			_hdri_textures[index] = ResourceLoader.load(path) as Texture2D
+	var panorama: Texture2D = _hdri_textures.get(index)
+	if not panorama:
+		return false
+	_set_panorama(panorama)
+	return true
+
+
+func preload_hdri(index: int) -> void:
+	if _hdri_textures.has(index):
+		return
+	var path: String = HDRI_PRESETS[index]
+	if ResourceLoader.load_threaded_request(path, "Texture2D") != OK:
+		return
+	var status := ResourceLoader.load_threaded_get_status(path)
+	while status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		await get_tree().process_frame
+		status = ResourceLoader.load_threaded_get_status(path)
+	if status == ResourceLoader.THREAD_LOAD_LOADED:
+		_hdri_textures[index] = ResourceLoader.load_threaded_get(path) as Texture2D
+
+
+func _set_panorama(texture: Texture2D) -> void:
+	_sky_material.panorama = texture
+	_celestial_sky.set_shader_parameter("panorama", texture)
+	_celestial_sky.set_shader_parameter("has_panorama", texture != null)
+	hdri_intensity(_sky_material.energy_multiplier)
 	hdri_enabled(_hdri_on)
-	return _studio_hdri != null
 
 
 func set_hdri(path: String) -> String:
+	return apply_hdri(decode_hdri(path))
+
+
+static func decode_hdri(path: String) -> Variant:
 	var image := Image.new()
 	var error := image.load(path)
 	if error != OK:
-		return tr("HDRI nelze načíst (%s).") % error_string(error)
+		return error
 	if image.get_height() * 2 != image.get_width():
-		return tr("Použij equirektangulární HDRI s poměrem 2 : 1.")
-	_sky_material.panorama = ImageTexture.create_from_image(image)
-	hdri_intensity(_sky_material.energy_multiplier)
-	hdri_enabled(_hdri_on)
+		return ERR_INVALID_DATA
+	return image
+
+
+func apply_hdri(decoded: Variant) -> String:
+	if decoded is int:
+		if decoded == ERR_INVALID_DATA:
+			return tr("Použij equirektangulární HDRI s poměrem 2 : 1.")
+		return tr("HDRI nelze načíst (%s).") % error_string(decoded)
+	if not decoded is Image:
+		return tr("Načítání se nepodařilo spustit.")
+	_set_panorama(ImageTexture.create_from_image(decoded))
 	return ""
 
 

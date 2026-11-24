@@ -1,10 +1,18 @@
 # WoB Model Viewer
 
+[English guide](README.md) · [Wars of Bohemia](https://warsofbohemia.com/)
+
 Offline desktopový prohlížeč GLB a glTF pro kontrolu modelů a materiálů Wars of Bohemia. Používá Godot 4.7.2 Forward+ a obsahuje produkční shadery postav a sdílené atlasy.
+
+## Den a noc
+
+| Den | Noc |
+| --- | --- |
+| ![Denní režim s viditelným sluncem](screenshots/viewer-day.png) | ![Noční režim s viditelným měsícem](screenshots/viewer-night.png) |
 
 ## Stažení a spuštění
 
-V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček nainstaluješ ve správci balíčků nebo příkazem `sudo apt install ./wob-model-viewer_1.2.0_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Aplikace potřebuje grafický ovladač s podporou Godot Forward+.
+V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček otevři ve správci balíčků nebo použij `sudo apt install ./wob-model-viewer_1.3.0_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Aplikace potřebuje grafický ovladač s podporou Godot Forward+.
 
 Instalátor Windows a balíček DEB v Linuxu automaticky zaregistrují **.glb**, **.gltf** a **.wobview**. Pro otevírání dvojklikem zvol **WoB Model Viewer** ve výchozích aplikacích systému nebo přes **Otevřít v programu**. Instalátor Windows nastaví Viewer pro dosud neregistrované pohledy `.wobview` a na poslední stránce nabídne otevření nastavení výchozích aplikací. U přenosné verze spusť ve Windows **Register-FileTypes.cmd** nebo v Linuxu `sh register-file-types.sh`. Linuxový skript používá `shared-mime-info` a `desktop-file-utils`. Po přemístění přenosné aplikace registraci zopakuj.
 
@@ -24,13 +32,17 @@ Ponech složku `_materialy-z-hry` se souborem `index.json` a adresářem `assets
 
 ## Ovládání
 
-1. Přetáhni `.glb` nebo `.gltf` do okna nebo jej otevři klávesami **Ctrl+O**. Samostatné soubory `.bin` a textury odkazované z `.gltf` ponech na jejich relativních cestách ve složce modelu. Volič **EN / CS** přepíná jazyk a **F1** otevírá nápovědu k ovládání.
-2. **Levé tlačítko myši** otáčí modelem. Pravé nebo prostřední tlačítko posouvá pohled a kolečko mění přiblížení. **F** zarámuje model. Směr pohledu nastavíš tlačítky **Zepředu**, **Z boku**, **Shora** nebo kliknutím na barevné orientační osy. Zapni automatické otáčení pro plynulé obíhání modelu. Přepínač posunu mění posun v rovině pohledu na posun po zemi.
-3. **Osvětlení** umožňuje samostatně zapnout HDRI, přímé světlo a odrazy HDRI. Uprav intenzitu a otočení HDRI nebo sílu a směr přímého světla. Použij vestavěné HDRI Lilienstein nebo načti vlastní HDR či EXR v poměru 2 : 1.
+1. Přetáhni `.glb` nebo `.gltf` do okna nebo jej otevři klávesami **Ctrl+O**. Během importu se zobrazí název souboru a animované kolečko. Soubory `.bin` a textury odkazované z `.gltf` ponech na jejich relativních cestách ve složce modelu. **EN / CS** přepíná jazyk, **F1** otevírá nápovědu a **F11** přepíná celou obrazovku.
+2. **Levé tlačítko myši** otáčí pohledem. Pravé nebo prostřední tlačítko posouvá pohled a kolečko mění přiblížení. **F** zarámuje model. Kliknutím na stěnu orientační kostky nastavíš směr pohledu. Tažením za kostku pohled plynule otočíš. Přepínač posunu mění posun v rovině pohledu na posun po zemi.
+3. V panelu **Osvětlení** vyber vestavěné panorama z Poly Haven nebo načti vlastní HDR či EXR v poměru 2 : 1. **Obloha HDRI** zobrazí původní panorama. Režimy **Den · Slunce** a **Noc · Měsíc** přidají viditelný zdroj přímého světla. Azimut a výška mění jeho polohu. Tlačítko **Ukázat zdroj** k němu otočí kameru. HDRI, přímé světlo a odrazy HDRI mají samostatné přepínače.
 4. V panelu **Zobrazení** vyber barvu pozadí nebo panorama. Vypnutím pozadí získáš průhledné PNG. Mřížku, podlahu pro stíny, kostru a ortografický pohled můžeš zapínat samostatně. Vedle produkčních materiálů jsou k dispozici wireframe, režim bez osvětlení, normály, overdraw a **Body**. Velikost bodů mění průměr vykreslených vrcholů v režimu **Body**. **Geometrie** uvádí statistiky sítě a časová osa přehrává vložené klipy.
 5. **Soubor → Uložit** nebo **Uložit jako** uloží odkaz na model, kameru, osvětlení, nastavení zobrazení a polohu animace do `.wobview`. Relaci znovu otevři přes **Soubor → Otevřít**. **Ctrl+E** nebo **Uložit 4K PNG** vykreslí aktuální 3D scénu do PNG o rozměrech 3840 × 2160.
 
 Při průhledném pozadí Godot Forward+ vypíná podpovrchový rozptyl světla v kůži.
+
+Viewer se spouští v maximalizovaném okně. Animace se po stisknutí **Přehrát** opakují. Zruš zaškrtnutí **Smyčka**, pokud chceš klip přehrát jednou.
+
+Indikátor se zobrazí také při přepínání panoramat a oblohy, přípravě bodů, quadů a náhledů atributů nebo exportu 4K snímku.
 
 ## Kontrola dílů a atributů
 
@@ -56,6 +68,7 @@ U modelu pojmenovaného například `postava_lod0.glb` prohlížeč vyhledá sou
 | **Ctrl+O** · **Ctrl+S** · **Ctrl+Shift+S** | Otevřít · Uložit relaci · Uložit relaci jako |
 | **Ctrl+R** | Znovu načíst model a zachovat pohled |
 | **Ctrl+E** · **Ctrl+Q** · **F1** | Exportovat 4K PNG · Ukončit · Nápověda |
+| **F11** · **Esc** | Přepnout celou obrazovku · Návrat do okna |
 
 ## Produkční materiály a diagnostika
 
@@ -74,7 +87,7 @@ Vlastní mapování lze nastavit souborem `nazev-modelu.wob.json` ve stejné slo
 
 Ve Windows stejné argumenty přijímá `"WoB Model Viewer.exe"`. Automatické snímání používá desktopový renderer a po uložení PNG aplikaci ukončí.
 
-Vestavěné HDRI [Lilienstein od Poly Haven, CC0](https://polyhaven.com/a/lilienstein). Licenční informace Godotu jsou součástí balíčku.
+Tři vestavěná panoramata fungují offline. Licenční informace Godotu jsou součástí balíčku. [Lilienstein](https://polyhaven.com/a/lilienstein), [Kloppenheim 06 (Pure Sky)](https://polyhaven.com/a/kloppenheim_06_puresky), [Moonlit Golf](https://polyhaven.com/a/moonlit_golf) od Poly Haven, CC0.
 
 ## Licence
 
