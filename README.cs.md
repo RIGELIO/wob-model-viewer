@@ -2,7 +2,7 @@
 
 [English guide](README.md) · [Wars of Bohemia](https://warsofbohemia.com/)
 
-Offline desktopový prohlížeč GLB a glTF pro kontrolu modelů a materiálů Wars of Bohemia. Používá Godot 4.7.2 Forward+ a obsahuje produkční shadery postav a sdílené atlasy.
+Offline desktopový prohlížeč GLB a glTF pro kontrolu geometrie, materiálů a animací. Podporuje původní shadery postav a sdílené atlasy Wars of Bohemia.
 
 ## Den a noc
 
@@ -12,7 +12,7 @@ Offline desktopový prohlížeč GLB a glTF pro kontrolu modelů a materiálů W
 
 ## Stažení a spuštění
 
-V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček otevři ve správci balíčků nebo použij `sudo apt install ./wob-model-viewer_1.3.0_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Aplikace potřebuje grafický ovladač s podporou Godot Forward+.
+V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček otevři ve správci balíčků nebo použij `sudo apt install ./wob-model-viewer_1.3.0_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Vše potřebné ke spuštění je v balíčku. Použij aktuální grafický ovladač.
 
 Instalátor Windows a balíček DEB v Linuxu automaticky zaregistrují **.glb**, **.gltf** a **.wobview**. Pro otevírání dvojklikem zvol **WoB Model Viewer** ve výchozích aplikacích systému nebo přes **Otevřít v programu**. Instalátor Windows nastaví Viewer pro dosud neregistrované pohledy `.wobview` a na poslední stránce nabídne otevření nastavení výchozích aplikací. U přenosné verze spusť ve Windows **Register-FileTypes.cmd** nebo v Linuxu `sh register-file-types.sh`. Linuxový skript používá `shared-mime-info` a `desktop-file-utils`. Po přemístění přenosné aplikace registraci zopakuj.
 
