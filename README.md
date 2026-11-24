@@ -2,7 +2,7 @@
 
 [Český návod](README.cs.md) · [Wars of Bohemia](https://warsofbohemia.com/)
 
-WoB Model Viewer is an offline desktop viewer for GLB and glTF characters and materials from Wars of Bohemia. It runs on Godot 4.7.2 Forward+ and includes the game's character shaders and shared atlases.
+WoB Model Viewer is an offline desktop viewer for GLB and glTF models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
 ## Day and night
 
@@ -12,7 +12,7 @@ WoB Model Viewer is an offline desktop viewer for GLB and glTF characters and ma
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.3.0_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. A graphics driver with Godot Forward+ support is required.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.3.0_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
 
 Windows Setup and the Linux DEB register **.glb**, **.gltf** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
