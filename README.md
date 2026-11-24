@@ -122,6 +122,12 @@ The three built-in panoramas are available offline. Godot notices are bundled wi
 
 ![A frame of the crossbowman animation in wireframe with the Lilienstein panorama and grid](screenshots/crossbow-wireframe.png)
 
+**Crossbowman animation in Points mode with the skeleton overlay**
+
+![The crossbowman animation playing as points with the skeleton overlay on a dark background](screenshots/crossbow-points-animation.gif)
+
+[Full-size Points and skeleton screenshot](screenshots/crossbow-points-skeleton.png)
+
 **LOD comparison and material diagnostics in Czech**
 
 ![Czech interface with LOD controls and material diagnostics](screenshots/viewer-czech.png)
