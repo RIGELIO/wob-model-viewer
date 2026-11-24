@@ -102,3 +102,9 @@ Tři vestavěná panoramata fungují offline. Licenční informace Godotu jsou s
 **Kušník ve wireframe s mřížkou**
 
 ![Záběr animace kušníka ve wireframe s panoramatem Lilienstein a mřížkou](screenshots/crossbow-wireframe.png)
+
+**Animace kušníka v režimu Body se zobrazenou kostrou**
+
+![Animace kušníka v bodech se zobrazenou kostrou na tmavém pozadí](screenshots/crossbow-points-animation.gif)
+
+[Původní snímek bodů a kostry v plném rozlišení](screenshots/crossbow-points-skeleton.png)
