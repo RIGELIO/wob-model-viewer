@@ -381,8 +381,8 @@ msgstr "Could not read the full file."
 msgid "glTF odkazuje mimo složku modelu. Vlož zdroj do modelu nebo použij relativní cestu."
 msgstr "The glTF references a resource outside the model folder. Embed the resource or use a relative path."
 
-msgid "Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na osu XYZ pro pevný pohled.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda."
-msgstr "Drop a GLB, glTF, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick an XYZ axis to snap to its view.\n\nW: triangle wireframe. Q: inferred quads. P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+Q: quit. F1: help."
+msgid "Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
+msgstr "Drop a GLB, glTF, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick a view cube face or drag the cube to orbit.\n\nW: triangle wireframe. Q: inferred quads. P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+Q: quit. F1: help.\nF11: full screen. Esc: return to the window."
 msgid "Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR."
 msgstr "Open GLB, glTF, WOBVIEW, a vehicle manifest, HDR or EXR."
 
@@ -496,3 +496,60 @@ msgstr "Game file is missing or unreadable: %s."
 
 msgid "Balík neobsahuje herní materiál pro názvy povrchů v tomto modelu."
 msgstr "The bundle has no game material for the surface names in this model."
+
+msgid "Otevřít"
+msgstr "Open"
+
+msgid "Celá obrazovka"
+msgstr "Full screen"
+
+msgid "Zpět do okna"
+msgstr "Exit full screen"
+
+msgid "Načítám…"
+msgstr "Loading…"
+
+msgid "Načítání se nepodařilo spustit."
+msgstr "Could not start loading."
+
+msgid "Předek"
+msgstr "Front"
+
+msgid "Pravá"
+msgstr "Right"
+
+msgid "Zadek"
+msgstr "Back"
+
+msgid "Levá"
+msgstr "Left"
+
+msgid "Vršek"
+msgstr "Top"
+
+msgid "Spodek"
+msgstr "Bottom"
+
+msgid "Tažením otočíš pohled"
+msgstr "Drag to orbit"
+
+msgid "Vestavěná panoramata Poly Haven"
+msgstr "Built-in Poly Haven panoramas"
+
+msgid "Obloha HDRI"
+msgstr "HDRI sky"
+
+msgid "Den · Slunce"
+msgstr "Day · Sun"
+
+msgid "Noc · Měsíc"
+msgstr "Night · Moon"
+
+msgid "Zobrazit zdroj světla"
+msgstr "Show light source"
+
+msgid "Ukázat zdroj"
+msgstr "Aim at source"
+
+msgid "Smyčka"
+msgstr "Loop"

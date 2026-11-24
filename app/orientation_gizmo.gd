@@ -1,26 +1,30 @@
 extends Control
 
-const AXES := [Vector3.RIGHT, Vector3.UP, Vector3.BACK, Vector3.LEFT, Vector3.DOWN, Vector3.FORWARD]
-const LABELS := ["X", "Y", "Z", "−X", "−Y", "−Z"]
-const COLORS := [Color("#ef785b"), Color("#91dc6c"), Color("#8ca6fc")]
-const RADIUS := 34.0
-const DOT := 10.0
+const NORMALS := [Vector3.BACK, Vector3.RIGHT, Vector3.FORWARD, Vector3.LEFT, Vector3.UP, Vector3.DOWN]
+const LABELS := ["Předek", "Pravá", "Zadek", "Levá", "Vršek", "Spodek"]
+const CORNERS := [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
 
 var stage: SubViewportContainer
 var _camera_basis := Basis.IDENTITY
-var _draw_order: Array[int] = []
-var _projection: Array[Vector3] = []
+var _polygons: Dictionary[int, PackedVector2Array]
+var _hover := -1
+var _pressing := false
+var _dragging := false
+var _press_origin := Vector2.ZERO
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	custom_minimum_size = Vector2(100.0, 100.0)
+	mouse_exited.connect(func():
+		_hover = -1
+		queue_redraw()
+	)
+	get_window().focus_exited.connect(func(): _pressing = false)
 	queue_redraw()
 
 
 func _process(_delta: float) -> void:
-	if stage == null or stage.camera == null:
+	if not stage or not stage.camera:
 		return
 	var basis: Basis = stage.camera.global_basis
 	if not basis.is_equal_approx(_camera_basis):
@@ -29,53 +33,72 @@ func _process(_delta: float) -> void:
 
 
 func _draw() -> void:
-	var center := size * 0.5
-	var inverse := _camera_basis.inverse()
-	_draw_order.clear()
-	_projection.clear()
-	for index in range(AXES.size()):
-		_draw_order.append(index)
-		_projection.append(inverse * AXES[index])
-	_draw_order.sort_custom(func(a: int, b: int) -> bool: return _projection[a].z < _projection[b].z)
-	draw_circle(center, 46.0, Color("#18191cdf"), true, -1.0, true)
-	draw_circle(center, 46.0, Color("#81705b"), false, 1.0, true)
-	for index in _draw_order:
-		var axis_color: Color = COLORS[index % 3]
-		var positive := index < 3
-		draw_line(center, _endpoint(index), axis_color if positive else axis_color.darkened(0.5), 1.5, true)
-	for index in _draw_order:
-		var axis_color: Color = COLORS[index % 3]
-		var positive := index < 3
-		var position := _endpoint(index)
-		draw_circle(position, DOT if positive else DOT * 0.67, axis_color if positive else axis_color.darkened(0.48), true, -1.0, true)
-		if positive:
+	var inverse := _camera_basis.transposed()
+	_polygons.clear()
+	for index in range(NORMALS.size()):
+		var normal: Vector3 = NORMALS[index]
+		var facing := (inverse * normal).z
+		if facing <= 0.005:
+			continue
+		var up := Vector3.FORWARD if absf(normal.y) > 0.5 else Vector3.UP
+		var right := up.cross(normal)
+		var polygon := PackedVector2Array()
+		for corner: Vector2 in CORNERS:
+			polygon.append(_project(inverse * (normal + right * corner.x + up * corner.y)))
+		_polygons[index] = polygon
+		var fill := Color("#323741").lerp(Color("#6d665a"), facing)
+		draw_colored_polygon(polygon, Color("#a77c4c") if index == _hover else fill)
+		var border := polygon.duplicate()
+		border.append(polygon[0])
+		draw_polyline(border, Color("#d1ae7e") if index == _hover else Color("#9d8a70"), 1.2, true)
+		if facing > 0.35:
 			var font := get_theme_default_font()
-			var label: String = LABELS[index]
-			var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-			draw_string(font, position + Vector2(-width * 0.5, 4.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#151719"))
+			var label := tr(LABELS[index])
+			var extent := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
+			draw_string(font, _project(inverse * normal) + Vector2(-extent.x * 0.5, 4.0), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#faf3e6"))
 
 
-func _endpoint(index: int) -> Vector2:
-	var projected := _projection[index]
-	return size * 0.5 + Vector2(projected.x, -projected.y) * RADIUS
+func _project(local: Vector3) -> Vector2:
+	var extent := minf(size.x, size.y) * 0.235
+	return size * 0.5 + Vector2(local.x, -local.y) * extent
 
 
 func _pick(position: Vector2) -> int:
-	for depth_index in range(_draw_order.size() - 1, -1, -1):
-		var axis := _draw_order[depth_index]
-		if _endpoint(axis).distance_squared_to(position) <= DOT * DOT:
-			return axis
+	for index in _polygons:
+		if Geometry2D.is_point_in_polygon(position, _polygons[index]):
+			return index
 	return -1
 
 
 func _get_tooltip(at_position: Vector2) -> String:
 	var index := _pick(at_position)
-	return LABELS[index] if index >= 0 else ""
+	return tr(LABELS[index]) if index >= 0 else tr("Tažením otočíš pohled")
 
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		var index := _pick(event.position)
-		if index >= 0 and stage:
-			stage.orient_to(AXES[index])
-			accept_event()
+	if event is InputEventMouseMotion:
+		if _pressing:
+			if not _dragging and _press_origin.distance_to(event.position) > 4.0:
+				_dragging = true
+			if _dragging:
+				stage.orbit_by(event.relative)
+		_hover = _pick(event.position) if not _dragging else -1
+		queue_redraw()
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_press_origin = event.position
+			_pressing = true
+			_dragging = false
+		elif _pressing:
+			var index := _pick(event.position)
+			if not _dragging and index >= 0:
+				stage.orient_to(NORMALS[index])
+			_pressing = false
+			_dragging = false
+		accept_event()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		queue_redraw()

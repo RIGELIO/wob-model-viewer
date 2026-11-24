@@ -14,8 +14,24 @@ const WHITE := Color("#f4eee2")
 const MUTED := Color("#b8b1a6")
 const GOLD := Color("#edbd7c")
 const LOCALES := ["en", "cs"]
+const HDRI_NAMES := ["Lilienstein", "Kloppenheim 06 · Pure Sky", "Moonlit Golf"]
 const SETTINGS := "user://viewer.cfg"
-enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, QUIT }
+enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, FRAME, QUIT }
+
+class LoadingSpinner extends Control:
+	var angle := 0.0
+
+	func _ready() -> void:
+		custom_minimum_size = Vector2.ONE * 34.0
+
+	func _process(delta: float) -> void:
+		if is_visible_in_tree():
+			angle = fmod(angle + delta * TAU * 1.15, TAU)
+			queue_redraw()
+
+	func _draw() -> void:
+		draw_circle(size * 0.5, 12, Color("#564a3c"), false, 3, true)
+		draw_arc(size * 0.5, 12, angle, angle + PI * 1.35, 32, GOLD, 3, true)
 
 var stage: Stage
 var _file_name: Label
@@ -28,8 +44,12 @@ var _vehicle_picker: OptionButton
 var _lod_entries: Array[Dictionary]
 var _diagnostics: Label
 var _hdri_name: Label
+var _hdri_picker: OptionButton
+var _sky_picker: OptionButton
+var _aim_light: Button
 var _movie: OptionButton
 var _play: Button
+var _loop: CheckBox
 var _timeline: HSlider
 var _time: Label
 var _open_dialog: FileDialog
@@ -63,10 +83,18 @@ var _view_path := ""
 var _hdri_path := ""
 var _azimuth := -35.0
 var _elevation := 42.0
+var _fullscreen: Button
+var _windowed_mode := Window.MODE_WINDOWED
+var _loading_mask: ColorRect
+var _loading_title: Label
+var _loading_name: Label
+var _loading := false
+var _quit_after_load := false
 
 
 func _ready() -> void:
 	TranslationServer.set_locale(_initial_locale())
+	get_tree().auto_accept_quit = false
 	get_window().min_size = Vector2i(860, 640)
 	_headings = FontVariation.new()
 	_headings.base_font = TITLE_FONT
@@ -79,12 +107,11 @@ func _ready() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 18)
+		margin.add_theme_constant_override("margin_" + side, 12 if side in ["left", "right"] else 8)
 	add_child(margin)
 	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 13)
+	layout.add_theme_constant_override("separation", 8)
 	margin.add_child(layout)
-	_make_menu(layout)
 	_make_header(layout)
 	var split := HBoxContainer.new()
 	split.size_flags_vertical = SIZE_EXPAND_FILL
@@ -98,11 +125,12 @@ func _ready() -> void:
 	_make_inspector(split)
 	_status = _label(layout, "Připraveno", 13, MUTED)
 	_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_make_loading_mask()
 
 	_open_dialog = _dialog("Otevřít model", FileDialog.FILE_MODE_OPEN_FILE, "*.glb,*.gltf,*.wobview,*.json")
 	_open_dialog.file_selected.connect(_open_path)
 	_hdri_dialog = _dialog("Otevřít HDRI", FileDialog.FILE_MODE_OPEN_FILE, "*.hdr,*.exr ; Panorama HDRI")
-	_hdri_dialog.file_selected.connect(_load_hdri)
+	_hdri_dialog.file_selected.connect(func(path: String): _load_hdri(path, true))
 	_save_dialog = _dialog("Uložit snímek 3840 × 2160", FileDialog.FILE_MODE_SAVE_FILE, "*.png ; Obraz PNG")
 	_save_dialog.file_selected.connect(_capture)
 	_view_dialog = _dialog("Uložit relaci jako", FileDialog.FILE_MODE_SAVE_FILE, "*.wobview")
@@ -116,13 +144,11 @@ func _ready() -> void:
 	_refresh_menu()
 	_refresh_dialogs()
 	get_window().files_dropped.connect(_files_dropped)
+	get_window().size_changed.connect(_sync_fullscreen)
 	_process_arguments.call_deferred()
 
 
-func _make_menu(layout: VBoxContainer) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 3)
-	layout.add_child(row)
+func _make_menu(row: HBoxContainer) -> void:
 	_menu_file = MenuButton.new()
 	_menu_file.text = "Soubor"
 	_menu_file.get_popup().id_pressed.connect(_file_action)
@@ -148,8 +174,10 @@ func _refresh_menu() -> void:
 	menu.add_item(tr("Uložit jako…"), FileAction.SAVE_AS, KEY_MASK_CTRL | KEY_MASK_SHIFT | KEY_S)
 	menu.add_item(tr("Uložit 4K PNG"), FileAction.CAPTURE, KEY_MASK_CTRL | KEY_E)
 	menu.add_separator()
+	menu.add_item(tr("Zarámovat"), FileAction.FRAME, KEY_F)
+	menu.add_separator()
 	menu.add_item(tr("Konec"), FileAction.QUIT, KEY_MASK_CTRL | KEY_Q)
-	for id in [FileAction.RELOAD, FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE]:
+	for id in [FileAction.RELOAD, FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE, FileAction.FRAME]:
 		menu.set_item_disabled(menu.get_item_index(id), _path.is_empty())
 	var help := _menu_help.get_popup()
 	help.clear()
@@ -165,7 +193,8 @@ func _file_action(id: int) -> void:
 		FileAction.SAVE: _save_view()
 		FileAction.SAVE_AS: _show_view_save()
 		FileAction.CAPTURE: _show_capture()
-		FileAction.QUIT: get_tree().quit()
+		FileAction.FRAME: stage.frame()
+		FileAction.QUIT: _request_quit()
 
 
 func _show_about() -> void:
@@ -179,7 +208,7 @@ func _show_about() -> void:
 func _show_help() -> void:
 	_help.title = tr("Ovládání WoB Model Viewer")
 	_help.dialog_text = tr(
-		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na osu XYZ pro pevný pohled.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda."
+		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
 	)
 	_help.dialog_text += "\n\n" + tr(
 		"Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
@@ -189,18 +218,18 @@ func _show_help() -> void:
 
 func _make_header(layout: VBoxContainer) -> void:
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	header.add_theme_constant_override("separation", 7)
 	layout.add_child(header)
-	_icon(header, 59)
-	var title := VBoxContainer.new()
-	title.size_flags_horizontal = SIZE_EXPAND_FILL
-	header.add_child(title)
-	_heading(title, "WoB Model Viewer", 34, WHITE)
-	_file_name = _label(title, "Žádný otevřený model", 13, MUTED)
+	_icon(header, 28)
+	_make_menu(header)
+	_file_name = _label(header, "Žádný otevřený model", 14, WHITE)
+	_file_name.size_flags_horizontal = SIZE_EXPAND_FILL
+	_file_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_file_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_button(header, "Otevřít model", _show_open, "Ctrl+O", true)
-	_capture_button = _button(header, "Uložit 4K PNG", _show_capture, "Ctrl+E")
+	_button(header, "Otevřít", _show_open, "Ctrl+O", true)
+	_capture_button = _button(header, "4K PNG", _show_capture, "Ctrl+E")
 	_capture_button.disabled = true
+	_fullscreen = _button(header, "Celá obrazovka", _toggle_fullscreen, "F11")
 	_language = OptionButton.new()
 	_language.add_item("EN")
 	_language.add_item("CS")
@@ -208,6 +237,22 @@ func _make_header(layout: VBoxContainer) -> void:
 	_language.tooltip_text = "Language / Jazyk"
 	_language.item_selected.connect(_change_locale)
 	header.add_child(_language)
+
+
+func _toggle_fullscreen() -> void:
+	var window := get_window()
+	if window.mode in [Window.MODE_FULLSCREEN, Window.MODE_EXCLUSIVE_FULLSCREEN]:
+		window.mode = _windowed_mode
+	else:
+		_windowed_mode = Window.MODE_MAXIMIZED if window.mode == Window.MODE_MAXIMIZED else Window.MODE_WINDOWED
+		window.mode = Window.MODE_FULLSCREEN
+	_sync_fullscreen()
+
+
+func _sync_fullscreen() -> void:
+	var full := get_window().mode in [Window.MODE_FULLSCREEN, Window.MODE_EXCLUSIVE_FULLSCREEN]
+	_fullscreen.text = "Zpět do okna" if full else "Celá obrazovka"
+	_fullscreen.tooltip_text = "F11 / Esc" if full else "F11"
 
 
 func _make_viewport(parent: VBoxContainer) -> void:
@@ -218,16 +263,17 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 0)
 	card.add_child(column)
+	var area := Control.new()
+	area.size_flags_vertical = SIZE_EXPAND_FILL
+	area.clip_contents = true
+	column.add_child(area)
+	stage = Stage.new()
+	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	area.add_child(stage)
 	var toolbar := HBoxContainer.new()
 	toolbar.add_theme_constant_override("separation", 5)
-	column.add_child(toolbar)
-	_button(toolbar, "Zarámovat", func(): stage.frame(), "F")
-	_button(toolbar, "Zepředu", func(): stage.frame(Vector2.ZERO))
-	_button(toolbar, "Z boku", func(): stage.frame(Vector2(PI / 2, 0.0)))
-	_button(toolbar, "Shora", func(): stage.frame(Vector2(0.0, 1.555)))
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = SIZE_EXPAND_FILL
-	toolbar.add_child(spacer)
+	toolbar.position = Vector2(5, 5)
+	area.add_child(toolbar)
 	_vehicle_picker = OptionButton.new()
 	_vehicle_picker.item_selected.connect(_select_vehicle_state)
 	_vehicle_picker.hide()
@@ -241,13 +287,6 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	_wire.toggled.connect(func(value: bool): _set_display(1 if value else 0))
 	toolbar.add_child(_wire)
 
-	var area := Control.new()
-	area.size_flags_vertical = SIZE_EXPAND_FILL
-	area.clip_contents = true
-	column.add_child(area)
-	stage = Stage.new()
-	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	area.add_child(stage)
 	_blank = CenterContainer.new()
 	_blank.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_blank.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -262,16 +301,95 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	choose.size_flags_horizontal = SIZE_SHRINK_CENTER
 	_gizmo = OrientationGizmo.new()
 	_gizmo.stage = stage
-	_gizmo.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_gizmo.offset_left = -114
-	_gizmo.offset_top = -114
-	_gizmo.offset_right = -10
-	_gizmo.offset_bottom = -10
+	_gizmo.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_gizmo.offset_left = -124
+	_gizmo.offset_top = 6
+	_gizmo.offset_right = -6
+	_gizmo.offset_bottom = 124
 	_gizmo.hide()
 	area.add_child(_gizmo)
 	var hint := _label(column, "  Levé tlačítko orbit  ·  Pravé nebo prostřední posun  ·  Kolečko zoom", 12, MUTED)
 	hint.custom_minimum_size.y = 27
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+
+func _make_loading_mask() -> void:
+	_loading_mask = ColorRect.new()
+	_loading_mask.color = Color("#111216ab")
+	_loading_mask.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_loading_mask)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_loading_mask.add_child(center)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", _box(PANEL, BORDER, 10, 15))
+	center.add_child(panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	panel.add_child(row)
+	row.add_child(LoadingSpinner.new())
+	var text := VBoxContainer.new()
+	row.add_child(text)
+	_loading_title = _label(text, "Načítám…", 17, WHITE)
+	_loading_name = _label(text, "", 13, MUTED)
+	_loading_name.custom_minimum_size.x = 215
+	_loading_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_loading_mask.hide()
+
+
+func _begin_loading(details: String, tooltip := "", title := "Načítám…") -> bool:
+	if _loading or _quit_after_load or stage.capture_in_progress:
+		return false
+	_loading = true
+	_loading_title.text = title
+	_loading_name.text = details
+	_loading_name.tooltip_text = tooltip
+	_loading_mask.show()
+	return true
+
+
+func _with_loading(details: String, action: Callable) -> void:
+	if not _begin_loading(details):
+		return
+	await _paint_loading()
+	await action.call()
+	await _paint_loading()
+	_finish_loading()
+
+
+func _paint_loading() -> void:
+	# A full frame between these signals lets the overlay draw before a render update.
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _finish_loading() -> void:
+	_loading_mask.hide()
+	_loading = false
+	if _quit_after_load:
+		get_tree().quit()
+
+
+func _request_quit() -> void:
+	if _loading:
+		_quit_after_load = true
+	else:
+		get_tree().quit()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_request_quit()
+
+
+func _run_worker(task: Callable) -> Variant:
+	var worker := Thread.new()
+	if worker.start(task) != OK:
+		return null
+	while worker.is_alive():
+		await get_tree().process_frame
+	return worker.wait_to_finish()
 
 
 func _make_timeline(parent: VBoxContainer) -> void:
@@ -285,6 +403,7 @@ func _make_timeline(parent: VBoxContainer) -> void:
 	_movie.item_selected.connect(_select_clip)
 	row.add_child(_movie)
 	_play = _button(row, "Přehrát", _toggle_play)
+	_loop = _toggle(row, "animation_loop", "Smyčka", true, stage.animation_loop)
 	_timeline = HSlider.new()
 	_timeline.size_flags_horizontal = SIZE_EXPAND_FILL
 	_timeline.step = 0.001
@@ -312,12 +431,34 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	scroll.add_child(list)
 	_make_parts(_section(list, "Díly a materiály", true, false))
 	var lighting := _section(list, "Osvětlení")
-	_hdri_name = _label(lighting, "Lilienstein", 13, MUTED)
+	_hdri_picker = OptionButton.new()
+	for name in HDRI_NAMES:
+		_hdri_picker.add_item(name)
+	_hdri_picker.select(0)
+	_hdri_picker.tooltip_text = "Vestavěná panoramata Poly Haven"
+	_hdri_picker.item_selected.connect(_choose_hdri)
+	lighting.add_child(_hdri_picker)
+	_hdri_name = _label(lighting, "", 13, MUTED)
 	_hdri_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_hdri_name.hide()
 	var actions := HBoxContainer.new()
 	lighting.add_child(actions)
 	_button(actions, "Načíst HDRI", func(): _hdri_dialog.popup_centered_ratio(0.64))
-	_button(actions, "Obnovit HDRI", _reset_hdri)
+	_button(actions, "Obnovit HDRI", func(): _with_loading(HDRI_NAMES[0], _reset_hdri))
+	var sky := HBoxContainer.new()
+	lighting.add_child(sky)
+	_sky_picker = OptionButton.new()
+	_sky_picker.size_flags_horizontal = SIZE_EXPAND_FILL
+	for name in ["Obloha HDRI", "Den · Slunce", "Noc · Měsíc"]:
+		_sky_picker.add_item(name)
+	_sky_picker.select(0)
+	_sky_picker.item_selected.connect(func(index: int):
+		_with_loading(tr(_sky_picker.get_item_text(index)), _select_sky.bind(index, true))
+	)
+	sky.add_child(_sky_picker)
+	_aim_light = _button(sky, "Ukázat zdroj", _aim_at_light)
+	_aim_light.disabled = true
+	_toggle(lighting, "sky_source", "Zobrazit zdroj světla", true, stage.source_visible)
 	var switches := HBoxContainer.new()
 	lighting.add_child(switches)
 	_toggle(switches, "hdri_on", "HDRI", true, stage.hdri_enabled)
@@ -326,8 +467,7 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	_slider(lighting, "hdri_intensity", "Intenzita HDRI", 0.0, 3.0, 0.05, 1.0, stage.hdri_intensity)
 	_slider(lighting, "hdri_rotation", "Otočení HDRI", -180.0, 180.0, 1.0, 0.0,
 		func(v: float): stage.hdri_orientation(v), "°")
-	_slider(lighting, "intensity", "Intenzita světla", 0.0, 5.0, 0.05, 1.25,
-		func(v: float): stage.sunlight.light_energy = v)
+	_slider(lighting, "intensity", "Intenzita světla", 0.0, 5.0, 0.05, 1.25, stage.light_intensity)
 	_slider(lighting, "azimuth", "Azimut světla", -180.0, 180.0, 1.0, _azimuth, _set_azimuth, "°")
 	_slider(lighting, "elevation", "Výška světla", -5.0, 90.0, 1.0, _elevation, _set_elevation, "°")
 
@@ -350,7 +490,7 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	for item in ["Materiály", "Wireframe", "Bez osvětlení", "Normály", "Overdraw", "Body", "Quady (odhad)",
 		"Vertex barvy", "UV0 · šachovnice", "UV2 · šachovnice"]:
 		_display.add_item(item)
-	_display.item_selected.connect(_set_display)
+	_display.item_selected.connect(_choose_display)
 	viewing.add_child(_display)
 	_color_controls = HBoxContainer.new()
 	viewing.add_child(_color_controls)
@@ -359,14 +499,18 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	_color_layer.size_flags_horizontal = SIZE_EXPAND_FILL
 	_color_layer.add_item("COLOR_0")
 	_color_layer.select(0)
-	_color_layer.item_selected.connect(func(_index: int): _update_color_preview())
+	_color_layer.item_selected.connect(func(index: int):
+		_with_loading(_color_layer.get_item_text(index), _update_color_preview)
+	)
 	_color_controls.add_child(_color_layer)
 	_color_channel = OptionButton.new()
 	_color_channel.tooltip_text = "Barevný kanál"
 	for channel in ["RGB", "R", "G", "B", "A"]:
 		_color_channel.add_item(channel)
 	_color_channel.select(0)
-	_color_channel.item_selected.connect(func(_index: int): _update_color_preview())
+	_color_channel.item_selected.connect(func(index: int):
+		_with_loading(tr(_color_channel.get_item_text(index)), _update_color_preview)
+	)
 	_color_controls.add_child(_color_channel)
 	_color_controls.hide()
 	_attribute_hint = _label(viewing, "Pruhy označují plochy bez vybraného atributu.", 12, MUTED)
@@ -443,6 +587,13 @@ func _toggle(parent: Container, id: String, title: String, initial: bool, action
 	if not id.is_empty():
 		_options[id] = button
 	return button
+
+
+func _choose_display(index: int) -> void:
+	if stage.model and index >= Stage.POINTS_MODE:
+		_with_loading(tr(_display.get_item_text(index)), _set_display.bind(index))
+	else:
+		_set_display(index)
 
 
 func _set_display(index: int) -> void:
@@ -682,31 +833,36 @@ func _dialog(title: String, mode: FileDialog.FileMode, filter: String) -> FileDi
 
 
 func _show_open() -> void:
-	_open_dialog.popup_centered_ratio(0.64)
+	if not _loading:
+		_open_dialog.popup_centered_ratio(0.64)
 
 
 func _show_capture() -> void:
-	if _path.is_empty() or stage.capture_in_progress:
+	if _path.is_empty() or _loading or stage.capture_in_progress:
 		return
 	_save_dialog.current_file = _path.get_file().get_basename() + "-4K.png"
 	_save_dialog.popup_centered_ratio(0.64)
 
 
 func _files_dropped(files: PackedStringArray) -> void:
+	if _loading or stage.capture_in_progress:
+		return
 	for path in files:
 		match path.get_extension().to_lower():
 			"glb", "gltf", "wobview", "json":
 				_open_path(path)
 				return
 			"hdr", "exr":
-				_load_hdri(path)
+				_load_hdri(path, true)
 				return
 	_feedback("Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR.", true)
 
 
 func _open_path(path: String) -> bool:
+	if _loading or stage.capture_in_progress:
+		return false
 	if path.get_extension().to_lower() == "wobview":
-		return _open_view(path)
+		return await _open_view(path)
 	if path.get_extension().to_lower() == "json":
 		if path.get_file().to_lower().ends_with("_atlas.json"):
 			_feedback("Atlasové JSON obsahuje rozložení UV. Otevři manifest vozu nebo GLB.", true)
@@ -716,13 +872,19 @@ func _open_path(path: String) -> bool:
 			_feedback("JSON není platný manifest vozu Wars of Bohemia.", true)
 			return false
 		var state := "cely" if manifest.states.has("cely") else str(manifest.states.keys()[0])
-		return _load_model(manifest.states[state][0].path, false, manifest)
-	return _load_model(path)
+		return await _load_model(manifest.states[state][0].path, false, manifest)
+	return await _load_model(path)
 
 
 func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = null) -> bool:
-	var error := stage.load_model(path, manifest)
+	if not _begin_loading(path.get_file(), path):
+		return false
+	var loaded: Variant = await _run_worker(_prepare_model.bind(path, manifest, not keep_lod_family))
+	var error := tr("Načítání se nepodařilo spustit.")
+	if loaded is Dictionary:
+		error = stage.apply_prepared_model(loaded.model) if loaded.error.is_empty() else loaded.error
 	if not error.is_empty():
+		_finish_loading()
 		_feedback(error, true)
 		return false
 	_path = path
@@ -734,10 +896,7 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	_gizmo.show()
 	_capture_button.disabled = false
 	if not keep_lod_family:
-		var vehicle: RefCounted = stage.model.vehicle
-		var state: String = stage.model.vehicle_state
-		_lod_entries = LodCatalog.from_manifest(vehicle.states[state]) if vehicle and not state.is_empty() \
-			else LodCatalog.discover(path)
+		_lod_entries = loaded.lods
 	_refresh_vehicle_options()
 	_refresh_lod_options()
 	_refresh_menu()
@@ -745,13 +904,25 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	_refresh_parts()
 	_refresh_color_layers(_color_layer.get_item_text(_color_layer.selected))
 	_refresh_model_info()
+	_finish_loading()
 	if DisplayServer.get_name() == "headless":
 		print(path.get_file(), " ", stage.geometry, " ", stage.model.counts, " | ", stage.model.notes)
 	return true
 
 
+static func _prepare_model(path: String, manifest: RefCounted, scan_lods: bool) -> Dictionary:
+	var pending := Stage.Materials.new()
+	var error := pending.prepare_model(path, manifest)
+	var lods: Array[Dictionary]
+	if error.is_empty() and scan_lods:
+		var vehicle: RefCounted = pending.vehicle
+		var state := pending.vehicle_state
+		lods = LodCatalog.from_manifest(vehicle.states[state]) if vehicle and not state.is_empty() else LodCatalog.discover(path)
+	return {"model": pending, "error": error, "lods": lods}
+
+
 func _reload_model() -> void:
-	if _path.is_empty() or stage.capture_in_progress:
+	if _path.is_empty() or _loading or stage.capture_in_progress:
 		return
 	var camera := stage.camera_state()
 	var isolation := stage.isolation_state()
@@ -767,7 +938,7 @@ func _reload_model() -> void:
 		if not manifest or manifest.state_for(_path).is_empty():
 			_feedback("Manifest vozu nelze načíst nebo už neobsahuje aktuální LOD.", true)
 			return
-	if not _load_model(_path, false, manifest):
+	if not await _load_model(_path, false, manifest):
 		return
 	_view_path = view_path
 	stage.restore_camera(camera, false)
@@ -782,8 +953,10 @@ func _reload_model() -> void:
 
 
 func _select_lod(index: int) -> void:
+	if _loading:
+		return
 	var previous_camera := stage.camera_state()
-	if _load_model(_lod_entries[index]["path"], true, stage.model.vehicle):
+	if await _load_model(_lod_entries[index]["path"], true, stage.model.vehicle):
 		stage.restore_camera(previous_camera)
 	else:
 		_refresh_lod_options()
@@ -807,6 +980,8 @@ func _refresh_vehicle_options() -> void:
 
 
 func _select_vehicle_state(index: int) -> void:
+	if _loading:
+		return
 	var manifest: RefCounted = stage.model.vehicle
 	var state: String = manifest.states.keys()[index]
 	var levels: Array = manifest.states[state]
@@ -818,7 +993,7 @@ func _select_vehicle_state(index: int) -> void:
 				path = entry.path
 				break
 	var camera := stage.camera_state()
-	if _load_model(path, false, manifest):
+	if await _load_model(path, false, manifest):
 		stage.restore_camera(camera)
 	else:
 		_refresh_vehicle_options()
@@ -896,6 +1071,8 @@ func _save_view_to(path: String) -> void:
 	var state := {
 		"model": ViewFile.pack_path(path, _path),
 		"hdri": ViewFile.pack_path(path, _hdri_path),
+		"hdri_preset": _hdri_picker.selected,
+		"sky_mode": _sky_picker.selected,
 		"options": options,
 		"background": _background_option.selected,
 		"background_color": _background_color.color.to_html(),
@@ -920,7 +1097,7 @@ func _open_view(path: String) -> bool:
 	if state.is_empty():
 		_feedback("Soubor není platná relace WoB Model Viewer.", true)
 		return false
-	if not _load_model(ViewFile.unpack_path(path, state["model"])):
+	if not await _load_model(ViewFile.unpack_path(path, state["model"])):
 		return false
 	_view_path = path
 	var options: Variant = state.get("options", {})
@@ -952,10 +1129,15 @@ func _open_view(path: String) -> bool:
 	if state.get("camera") is Dictionary:
 		stage.restore_camera(state["camera"])
 	_restore_clip(str(state.get("clip", "")), state.get("time"))
+	var mode: Variant = state.get("sky_mode", 0)
+	_select_sky(clampi(int(mode), 0, _sky_picker.item_count - 1) if mode is float or mode is int else 0)
 	_reset_hdri()
+	var preset: Variant = state.get("hdri_preset", 0)
+	if (preset is float or preset is int) and preset >= 0 and preset < HDRI_NAMES.size():
+		_select_hdri(int(preset))
 	var hdri: Variant = state.get("hdri", "")
 	if hdri is String and not hdri.is_empty():
-		_load_hdri(ViewFile.unpack_path(path, hdri))
+		await _load_hdri(ViewFile.unpack_path(path, hdri))
 	return true
 
 
@@ -1008,6 +1190,7 @@ func _refresh_clips() -> void:
 	var available := not stage.clips.is_empty()
 	_movie.disabled = not available
 	_play.disabled = not available
+	_loop.disabled = not available
 	_timeline.editable = available
 	_play.text = "Přehrát"
 	_time.text = "0.00 s"
@@ -1024,6 +1207,7 @@ func _refresh_clips() -> void:
 func _select_clip(index: int) -> void:
 	_timeline.max_value = stage.select_clip(index)
 	_timeline.set_value_no_signal(0.0)
+	_time.text = "0.00 s"
 	_play.text = "Přehrát"
 
 
@@ -1036,8 +1220,7 @@ func _process(_delta: float) -> void:
 		return
 	var active := stage.animation_player.is_playing()
 	_play.text = "Pozastavit" if active else "Přehrát"
-	if active:
-		_timeline.set_value_no_signal(stage.animation_player.current_animation_position)
+	_timeline.set_value_no_signal(stage.animation_player.current_animation_position)
 	_time.text = "%.2f s" % _timeline.value
 
 
@@ -1053,30 +1236,82 @@ func _set_elevation(value: float) -> void:
 
 func _reset_hdri() -> void:
 	_hdri_path = ""
+	_hdri_picker.select(0)
 	_hdri_name.tooltip_text = ""
 	if stage.reset_hdri():
-		_hdri_name.text = "Lilienstein"
+		_hdri_name.hide()
 	else:
 		_hdri_name.text = "Vestavěné HDRI chybí"
+		_hdri_name.show()
 
 
-func _load_hdri(path: String) -> void:
-	var error := stage.set_hdri(path)
+func _select_hdri(index: int, show_panorama := false) -> void:
+	if not stage.select_hdri(index):
+		_feedback("Vestavěné HDRI chybí", true)
+		return
+	_hdri_picker.select(index)
+	_hdri_name.hide()
+	_hdri_path = ""
+	if show_panorama:
+		_show_panorama()
+
+
+func _choose_hdri(index: int) -> void:
+	_with_loading(HDRI_NAMES[index], func():
+		await stage.preload_hdri(index)
+		_select_hdri(index, true)
+	)
+
+
+func _select_sky(index: int, show_panorama := false) -> void:
+	_sky_picker.select(index)
+	stage.sky_mode(index)
+	_aim_light.disabled = index == 0
+	if show_panorama:
+		_show_panorama()
+
+
+func _show_panorama() -> void:
+	_options["background_on"].button_pressed = true
+	_set_background(3)
+
+
+func _aim_at_light() -> void:
+	_show_panorama()
+	_options["sky_source"].button_pressed = true
+	_options["light_on"].button_pressed = true
+	stage.aim_at_light()
+
+
+func _load_hdri(path: String, show_panorama := false) -> void:
+	if not _begin_loading(path.get_file(), path):
+		return
+	var decoded: Variant = await _run_worker(Stage.decode_hdri.bind(path))
+	var error := stage.apply_hdri(decoded)
+	_finish_loading()
 	if not error.is_empty():
 		_feedback(error, true)
 		return
 	_hdri_name.text = path.get_file()
+	_hdri_name.show()
+	_hdri_picker.select(-1)
 	_hdri_path = path
 	_hdri_name.tooltip_text = path
+	if show_panorama:
+		_show_panorama()
 	_feedback("HDRI načteno.")
 
 
 func _capture(path: String) -> Error:
 	if not path.to_lower().ends_with(".png"):
 		path += ".png"
+	if not _begin_loading(path.get_file(), path, "Vykresluji snímek 4K…"):
+		return ERR_BUSY
 	_capture_button.disabled = true
 	_feedback("Vykresluji snímek 4K…")
+	await _paint_loading()
 	var error := await stage.screenshot(path)
+	_finish_loading()
 	_capture_button.disabled = false
 	if error == OK:
 		_feedback(tr("Snímek 3840 × 2160 uložen · %s") % path)
@@ -1136,7 +1371,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	var key: Key = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
-	if key == KEY_F1:
+	if key == KEY_F11 or (key == KEY_ESCAPE and get_window().mode == Window.MODE_FULLSCREEN):
+		if DisplayServer.get_name() != "headless":
+			_toggle_fullscreen()
+	elif _loading:
+		if event.ctrl_pressed and key == KEY_Q:
+			_request_quit()
+		else:
+			return
+	elif key == KEY_F1:
 		_show_help()
 	elif event.ctrl_pressed and not event.alt_pressed:
 		match key:
@@ -1148,7 +1391,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				else:
 					_save_view()
 			KEY_E: _show_capture()
-			KEY_Q: get_tree().quit()
+			KEY_Q: _request_quit()
 			_: return
 	elif stage.model and not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed:
 		match key:
@@ -1174,7 +1417,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _toggle_display(mode: int) -> void:
-	_set_display(0 if _display.selected == mode else mode)
+	_choose_display(0 if _display.selected == mode else mode)
 
 
 func _toggle_option(name: String) -> void:
@@ -1204,7 +1447,7 @@ func _process_arguments() -> void:
 			model_path = argument
 	if model_path.is_empty():
 		return
-	var success := _open_path(model_path)
+	var success := await _open_path(model_path)
 	if not success:
 		printerr("WoB Model Viewer: ", _status.text)
 	if not capture_path.is_empty():

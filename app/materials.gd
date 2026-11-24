@@ -55,9 +55,18 @@ var _notes: Array[Array]
 var _catalog_hair := false
 var _game: GameMaterials
 var _used_game_slots: Dictionary[String, bool]
+var _document: GLTFDocument
+var _state: GLTFState
+var _images: Dictionary[String, Image]
 
 
 func import_model(path: String, manifest: RefCounted = null) -> String:
+	var error := prepare_model(path, manifest)
+	return finish_model() if error.is_empty() else error
+
+
+# Prepare glTF resources and decode external maps before building the live scene.
+func prepare_model(path: String, manifest: RefCounted = null) -> String:
 	_model_path = path
 	source = GlbData.new(path)
 	if not source.error.is_empty():
@@ -126,21 +135,28 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 					remapped = true
 
 	var source_nodes := SourceNodes.new()
-	GLTFDocument.register_gltf_document_extension(source_nodes)
-	var document := GLTFDocument.new()
-	var state := GLTFState.new()
-	state.filename = path.get_file().get_basename()
+	_document = GLTFDocument.new()
+	_state = GLTFState.new()
+	_state.filename = path.get_file().get_basename()
 	var payload: PackedByteArray = source.with_json(rewritten) \
 		if remapped or path.get_extension().to_lower() == "gltf" else source.bytes
-	var result := document.append_from_buffer(payload, path, state, IMPORT_FLAGS)
-	if result != OK:
-		GLTFDocument.unregister_gltf_document_extension(source_nodes)
-		return tr("Godot model nenačetl (%s).") % error_string(result)
-	root = document.generate_scene(state)
+	GLTFDocument.register_gltf_document_extension(source_nodes)
+	var result := _document.append_from_buffer(payload, path, _state, IMPORT_FLAGS)
 	GLTFDocument.unregister_gltf_document_extension(source_nodes)
+	if result != OK:
+		return tr("Godot model nenačetl (%s).") % error_string(result)
+	_prepare_external_images()
+	return ""
+
+
+func finish_model() -> String:
+	root = _document.generate_scene(_state)
+	_document = null
+	_state = null
 	if root == null:
 		return tr("Z GLB se nepodařilo vytvořit scénu.")
 	_bind_scene(root)
+	_images.clear()
 	if _game:
 		for issue in _game.notes:
 			_note("", issue[0], issue[1] if issue.size() > 1 else [])
@@ -151,6 +167,24 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 		root = null
 		return tr("Soubor neobsahuje zobrazitelnou síť.")
 	return ""
+
+
+func _prepare_external_images() -> void:
+	var paths := PackedStringArray()
+	if vehicle:
+		for key in ["albedo", "normal", "orm"]:
+			paths.append(vehicle.local_path(vehicle.textures.get(key)))
+	var slots := {}
+	for profile: Dictionary in _pairs.values():
+		slots[profile.material_name] = true
+		if profile.textures is Dictionary:
+			for uri: Variant in profile.textures.values():
+				paths.append(_local_texture_path(str(uri)))
+	if _game:
+		paths.append_array(_game.texture_files(slots))
+	for path in paths:
+		if not path.is_empty() and not _images.has(path):
+			_images[path] = _decode_texture(path)
 
 
 func _bind_scene(node: Node) -> void:
@@ -481,21 +515,34 @@ func _resource(path: String) -> Resource:
 
 
 func _local_texture(uri: String) -> Texture2D:
+	return _file_texture(_local_texture_path(uri))
+
+
+func _local_texture_path(uri: String) -> String:
 	if uri.is_empty() or not GlbData.relative_file(uri):
-		return null
-	return _file_texture(_model_path.get_base_dir().path_join(uri.uri_decode().replace("\\", "/")))
+		return ""
+	return _model_path.get_base_dir().path_join(uri.uri_decode().replace("\\", "/"))
 
 
 func _file_texture(path: String) -> Texture2D:
-	if path.is_empty() or not FileAccess.file_exists(path):
+	if path.is_empty():
 		return null
 	if _resources.has(path):
 		return _resources[path] as Texture2D
+	var image: Image = _images[path] if _images.has(path) else _decode_texture(path)
+	if not image:
+		return null
+	var texture := ImageTexture.create_from_image(image)
+	_resources[path] = texture
+	return texture
+
+
+static func _decode_texture(path: String) -> Image:
+	if not FileAccess.file_exists(path):
+		return null
 	var image := Image.new()
 	if image.load(path) != OK:
 		return null
 	if not image.has_mipmaps():
 		image.generate_mipmaps()
-	var texture := ImageTexture.create_from_image(image)
-	_resources[path] = texture
-	return texture
+	return image

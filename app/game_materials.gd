@@ -16,6 +16,7 @@ var notes: Array[Array]
 var _root: String
 var _slots: Dictionary[String, String]
 var _materials: Dictionary[String, BaseMaterial3D]
+var _files: Dictionary[String, String]
 var _load_texture: Callable
 
 
@@ -116,6 +117,19 @@ func material(slot: String) -> BaseMaterial3D:
 	return _materials[path]
 
 
+func texture_files(slots: Dictionary) -> PackedStringArray:
+	var files := PackedStringArray()
+	var visited := {}
+	for slot in slots:
+		var material_path: String = _slots.get(slot, "")
+		if material_path.is_empty() or visited.has(material_path):
+			continue
+		visited[material_path] = true
+		for uri: String in _external_resources(_configuration(material_path), ["Texture2D"]).values():
+			files.append(_texture_path(uri))
+	return files
+
+
 func _read_material(path: String) -> BaseMaterial3D:
 	var text := _configuration(path)
 	if text.is_empty():
@@ -145,7 +159,7 @@ func _read_material(path: String) -> BaseMaterial3D:
 		if key in TEXTURES:
 			var match_id := reference.search(value)
 			var uri: String = texture_paths.get(match_id.get_string(1), "") if match_id else ""
-			var full := _asset_path(uri, ["png", "jpg", "jpeg", "webp", "tga", "dds", "exr", "hdr"])
+			var full := _texture_path(uri)
 			var texture: Texture2D = _load_texture.call(full) if not full.is_empty() else null
 			if not texture:
 				notes.append(["Herní materiál %s · chybí textura %s.", [path.get_file(), uri if not uri.is_empty() else key]])
@@ -186,11 +200,18 @@ static func _parse_value(text: String, type: int) -> Variant:
 
 
 func _configuration(uri: String) -> String:
+	if _files.has(uri):
+		return _files[uri]
 	var path := _asset_path(uri, ["tscn", "import", "tres"])
 	var text := _small_file(path)
 	if text.is_empty():
 		notes.append(["Chybí nebo nelze přečíst herní soubor %s.", [uri]])
+	_files[uri] = text
 	return text
+
+
+func _texture_path(uri: String) -> String:
+	return _asset_path(uri, ["png", "jpg", "jpeg", "webp", "tga", "dds", "exr", "hdr"])
 
 
 func _asset_path(uri: String, extensions: Array) -> String:
