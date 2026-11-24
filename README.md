@@ -110,17 +110,17 @@ The three built-in panoramas are available offline. Godot notices are bundled wi
 
 © 2026 RIGELIO Studio. The MIT license permits use, modification and redistribution with the copyright and license notice. See [LICENSE](LICENSE) and [resource licenses](RESOURCE-LICENSES.md). The application displays its version, copyright and license under **Help → About**.
 
-## Earlier screenshots
+## Gallery
 
 ![Craft wagon rendered with production materials](screenshots/craft-wagon-4k.png)
 
-**English interface with production materials and lighting controls**
+**Crossbowman animation in the shaded view**
 
-![WoB Model Viewer showing Žižka and the English lighting inspector](screenshots/viewer-english.png)
+![The crossbowman animation playing in WoB Model Viewer with the Lilienstein panorama and grid](screenshots/crossbow-animation.gif)
 
-**Triangle wireframe, skeleton, and optional grid**
+**Crossbowman in triangle wireframe with the grid**
 
-![Wireframe, skeleton, grid and orientation axes in an earlier viewer release](screenshots/viewer-wireframe.png)
+![A frame of the crossbowman animation in wireframe with the Lilienstein panorama and grid](screenshots/crossbow-wireframe.png)
 
 **LOD comparison and material diagnostics in Czech**
 

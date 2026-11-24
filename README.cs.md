@@ -92,3 +92,13 @@ Tři vestavěná panoramata fungují offline. Licenční informace Godotu jsou s
 ## Licence
 
 © 2026 RIGELIO Studio. Licence MIT umožňuje používání, úpravy a šíření se zachováním copyrightu a licenčního textu. Podrobnosti jsou v souborech [LICENSE](LICENSE) a [RESOURCE-LICENSES.md](RESOURCE-LICENSES.md). Verzi, copyright a licenci najdeš v aplikaci přes **Nápověda → O programu**.
+
+## Kušník v prohlížeči
+
+**Animace kušníka v zobrazení materiálů**
+
+![Přehrávání animace kušníka s panoramatem Lilienstein a mřížkou](screenshots/crossbow-animation.gif)
+
+**Kušník ve wireframe s mřížkou**
+
+![Záběr animace kušníka ve wireframe s panoramatem Lilienstein a mřížkou](screenshots/crossbow-wireframe.png)
