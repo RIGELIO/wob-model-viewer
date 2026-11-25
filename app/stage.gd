@@ -3,6 +3,7 @@ extends SubViewportContainer
 const Materials = preload("res://materials.gd")
 const TopologyOverlay = preload("res://topology_overlay.gd")
 const WireframeMesh = preload("res://wireframe_mesh.gd")
+const ModelGizmo = preload("res://model_gizmo.gd")
 const BUILTIN_HDRI := "res://production/lighting/lilienstein_2k.hdr"
 const HDRI_PRESETS := [BUILTIN_HDRI, "res://art/lighting/kloppenheim_06_puresky_2k.hdr",
 	"res://art/lighting/moonlit_golf_2k.hdr"]
@@ -65,7 +66,10 @@ var _direct_strength := 1.25
 var _animation_loop := Animation.LOOP_LINEAR
 var _animation_speed := 1.0
 var _animation_in_place := false
+var _model_placement: Node3D
 var _model_anchor: Node3D
+var _model_gizmo: ModelGizmo
+var _model_gizmo_enabled := false
 var _motion_node: Node3D
 var _motion_bone := -1
 var _motion_origin := Vector3.ZERO
@@ -130,8 +134,10 @@ func _ready() -> void:
 	viewport_3d.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	viewport_3d.gui_disable_input = true
 	add_child(viewport_3d)
+	_model_placement = Node3D.new()
+	viewport_3d.add_child(_model_placement)
 	_model_anchor = Node3D.new()
-	viewport_3d.add_child(_model_anchor)
+	_model_placement.add_child(_model_anchor)
 
 	environment = Environment.new()
 	environment.tonemap_mode = Environment.TONE_MAPPER_AGX
@@ -204,6 +210,13 @@ func _ready() -> void:
 	line_shader.code = QUAD_LINE_SHADER
 	_quad_material.shader = line_shader
 
+	_model_gizmo = ModelGizmo.new()
+	_model_gizmo.translation_requested.connect(_translate_model)
+	_model_gizmo.rotation_requested.connect(_rotate_model)
+	_model_gizmo.hide()
+	add_child(_model_gizmo)
+	_model_gizmo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
 
 func load_model(path: String, manifest: RefCounted = null) -> String:
 	if not path.get_extension().to_lower() in ["glb", "gltf"]:
@@ -227,6 +240,7 @@ func _install_model(pending: Materials) -> void:
 	if model:
 		_model_anchor.remove_child(model.root)
 		model.root.queue_free()
+	reset_model_transform()
 	_model_anchor.position = Vector3.ZERO
 	_motion_node = null
 	_point_instances.clear()
@@ -256,6 +270,7 @@ func _install_model(pending: Materials) -> void:
 	frame()
 	_make_floor_and_grid()
 	_apply_model_display()
+	set_model_gizmo_enabled(_model_gizmo_enabled)
 	if _skeleton_overlay.visible:
 		_draw_skeletons()
 
@@ -375,7 +390,8 @@ func _find_motion_track(clip: Animation) -> void:
 					basis *= node.get_bone_global_pose(parent).basis
 		if rank <= best_rank:
 			continue
-		var displacement: Vector3 = basis * (clip.track_get_key_value(track, last) - clip.track_get_key_value(track, 0))
+		var displacement: Vector3 = _model_placement.global_basis.inverse() * basis * (
+			clip.track_get_key_value(track, last) - clip.track_get_key_value(track, 0))
 		if Vector2(displacement.x, displacement.z).length() > maxf(0.001, bounds.size.length() * 0.008):
 			best_rank = rank
 			_motion_node = node
@@ -385,8 +401,8 @@ func _find_motion_track(clip: Animation) -> void:
 func _motion_position() -> Vector3:
 	var skeleton := _motion_node as Skeleton3D
 	if _motion_bone >= 0 and skeleton:
-		return skeleton.to_global(skeleton.get_bone_global_pose(_motion_bone).origin)
-	return _motion_node.global_position
+		return _model_placement.to_local(skeleton.to_global(skeleton.get_bone_global_pose(_motion_bone).origin))
+	return _model_placement.to_local(_motion_node.global_position)
 
 
 func _apply_in_place() -> void:
@@ -415,7 +431,7 @@ func seek(time: float) -> void:
 
 
 func frame(direction := Vector2(0.26, 0.04)) -> void:
-	_center = bounds.get_center()
+	_center = _placed_model_center()
 	_radius = maxf(bounds.size.length() * 0.5, 0.0001)
 	_yaw = direction.x
 	_pitch = direction.y
@@ -424,7 +440,7 @@ func frame(direction := Vector2(0.26, 0.04)) -> void:
 	var inverse_view := Basis.looking_at(-_orbit_direction()).transposed()
 	_distance = _radius * 1.1
 	for corner in range(8):
-		var local := inverse_view * (bounds.get_endpoint(corner) - _center)
+		var local := inverse_view * (_model_placement.to_global(bounds.get_endpoint(corner)) - _center)
 		var fit := maxf(absf(local.x) / half_width, absf(local.y) / half_height) * 1.16
 		if camera.projection == Camera3D.PROJECTION_PERSPECTIVE:
 			fit += local.z
@@ -435,6 +451,10 @@ func frame(direction := Vector2(0.26, 0.04)) -> void:
 func _gui_input(event: InputEvent) -> void:
 	if not model:
 		return
+	if _model_gizmo.visible and not (_orbiting or _panning or capture_in_progress):
+		if _model_gizmo.handle_input(event) or _model_gizmo.is_dragging():
+			accept_event()
+			return
 	if event is InputEventMouseButton:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -469,6 +489,62 @@ func _gui_input(event: InputEvent) -> void:
 func _end_drag() -> void:
 	_orbiting = false
 	_panning = false
+	_model_gizmo.cancel_drag()
+
+
+func set_model_gizmo_enabled(enabled: bool) -> void:
+	_model_gizmo_enabled = enabled
+	_model_gizmo.visible = enabled and model != null
+	if not _model_gizmo.visible:
+		_model_gizmo.cancel_drag()
+
+
+func reset_model_transform() -> void:
+	_model_gizmo.cancel_drag()
+	_model_placement.transform = Transform3D.IDENTITY
+
+
+func model_transform_state() -> Dictionary:
+	var origin := _model_placement.position
+	var rotation := _model_placement.basis.get_rotation_quaternion()
+	return {
+		"origin": [origin.x, origin.y, origin.z],
+		"rotation": [rotation.x, rotation.y, rotation.z, rotation.w],
+	}
+
+
+func restore_model_transform(data: Dictionary) -> void:
+	var origin: Variant = data.get("origin")
+	var rotation: Variant = data.get("rotation")
+	if not origin is Array or origin.size() != 3 or not rotation is Array or rotation.size() != 4:
+		return
+	for component in origin + rotation:
+		if (not component is int and not component is float) or not is_finite(float(component)):
+			return
+	var position := Vector3(origin[0], origin[1], origin[2])
+	var orientation := Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
+	if not is_finite(position.length_squared()) or not is_finite(orientation.length_squared()) \
+			or orientation.length_squared() < 0.000001:
+		return
+	_model_placement.transform = Transform3D(Basis(orientation.normalized()), position)
+
+
+func _translate_model(delta: Vector3) -> void:
+	var position := _model_placement.position + delta
+	if is_finite(position.length_squared()):
+		_model_placement.position = position
+
+
+func _rotate_model(axis: Vector3, angle: float) -> void:
+	var pivot := _placed_model_center()
+	var current := _model_placement.transform
+	var rotation := Basis(axis, angle)
+	_model_placement.transform = Transform3D((rotation * current.basis).orthonormalized(),
+		pivot + rotation * (current.origin - pivot))
+
+
+func _placed_model_center() -> Vector3:
+	return _model_placement.to_global(bounds.get_center())
 
 
 func zoom(inward: bool) -> void:
@@ -509,9 +585,12 @@ func _process(delta: float) -> void:
 	if not model:
 		return
 	_rotation_hold = maxf(_rotation_hold - delta, 0.0)
-	if _auto_orbit and _rotation_hold == 0.0 and not (_orbiting or _panning or capture_in_progress):
+	if _auto_orbit and _rotation_hold == 0.0 and not (_orbiting or _panning or capture_in_progress
+			or _model_gizmo.is_dragging()):
 		_yaw = wrapf(_yaw + delta * AUTO_ORBIT_SPEED, -PI, PI)
 		_update_camera()
+	if _model_gizmo.visible and not capture_in_progress:
+		_model_gizmo.sync(camera, _placed_model_center())
 	if _skeleton_overlay.visible:
 		_draw_skeletons()
 	if _display_mode == WIREFRAME_MODE:
@@ -789,7 +868,7 @@ func aim_at_light() -> void:
 	var half_height := tan(deg_to_rad(camera.fov * 0.5))
 	var half_width := half_height * maxf(0.1, size.x / maxf(1.0, size.y))
 	if model:
-		_center = bounds.get_center()
+		_center = _placed_model_center()
 		# Leave enough sky beside the model for the disc at any viewport aspect.
 		_distance = maxf(_distance, _radius * (1.0 + 1.0 / (0.58 * minf(half_width, half_height))))
 	orient_to(-(target - side * half_width * 0.76 - above * half_height * 0.38))

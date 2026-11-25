@@ -5,6 +5,7 @@ const TEXTURE_DIRS := ["textury_4k", "textury", "textures", "maps"]
 const ANCESTOR_LEVELS := 2
 
 var _model_directory: String
+var _manual_texture_parent: String
 var _bases: PackedStringArray
 var _directories: PackedStringArray
 var _paths: Dictionary[String, String]
@@ -25,7 +26,9 @@ func set_directory(path: String) -> void:
 	_relative_paths.clear()
 	_pairs.clear()
 	_add_directory(_model_directory)
-	_add_directory(_absolute_path(path), false)
+	var manual := _absolute_path(path)
+	_add_directory(manual, false)
+	_manual_texture_parent = manual.get_base_dir() if manual.get_file().to_lower() in TEXTURE_DIRS else ""
 	var directory := _model_directory
 	for level in range(ANCESTOR_LEVELS):
 		if directory.begins_with("//") and directory.split("/", false).size() <= 2:
@@ -61,6 +64,8 @@ func _find(uri: String, basename_fallback: bool) -> String:
 	var resolved := _first_file(_bases, relative)
 	if resolved.is_empty() and basename_fallback:
 		resolved = _first_file(_directories, filename)
+	elif resolved.is_empty() and not _manual_texture_parent.is_empty():
+		resolved = _existing_file(_manual_texture_parent, relative)
 	cache[uri] = resolved
 	return resolved
 

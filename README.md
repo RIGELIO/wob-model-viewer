@@ -12,7 +12,7 @@ WoB Model Viewer is an offline desktop viewer for GLB and glTF models. It helps 
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.4.4_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.4.6_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
 
 Windows Setup and the Linux DEB register **.glb**, **.gltf** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
@@ -64,6 +64,8 @@ If a model is named like `character_lod0.glb`, the viewer finds matching files i
 
 Use the color swatch next to **Floor** to change its color. **Floor offset** moves the floor and grid in meters relative to the model's baseline, which helps inspect animated ground contact. The session saves both settings.
 
+In **View**, turn on **Model axes** or press **M**. Drag an arrow to move the model along world X, Y, or Z. Drag a ring to rotate it around that axis. **Reset transform** restores the original position and orientation. The `.wobview` session saves the transform.
+
 ## Keyboard shortcuts
 
 | Keys | Action |
@@ -71,6 +73,7 @@ Use the color swatch next to **Floor** to change its color. **Floor offset** mov
 | **1** or **F** · **2** · **3** · **4** | Frame · Front · Side · Top |
 | **W** · **Q** · **P** | Wireframe · Inferred quads (Pro) · Points |
 | **G** · **K** · **A** · **B** · **O** | Grid · Skeleton · Auto-rotate · Show background · Ortho |
+| **M** | Toggle model axes |
 | **Page Up** · **Page Down** | Previous LOD · Next LOD |
 | **Space** | Play or pause |
 | **Ctrl+O** · **Ctrl+S** · **Ctrl+Shift+S** | Open · Save view · Save view as |
@@ -87,6 +90,8 @@ Check **Materials & diagnostics** for unmatched shaders, missing attributes or m
 Click a yellow warning or the **Log** button in the status bar to open the current session history. You can also use **Help → Log** or **Ctrl+L**. **Copy log** copies the text to the clipboard.
 
 The viewer searches by exact name in the model folder and up to two parent directories, including standard texture subfolders such as `textury_4k`, `textury`, `textures`, and `maps`. When a texture is missing, select **Materials & diagnostics → Load textures…**. The folder picker starts one level above the model. The viewer keeps the camera and saves the chosen folder with the session.
+
+For V5 short haircuts, the viewer reads the hair and beard atlases from `textury_4k` and the original face materials from the source GLB in the same catalog. If you move the model elsewhere, select the original `textury_4k` folder manually.
 
 For custom mappings, create a `your-model.wob.json` beside the model. Keys in `surfaces` combine the glTF node name and zero-based primitive index. Local texture paths are relative to the model directory.
 
