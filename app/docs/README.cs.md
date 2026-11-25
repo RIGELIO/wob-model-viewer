@@ -56,6 +56,8 @@ U modelu pojmenovaného například `postava_lod0.glb` prohlížeč vyhledá sou
 
 Barvu podlahy změníš vzorníkem u přepínače **Podlaha**. **Posun podlahy** pohybuje podlahou a mřížkou vůči výšce modelu v metrech, takže můžeš zkontrolovat třeba kontakt při pádu. Barva i posun se ukládají do relace `.wobview`.
 
+V části **Zobrazení** zapni **Osy modelu** nebo stiskni **M**. Tažením šipky posuneš model po světové ose X, Y nebo Z. Tažením kruhu ho otočíš kolem příslušné osy. **Obnovit polohu** vrátí původní posun a natočení. Úpravy se ukládají do relace `.wobview`.
+
 ## Klávesové zkratky
 
 | Klávesy | Akce |
@@ -63,6 +65,7 @@ Barvu podlahy změníš vzorníkem u přepínače **Podlaha**. **Posun podlahy**
 | **1** nebo **F** · **2** · **3** · **4** | Zarámovat · Zepředu · Z boku · Shora |
 | **W** · **Q** · **P** | Wireframe · Odhad čtyřúhelníků (Pro) · Body |
 | **G** · **K** · **A** · **B** · **O** | Mřížka · Kostra · Automatické otáčení · Zobrazení pozadí · Orto |
+| **M** | Zapnout nebo vypnout osy modelu |
 | **Page Up** · **Page Down** | Předchozí LOD · Další LOD |
 | **Mezerník** | Přehrát nebo pozastavit animaci |
 | **Ctrl+O** · **Ctrl+S** · **Ctrl+Shift+S** | Otevřít · Uložit relaci · Uložit relaci jako |
@@ -79,6 +82,8 @@ Panel **Materiály a diagnostika** vypisuje chybějící atributy, textury i nez
 Kliknutím na žluté upozornění nebo na tlačítko **Protokol** ve spodní liště otevřeš historii aktuální relace. Protokol je dostupný také z **Nápověda → Protokol** nebo klávesami **Ctrl+L**. Tlačítkem **Zkopírovat protokol** přeneseš text do schránky.
 
 Viewer hledá textury podle přesného názvu ve složce modelu a až dvě úrovně nad ní, včetně obvyklých složek `textury_4k`, `textury`, `textures` a `maps`. Pokud mapy nenajde, použij **Materiály a diagnostika → Načíst textury…**. Výběr začne o úroveň výš než model. Aplikace zachová kameru a složku uloží do relace.
+
+U krátkých účesů V5 Viewer načte vlasové a vousové atlasy ze složky `textury_4k` a původní materiály obličeje z podkladového GLB ve stejném katalogu. Když GLB přesuneš jinam, zvol původní složku `textury_4k` ručně.
 
 Vlastní mapování lze nastavit souborem `nazev-modelu.wob.json` ve stejné složce jako model. Klíče v `surfaces` spojují původní název uzlu a index primitivy od nuly. Příklad a názvy shaderů najdeš v [anglickém návodu](https://github.com/RIGELIO/wob-model-viewer#production-materials-and-diagnostics). Balíček obsahuje manifest původu a SHA-256 produkčních prostředků.
 

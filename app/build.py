@@ -13,7 +13,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
-VERSION = "1.4.4"
+VERSION = "1.4.6"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
 VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {
@@ -99,7 +99,7 @@ def prepare(args, stage):
     for name in ("project.godot", "viewer.tscn", "viewer.gd", "stage.gd", "materials.gd",
                  "glb_data.gd", "view_file.gd", "orientation_gizmo.gd", "lod_catalog.gd", "topology_overlay.gd",
                  "vehicle_manifest.gd", "game_materials.gd", "attribute_preview.gdshader", "celestial_sky.gdshader",
-                 "wireframe_mesh.gd", "wireframe_preview.gdshader", "texture_search.gd"):
+                 "wireframe_mesh.gd", "wireframe_preview.gdshader", "texture_search.gd", "model_gizmo.gd"):
         shutil.copy2(HERE / name, stage / name)
     shutil.copytree(HERE / "locale", stage / "locale")
     shutil.copytree(HERE / "art", stage / "art", ignore=shutil.ignore_patterns("ui-concept.*"))

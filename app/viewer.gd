@@ -249,7 +249,7 @@ func _show_about() -> void:
 func _show_help() -> void:
 	_help.title = tr("Ovládání WoB Model Viewer")
 	_help.dialog_text = tr(
-		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\n\nW: trojúhelníkový wireframe. Q: odhad quadů (Pro). P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
+		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\nM: osy modelu. Táhni šipku pro posun nebo kruh pro otočení.\n\nW: trojúhelníkový wireframe. Q: odhad quadů (Pro). P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
 	)
 	_help.dialog_text += "\n\n" + tr(
 		"Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
@@ -623,6 +623,14 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	floor_row.add_child(_floor_color)
 	_toggle(aids, "screen_space_pan", "Posun v rovině pohledu", true, stage.screen_space_panning)
 	_toggle(aids, "ortho", "Orto", false, stage.orthographic)
+	var placement := HBoxContainer.new()
+	viewing.add_child(placement)
+	var model_axes := _toggle(placement, "model_axes", "Osy modelu", false, stage.set_model_gizmo_enabled)
+	model_axes.size_flags_horizontal = SIZE_EXPAND_FILL
+	model_axes.tooltip_text = "Tažením šipky model posuneš, tažením kruhu jej otočíš."
+	var reset_placement := _button(placement, "Obnovit polohu", stage.reset_model_transform)
+	reset_placement.hide()
+	model_axes.toggled.connect(reset_placement.set_visible)
 	_floor_height_row = HBoxContainer.new()
 	viewing.add_child(_floor_height_row)
 	var floor_height_caption := _label(_floor_height_row, "Posun podlahy", 13, MUTED)
@@ -1140,6 +1148,7 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 	if _path.is_empty() or _loading or stage.capture_in_progress:
 		return
 	var camera := stage.camera_state()
+	var placement := stage.model_transform_state()
 	var isolation := stage.isolation_state()
 	var row := _parts.get_selected()
 	var selection: Variant = row.get_metadata(0) if row else null
@@ -1157,6 +1166,7 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 	if not await _load_model(_path, false, manifest, folder):
 		return
 	_view_path = view_path
+	stage.restore_model_transform(placement)
 	stage.restore_camera(camera, false)
 	_restore_part_selection(selection, isolation)
 	if _restore_clip(clip, seconds) and playing:
@@ -1172,7 +1182,9 @@ func _select_lod(index: int) -> void:
 	if _loading:
 		return
 	var previous_camera := stage.camera_state()
+	var placement := stage.model_transform_state()
 	if await _load_model(_lod_entries[index]["path"], true, stage.model.vehicle, _texture_directory):
+		stage.restore_model_transform(placement)
 		stage.restore_camera(previous_camera)
 	else:
 		_refresh_lod_options()
@@ -1209,7 +1221,9 @@ func _select_vehicle_state(index: int) -> void:
 				path = entry.path
 				break
 	var camera := stage.camera_state()
+	var placement := stage.model_transform_state()
 	if await _load_model(path, false, manifest):
+		stage.restore_model_transform(placement)
 		stage.restore_camera(camera)
 	else:
 		_refresh_vehicle_options()
@@ -1300,6 +1314,7 @@ func _save_view_to(path: String) -> void:
 		"vertex_channel": _color_channel.selected,
 		"isolation": stage.isolation_state(),
 		"camera": stage.camera_state(),
+		"model_transform": stage.model_transform_state(),
 		"clip": str(stage.current_clip),
 		"time": _timeline.value,
 		"animation_speed": ANIMATION_SPEEDS[_speed.selected],
@@ -1323,6 +1338,8 @@ func _open_view(path: String) -> bool:
 		return false
 	_view_path = path
 	var options: Variant = state.get("options", {})
+	if not options is Dictionary or not options.get("model_axes") is bool:
+		_options["model_axes"].button_pressed = false
 	if options is Dictionary:
 		for key in _options:
 			var control: Control = _options[key]
@@ -1355,6 +1372,9 @@ func _open_view(path: String) -> bool:
 		_set_display(clampi(int(display), 0, _display.item_count - 1))
 	var isolation: Variant = state.get("isolation")
 	_restore_part_selection(isolation, isolation)
+	var placement: Variant = state.get("model_transform")
+	if placement is Dictionary:
+		stage.restore_model_transform(placement)
 	if state.get("camera") is Dictionary:
 		stage.restore_camera(state["camera"])
 	var saved_speed: Variant = state.get("animation_speed", 1.0)
@@ -1686,6 +1706,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			KEY_Q: _toggle_display(6)
 			KEY_P: _toggle_display(5)
 			KEY_G: _toggle_option("grid")
+			KEY_M: _toggle_option("model_axes")
 			KEY_K: _toggle_option("skeleton")
 			KEY_A: _toggle_option("auto_rotate")
 			KEY_B: _toggle_option("background_on")

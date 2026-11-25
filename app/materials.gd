@@ -9,6 +9,8 @@ const SHADER_DIR := "res://production/shaders/"
 const TEXTURE_DIR := "res://production/textures/"
 const IMPORT_FLAGS := GLTFDocument.IMPORT_FLAG_FORCE_DISABLE_MESH_COMPRESSION \
 	| GLTFDocument.IMPORT_FLAG_GENERATE_TANGENT_ARRAYS
+const SHORT_HAIR_NODES := ["vlasy_mikro_caesar", "vlasy_mikro_swept", "vlasy_lod0",
+	"vlasy_lod1", "vlasy_lod1_helma", "vlasy_lod2", "vlasy_lod3_opaque"]
 const ALIASES := {
 	"kuze": "kuze", "kůže": "kuze", "wob_skin": "kuze",
 	"odev": "odev", "oděv": "odev", "wob_cloth": "odev", "vlasy_podklad": "odev",
@@ -57,9 +59,10 @@ var _sidecar: Dictionary
 var _notes: Array[Array]
 var _catalog_hair := false
 var _guide_catalog := false
+var _short_catalog := false
 var _texture_search: TextureSearch
-var _guide_shader_code := ""
-var _guide_head: Array[Material]
+var _companion_hair_shader_code := ""
+var _companion_head: Array[Material]
 var _game: GameMaterials
 var _used_game_slots: Dictionary[String, bool]
 var _document: GLTFDocument
@@ -94,6 +97,8 @@ func prepare_model(path: String, manifest: RefCounted = null) -> String:
 	var rewritten := original.duplicate(true)
 	var remapped := _restore_missing_images(rewritten)
 	var node_groups := {}
+	var has_catalog_head := false
+	var has_short_hair := false
 	for node_index: int in range(nodes.size()):
 		if not nodes[node_index] is Dictionary:
 			return tr("GLB má neplatný uzel.")
@@ -104,9 +109,12 @@ func prepare_model(path: String, manifest: RefCounted = null) -> String:
 		if mesh_index >= 0:
 			if mesh_index >= mesh_defs.size():
 				return tr("GLB odkazuje na chybějící síť.")
+			has_catalog_head = has_catalog_head or node_tag == "head_shorthair"
+			has_short_hair = has_short_hair or node_tag in SHORT_HAIR_NODES
 			if not node_groups.has(mesh_index):
 				node_groups[mesh_index] = []
 			node_groups[mesh_index].append(node_index)
+	_short_catalog = has_catalog_head and has_short_hair
 	for mesh_index: int in node_groups:
 		var mesh_def: Variant = mesh_defs[mesh_index]
 		if not mesh_def is Dictionary or not mesh_def.get("primitives", []) is Array:
@@ -155,8 +163,8 @@ func prepare_model(path: String, manifest: RefCounted = null) -> String:
 	GLTFDocument.unregister_gltf_document_extension(source_nodes)
 	if result != OK:
 		return tr("Godot model nenačetl (%s).") % error_string(result)
-	if _guide_catalog:
-		_prepare_guide_companions()
+	if _guide_catalog or _short_catalog:
+		_prepare_catalog_companions()
 	_prepare_external_images()
 	return ""
 
@@ -231,12 +239,12 @@ func _restore_missing_images(json: Dictionary) -> bool:
 	return changed
 
 
-func _prepare_guide_companions() -> void:
+func _prepare_catalog_companions() -> void:
 	var shader_path := _texture_search.find_relative("shadery_godot4/vlasy_mikro_4k.gdshader")
 	if not shader_path.is_empty():
 		var file := FileAccess.open(shader_path, FileAccess.READ)
 		if file and file.get_length() <= 64 * 1024:
-			_guide_shader_code = file.get_as_text()
+			_companion_hair_shader_code = file.get_as_text()
 	var head_path := _texture_search.find_relative("rozpracovane/podklad_hlavy/keenface_hlava2.glb")
 	if head_path.is_empty():
 		return
@@ -251,7 +259,7 @@ func _prepare_guide_companions() -> void:
 	for index in range(materials.size()):
 		if not materials[index] or materials[index].resource_name != expected[index]:
 			return
-	_guide_head = materials
+	_companion_head = materials
 	_record_texture_folder(head_path)
 
 
@@ -374,9 +382,9 @@ func _profile(node_name: String, tag: String, surface: int) -> Dictionary:
 		role = "vousy_strniste_shell"
 		var legacy := name.begins_with("stubbleshell_")
 		atlas = "strniste_shell_2k" if legacy else "strniste_shell_4k"
-		# Both catalog generations inherit the two head masks. The LOD generator exports
-		# BeardDensity first, with the inherited masks shifted to COLOR_1 and COLOR_2.
-		color = "COLOR_2" if legacy or ((_catalog_hair or _guide_catalog) and name.begins_with("stubbleshell4k_")) else "COLOR_0"
+		# The catalog LOD generators append BeardDensity after the inherited head masks.
+		var catalog_shell := (_catalog_hair or _guide_catalog or _short_catalog) and name.begins_with("stubbleshell4k_")
+		color = "COLOR_2" if legacy or catalog_shell else "COLOR_0"
 		parameters = _shell_parameters(name, legacy)
 	elif _guide_catalog and name.ends_with("_lod3_opaque") and (
 			(name.begins_with("vlasy_guideclump_") or name.begins_with("vousy_hrube_v3_"))):
@@ -407,7 +415,10 @@ func _profile(node_name: String, tag: String, surface: int) -> Dictionary:
 		elif name.begins_with("vlasy_lod2"):
 			parameters.merge({"alfa_boost": 1.8, "normala_sila": 0.0, "anizotropie": 0.0})
 	elif name == "head_shorthair" and role.is_empty():
-		detail = "KeenFace export bez materiálu kůže. ScalpMask a případná BeardTintMask mají jiný význam než vstupy shaderu kuze."
+		if _guide_catalog or _short_catalog:
+			detail = "Chybí kompatibilní podklad KeenFace s materiály kůže, očí a zubů. Zachovej strukturu katalogu nebo vyber jeho složku textur."
+		else:
+			detail = "KeenFace export bez materiálu kůže. ScalpMask a případná BeardTintMask mají jiný význam než vstupy shaderu kuze."
 	elif role.is_empty() and tag != "usta_vnitrek":
 		detail = "Pro tento povrch není známé mapování produkčního shaderu. Zobrazení podle GLB."
 
@@ -464,8 +475,9 @@ func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
 	var original := instance.mesh.surface_get_material(surface) as BaseMaterial3D
 	if role.is_empty():
 		if (label.to_lower() == "head_shorthair" and str(profile.material_name).is_empty()
-				and not _guide_head.is_empty() and instance.mesh.get_surface_count() == _guide_head.size()):
-			var companion := _guide_head[surface]
+				and profile.attributes.has("TEXCOORD_0") and not _companion_head.is_empty()
+				and instance.mesh.get_surface_count() == _companion_head.size()):
+			var companion := _companion_head[surface]
 			instance.set_surface_override_material(surface, companion)
 			counts[companion.resource_name] = int(counts.get(companion.resource_name, 0)) + 1
 			return
@@ -498,12 +510,12 @@ func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
 		_note(label, "Produkční shader %s není součástí balíčku.", [role])
 		return
 	var shader := _resource(SHADER_DIR + role + ".gdshader") as Shader
-	if role == "vlasy_mikro_4k" and not _guide_shader_code.is_empty():
-		if not _resources.has("guide_shader"):
+	if role == "vlasy_mikro_4k" and not _companion_hair_shader_code.is_empty():
+		if not _resources.has("companion_hair_shader"):
 			var project_shader := Shader.new()
-			project_shader.code = _guide_shader_code
-			_resources["guide_shader"] = project_shader
-		shader = _resources["guide_shader"]
+			project_shader.code = _companion_hair_shader_code
+			_resources["companion_hair_shader"] = project_shader
+		shader = _resources["companion_hair_shader"]
 	if shader == null:
 		_note(label, "Chybí produkční shader %s.", [role])
 		return
