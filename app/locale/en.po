@@ -333,8 +333,35 @@ msgstr "Skeleton"
 msgid "Posun v rovině pohledu"
 msgstr "Screen-space pan"
 
-msgid "Velikost bodu"
+msgid "Velikost bodů"
 msgstr "Point size"
+
+msgid "Tloušťka čar"
+msgstr "Line width"
+
+msgid "Barva podlahy"
+msgstr "Floor color"
+
+msgid "Posun podlahy"
+msgstr "Floor offset"
+
+msgid "Posun podlahy a mřížky od základní výšky modelu"
+msgstr "Offset the floor and grid from the model's baseline"
+
+msgid "Načíst textury…"
+msgstr "Load textures…"
+
+msgid "Vyber složku s texturami"
+msgstr "Choose the texture folder"
+
+msgid "Textury: %s"
+msgstr "Textures: %s"
+
+msgid "Chybí odkazovaná textura %s. Zvol Načíst textury…"
+msgstr "Referenced texture %s is missing. Choose Load textures…"
+
+msgid "Neprůhledná silueta LOD3 nemá v exportu produkční materiál."
+msgstr "The opaque LOD3 silhouette has no production material in this export."
 
 msgid "Body"
 msgstr "Points"
@@ -381,8 +408,8 @@ msgstr "Could not read the full file."
 msgid "glTF odkazuje mimo složku modelu. Vlož zdroj do modelu nebo použij relativní cestu."
 msgstr "The glTF references a resource outside the model folder. Embed the resource or use a relative path."
 
-msgid "Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
-msgstr "Drop a GLB, glTF, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick a view cube face or drag the cube to orbit.\n\nW: triangle wireframe. Q: inferred quads. P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+Q: quit. F1: help.\nF11: full screen. Esc: return to the window."
+msgid "Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\n\nW: trojúhelníkový wireframe. Q: odhad quadů (Pro). P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
+msgstr "Drop a GLB, glTF, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick a view cube face or drag the cube to orbit.\n\nW: triangle wireframe. Q: inferred quads (Pro). P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+L: log. Ctrl+Q: quit. F1: help.\nF11: full screen. Esc: return to the window."
 msgid "Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR."
 msgstr "Open GLB, glTF, WOBVIEW, a vehicle manifest, HDR or EXR."
 

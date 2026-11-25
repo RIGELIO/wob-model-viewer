@@ -30,15 +30,17 @@ Keep the local `_materialy-z-hry` folder, including `index.json` and `assets/`, 
 4. **View** provides background colors and the HDRI panorama. Turn off **Show background** for transparent PNG exports. Toggle the grid, shadow-catching floor, skeleton overlay and orthographic projection independently. Inspect shaded, wireframe, unlit, normal-buffer, overdraw or **Points** views. **Point size** controls the size of vertex dots in **Points** mode. **Geometry** shows mesh statistics, and the timeline plays and scrubs embedded clips.
 5. Use **File → Save** or **Save As** to save a `.wobview` file with the model reference, camera, lighting, display settings and animation position. Reopen it through **File → Open**. Use **Ctrl+E** or **Save 4K PNG** to render the current 3D view at 3840 × 2160.
 
-Godot Forward+ disables subsurface scattering on skin when the background is transparent.
+Skin materials display without subsurface scattering when you make the background transparent.
 
 The viewer starts in a maximized window. Animations repeat after you press **Play**. Clear **Loop** to play the clip once.
+
+Switching clips during playback starts the new clip immediately. If playback is paused, the newly selected clip stays paused.
 
 Choose **0.25× to 2×** speed next to the timeline. **In place** suppresses horizontal travel in clips with recognized root motion while preserving height and limb movement. Use it to inspect walk and run cycles.
 
 In **Lighting**, select **Day and night cycle**. Scrub the time of day or enable **Play cycle**. **Cycle duration** controls how many seconds a complete 24-hour day takes. The time and settings are saved in `.wobview`.
 
-The viewer also shows progress feedback when switching panoramas or skies, preparing points or attribute previews, and exporting a 4K image.
+The viewer also shows progress feedback when switching panoramas or skies, preparing points, quads or attribute previews, and exporting a 4K image.
 
 ## Inspect parts and attributes
 
@@ -50,14 +52,16 @@ The viewer also shows progress feedback when switching panoramas or skies, prepa
 
 If a model is named like `character_lod0.glb`, the viewer finds matching files in the same folder, including variants such as `character_lod1_helma.glb`. The LOD list shows the triangle and vertex counts from the source GLB scene and the size of each file. Switch levels from the list to compare them while keeping the current camera.
 
-**Wireframe** shows the GLB triangles. **Inferred quads** in Pro estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
+**Wireframe** shows triangle edges. In **View**, the same control position shows **Line width** in wireframe mode or **Point size** in Points mode. The session stores both values independently. **Inferred quads** in Pro estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
+
+Use the color swatch next to **Floor** to change its color. **Floor offset** moves the floor and grid in meters relative to the model's baseline, which helps inspect animated ground contact. The session saves both settings.
 
 ## Keyboard shortcuts
 
 | Keys | Action |
 | --- | --- |
 | **1** or **F** · **2** · **3** · **4** | Frame · Front · Side · Top |
-| **W** · **P** | Wireframe · Points |
+| **W** · **Q** · **P** | Wireframe · Inferred quads (Pro) · Points |
 | **G** · **K** · **A** · **B** · **O** | Grid · Skeleton · Auto-rotate · Show background · Ortho |
 | **Page Up** · **Page Down** | Previous LOD · Next LOD |
 | **Space** | Play or pause |
@@ -72,7 +76,9 @@ The viewer matches model and material names to the Wars of Bohemia shaders for s
 
 Check **Materials & diagnostics** for unmatched shaders, missing attributes or missing textures. The viewer keeps the original GLB material where it can. Some material-free exports, including KeenFace heads and the opaque LOD3 hair cap in the v5 reference set, display with a neutral preview and a warning when there is no matching production material.
 
-Click a yellow warning in the status bar to open the log with the individual warnings and errors. **Help → Log** opens the current session history after the status message changes. **Copy log** copies the text to the clipboard.
+Click a yellow warning or the **Log** button in the status bar to open the current session history. You can also use **Help → Log** or **Ctrl+L**. **Copy log** copies the text to the clipboard.
+
+The viewer searches by exact name in the model folder and up to two parent directories, including standard texture subfolders such as `textury_4k`, `textury`, `textures`, and `maps`. When a texture is missing, select **Materials & diagnostics → Load textures…**. The folder picker starts one level above the model. The viewer keeps the camera and saves the chosen folder with the session.
 
 For custom mappings, create a `your-model.wob.json` beside the model. Keys in `surfaces` combine the glTF node name and zero-based primitive index. Local texture paths are relative to the model directory.
 

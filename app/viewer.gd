@@ -38,6 +38,7 @@ class LoadingSpinner extends Control:
 var stage: Stage
 var _file_name: Label
 var _status: Button
+var _open_log: Button
 var _log_dialog: AcceptDialog
 var _log_text: TextEdit
 var _log_copy: Button
@@ -66,6 +67,8 @@ var _timeline: HSlider
 var _time: Label
 var _open_dialog: FileDialog
 var _hdri_dialog: FileDialog
+var _textures_dialog: FileDialog
+var _textures_button: Button
 var _save_dialog: FileDialog
 var _view_dialog: FileDialog
 var _about: AcceptDialog
@@ -88,13 +91,19 @@ var _wire_in_view: CheckBox
 var _gizmo: OrientationGizmo
 var _background_option: OptionButton
 var _background_color: ColorPickerButton
+var _floor_color: ColorPickerButton
+var _floor_offset: SpinBox
+var _floor_height_row: HBoxContainer
 var _options: Dictionary
 var _headings: FontVariation
 var _path := ""
 var _view_path := ""
 var _hdri_path := ""
+var _texture_directory := ""
 var _azimuth := -35.0
 var _elevation := 42.0
+var _point_size_row: HBoxContainer
+var _wireframe_width_row: HBoxContainer
 var _fullscreen: Button
 var _windowed_mode := Window.MODE_WINDOWED
 var _loading_mask: ColorRect
@@ -136,7 +145,13 @@ func _ready() -> void:
 	_make_timeline(left)
 	_make_inspector(split)
 	set_pro_enabled(false)
-	_status = _button(layout, "Připraveno", _show_log)
+	var status_row := HBoxContainer.new()
+	status_row.add_theme_constant_override("separation", 8)
+	layout.add_child(status_row)
+	_open_log = _button(status_row, "Protokol", _show_log, "Ctrl+L")
+	_open_log.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_status = _button(status_row, "Připraveno", _show_log)
+	_status.size_flags_horizontal = SIZE_EXPAND_FILL
 	_status.flat = true
 	_status.clip_text = true
 	_status.disabled = true
@@ -153,6 +168,8 @@ func _ready() -> void:
 	_open_dialog.file_selected.connect(_open_path)
 	_hdri_dialog = _dialog("Otevřít HDRI", FileDialog.FILE_MODE_OPEN_FILE, "*.hdr,*.exr ; Panorama HDRI")
 	_hdri_dialog.file_selected.connect(func(path: String): _load_hdri(path, true))
+	_textures_dialog = _dialog("Vyber složku s texturami", FileDialog.FILE_MODE_OPEN_DIR, "")
+	_textures_dialog.dir_selected.connect(_reload_model)
 	_save_dialog = _dialog("Uložit snímek 3840 × 2160", FileDialog.FILE_MODE_SAVE_FILE, "*.png ; Obraz PNG")
 	_save_dialog.file_selected.connect(_capture)
 	_view_dialog = _dialog("Uložit relaci jako", FileDialog.FILE_MODE_SAVE_FILE, "*.wobview")
@@ -205,7 +222,7 @@ func _refresh_menu() -> void:
 	var help := _menu_help.get_popup()
 	help.clear()
 	help.add_item(tr("Ovládání"), 0, KEY_F1)
-	help.add_item(tr("Protokol"), 2)
+	help.add_item(tr("Protokol"), 2, KEY_MASK_CTRL | KEY_L)
 	help.add_separator()
 	help.add_item(tr("O programu"), 1)
 
@@ -232,7 +249,7 @@ func _show_about() -> void:
 func _show_help() -> void:
 	_help.title = tr("Ovládání WoB Model Viewer")
 	_help.dialog_text = tr(
-		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
+		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\n\nW: trojúhelníkový wireframe. Q: odhad quadů (Pro). P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
 	)
 	_help.dialog_text += "\n\n" + tr(
 		"Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
@@ -257,11 +274,19 @@ func _make_log_dialog() -> void:
 
 
 func _show_log() -> void:
+	_show_log_dialog.call_deferred()
+
+
+func _show_log_dialog() -> void:
+	if _log_dialog.visible:
+		_log_dialog.grab_focus()
+		return
 	_log_copy.disabled = _log_entries.is_empty()
 	_log_text.text = tr("Protokol je prázdný.") if _log_entries.is_empty() else "\n\n".join(_log_entries)
 	_log_text.set_caret_line(0)
 	_log_text.scroll_vertical = 0.0
 	_log_dialog.popup_centered()
+	_log_dialog.grab_focus()
 
 
 func _make_header(layout: VBoxContainer) -> void:
@@ -332,7 +357,7 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	toolbar.add_child(_lod_picker)
 	_wire = CheckButton.new()
 	_wire.text = "Wireframe"
-	_wire.toggled.connect(func(value: bool): _set_display(1 if value else 0))
+	_wire.toggled.connect(func(value: bool): _choose_display(Stage.WIREFRAME_MODE if value else 0))
 	toolbar.add_child(_wire)
 
 	_blank = CenterContainer.new()
@@ -447,7 +472,7 @@ func _make_timeline(parent: VBoxContainer) -> void:
 	_movie.custom_minimum_size.x = 76
 	_movie.size_flags_horizontal = SIZE_EXPAND_FILL
 	_movie.fit_to_longest_item = false
-	_movie.item_selected.connect(_select_clip)
+	_movie.item_selected.connect(_choose_clip)
 	controls.add_child(_movie)
 	_play = _button(controls, "Přehrát", _toggle_play)
 	_loop = _toggle(controls, "animation_loop", "Smyčka", true, stage.animation_loop)
@@ -582,13 +607,43 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	viewing.add_child(aids)
 	_toggle(aids, "background_on", "Zobrazit pozadí", true, stage.background_enabled)
 	_toggle(aids, "auto_rotate", "Automatické otáčení", false, stage.auto_rotate_enabled)
-	_wire_in_view = _toggle(aids, "", "Wireframe", false, func(value: bool): _set_display(1 if value else 0))
+	_wire_in_view = _toggle(aids, "", "Wireframe", false,
+		func(value: bool): _choose_display(Stage.WIREFRAME_MODE if value else 0))
 	_toggle(aids, "skeleton", "Kostra", false, stage.skeleton_visible)
-	_toggle(aids, "grid", "Mřížka", false, stage.grid_visible)
-	_toggle(aids, "floor", "Podlaha", false, stage.floor_visible)
+	var grid_toggle := _toggle(aids, "grid", "Mřížka", false, stage.grid_visible)
+	var floor_row := HBoxContainer.new()
+	aids.add_child(floor_row)
+	var floor_toggle := _toggle(floor_row, "floor", "Podlaha", false, stage.floor_visible)
+	floor_toggle.size_flags_horizontal = SIZE_EXPAND_FILL
+	_floor_color = ColorPickerButton.new()
+	_floor_color.color = Stage.DEFAULT_FLOOR_COLOR
+	_floor_color.edit_alpha = false
+	_floor_color.custom_minimum_size.x = 36
+	_floor_color.color_changed.connect(stage.set_floor_color)
+	floor_row.add_child(_floor_color)
 	_toggle(aids, "screen_space_pan", "Posun v rovině pohledu", true, stage.screen_space_panning)
 	_toggle(aids, "ortho", "Orto", false, stage.orthographic)
-	_slider(viewing, "point_size", "Velikost bodu", 1.0, 12.0, 0.1, 4.2, stage.set_point_size)
+	_floor_height_row = HBoxContainer.new()
+	viewing.add_child(_floor_height_row)
+	var floor_height_caption := _label(_floor_height_row, "Posun podlahy", 13, MUTED)
+	floor_height_caption.size_flags_horizontal = SIZE_EXPAND_FILL
+	_floor_offset = SpinBox.new()
+	_floor_offset.min_value = -1000.0
+	_floor_offset.max_value = 1000.0
+	_floor_offset.step = 0.01
+	_floor_offset.suffix = "m"
+	_floor_offset.custom_minimum_size.x = 112
+	_floor_offset.value_changed.connect(stage.set_floor_offset)
+	_floor_height_row.add_child(_floor_offset)
+	_floor_height_row.hide()
+	floor_toggle.toggled.connect(func(_enabled: bool): _refresh_floor_height())
+	grid_toggle.toggled.connect(func(_enabled: bool): _refresh_floor_height())
+	_point_size_row = _slider(viewing, "point_size", "Velikost bodů", 1.0, 12.0, 0.1, 4.2, stage.set_point_size, " px")
+	_wireframe_width_row = _slider(viewing, "wireframe_width", "Tloušťka čar",
+		Stage.WIREFRAME_WIDTH_MIN, Stage.WIREFRAME_WIDTH_MAX, 0.1, Stage.WIREFRAME_WIDTH_DEFAULT,
+		stage.set_wireframe_width, " px")
+	_point_size_row.hide()
+	_wireframe_width_row.hide()
 
 	var geometry := _section(list, "Geometrie")
 	_geometry = _label(geometry, "—", 14, MUTED)
@@ -599,8 +654,15 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	_lod_table.add_theme_constant_override("v_separation", 4)
 	geometry.add_child(_lod_table)
 	_lod_table.hide()
-	_diagnostics = _label(_section(list, "Materiály a diagnostika"), "—", 13, MUTED)
+	var materials := _section(list, "Materiály a diagnostika")
+	_textures_button = _button(materials, "Načíst textury…", _choose_texture_directory)
+	_textures_button.disabled = true
+	_diagnostics = _label(materials, "—", 13, MUTED)
 	_diagnostics.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
+func _refresh_floor_height() -> void:
+	_floor_height_row.visible = _options["floor"].button_pressed or _options["grid"].button_pressed
 
 
 func _section(parent: VBoxContainer, title: String, foldable := false, expanded := true) -> VBoxContainer:
@@ -653,7 +715,7 @@ func _choose_display(index: int) -> void:
 	if index == Stage.QUADS_MODE and not _pro_enabled:
 		_feedback("Odhad quadů je součástí Pro.", true)
 		return
-	if stage.model and index >= Stage.POINTS_MODE:
+	if stage.model and (index == Stage.WIREFRAME_MODE or index >= Stage.POINTS_MODE):
 		_with_loading(tr(_display.get_item_text(index)), _set_display.bind(index))
 	else:
 		_set_display(index)
@@ -666,8 +728,11 @@ func _set_display(index: int) -> void:
 	_display.select(index)
 	_color_controls.visible = index == Stage.COLOR_MODE
 	_attribute_hint.visible = index >= Stage.COLOR_MODE
-	_wire.set_pressed_no_signal(index == 1)
-	_wire_in_view.set_pressed_no_signal(index == 1)
+	var wireframe := index == Stage.WIREFRAME_MODE
+	_wire.set_pressed_no_signal(wireframe)
+	_wire_in_view.set_pressed_no_signal(wireframe)
+	_wireframe_width_row.visible = wireframe
+	_point_size_row.visible = index == Stage.POINTS_MODE
 	if stage.model:
 		_refresh_geometry()
 
@@ -829,7 +894,7 @@ func _refresh_cycle_clock() -> void:
 
 
 func _slider(parent: VBoxContainer, id: String, title: String, low: float, high: float, step: float,
-		start: float, callback: Callable, unit := "") -> void:
+		start: float, callback: Callable, unit := "") -> HBoxContainer:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
 	var caption := _label(row, title, 13, MUTED)
@@ -849,6 +914,7 @@ func _slider(parent: VBoxContainer, id: String, title: String, low: float, high:
 		callback.call(d)
 	)
 	_options[id] = slider
+	return row
 
 
 func _number(value: float, step: float, unit: String) -> String:
@@ -941,6 +1007,15 @@ func _show_open() -> void:
 		_open_dialog.popup_centered_ratio(0.64)
 
 
+func _choose_texture_directory() -> void:
+	if _path.is_empty() or _loading or stage.capture_in_progress:
+		return
+	var folder := _path.get_base_dir()
+	var parent := folder.get_base_dir()
+	_textures_dialog.current_dir = parent if DirAccess.dir_exists_absolute(parent) else folder
+	_textures_dialog.popup_centered_ratio(0.64)
+
+
 func _show_capture() -> void:
 	if _path.is_empty() or _loading or stage.capture_in_progress:
 		return
@@ -952,14 +1027,42 @@ func _files_dropped(files: PackedStringArray) -> void:
 	if _loading or stage.capture_in_progress:
 		return
 	for path in files:
-		match path.get_extension().to_lower():
-			"glb", "gltf", "wobview", "json":
-				_open_path(path)
-				return
-			"hdr", "exr":
-				_load_hdri(path, true)
-				return
-	_feedback("Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR.", true)
+		var extension := path.get_extension().to_lower()
+		if extension in _model_extensions() or extension in ["wobview", "json"]:
+			_open_path(path)
+			return
+		if extension in ["hdr", "exr"]:
+			_load_hdri(path, true)
+			return
+	_feedback(_unsupported_drop_message(), true)
+
+
+func _model_extensions() -> PackedStringArray:
+	return PackedStringArray(["glb", "gltf"])
+
+
+func _picker_model_extensions() -> PackedStringArray:
+	return _model_extensions()
+
+
+func _unsupported_drop_message() -> String:
+	return "Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR."
+
+
+func _model_access_error(_path: String) -> String:
+	return ""
+
+
+func _model_importer(_path: String) -> Stage.Materials:
+	return Stage.Materials.new()
+
+
+func _model_file_bytes() -> int:
+	return stage.model.source.bytes.size()
+
+
+func _original_materials_description() -> String:
+	return tr("Vykreslení podle materiálů GLB.")
 
 
 func _open_path(path: String) -> bool:
@@ -980,10 +1083,17 @@ func _open_path(path: String) -> bool:
 	return await _load_model(path)
 
 
-func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = null) -> bool:
+func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = null,
+		texture_directory := "") -> bool:
+	var access_error := _model_access_error(path)
+	if not access_error.is_empty():
+		_feedback(access_error, true, PackedStringArray([path.get_file()]))
+		return false
 	if not _begin_loading(path.get_file(), path):
 		return false
-	var loaded: Variant = await _run_worker(_prepare_model.bind(path, manifest, not keep_lod_family))
+	var importer := _model_importer(path)
+	importer.texture_directory = texture_directory
+	var loaded: Variant = await _run_worker(_prepare_model.bind(importer, path, manifest, not keep_lod_family))
 	var error := tr("Načítání se nepodařilo spustit.")
 	if loaded is Dictionary:
 		error = stage.apply_prepared_model(loaded.model) if loaded.error.is_empty() else loaded.error
@@ -992,6 +1102,8 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 		_feedback(error, true, PackedStringArray([path.get_file()]))
 		return false
 	_path = path
+	_texture_directory = texture_directory
+	_textures_button.disabled = not path.get_extension().to_lower() in ["glb", "gltf"]
 	_view_path = ""
 	_file_name.text = path.get_file()
 	_file_name.tooltip_text = path
@@ -1014,8 +1126,7 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	return true
 
 
-static func _prepare_model(path: String, manifest: RefCounted, scan_lods: bool) -> Dictionary:
-	var pending := Stage.Materials.new()
+static func _prepare_model(pending: Stage.Materials, path: String, manifest: RefCounted, scan_lods: bool) -> Dictionary:
 	var error := pending.prepare_model(path, manifest)
 	var lods: Array[Dictionary]
 	if error.is_empty() and scan_lods:
@@ -1025,7 +1136,7 @@ static func _prepare_model(path: String, manifest: RefCounted, scan_lods: bool) 
 	return {"model": pending, "error": error, "lods": lods}
 
 
-func _reload_model() -> void:
+func _reload_model(selected_texture_directory: Variant = null) -> void:
 	if _path.is_empty() or _loading or stage.capture_in_progress:
 		return
 	var camera := stage.camera_state()
@@ -1042,7 +1153,8 @@ func _reload_model() -> void:
 		if not manifest or manifest.state_for(_path).is_empty():
 			_feedback("Manifest vozu nelze načíst nebo už neobsahuje aktuální LOD.", true)
 			return
-	if not await _load_model(_path, false, manifest):
+	var folder := _texture_directory if selected_texture_directory == null else str(selected_texture_directory)
+	if not await _load_model(_path, false, manifest, folder):
 		return
 	_view_path = view_path
 	stage.restore_camera(camera, false)
@@ -1060,7 +1172,7 @@ func _select_lod(index: int) -> void:
 	if _loading:
 		return
 	var previous_camera := stage.camera_state()
-	if await _load_model(_lod_entries[index]["path"], true, stage.model.vehicle):
+	if await _load_model(_lod_entries[index]["path"], true, stage.model.vehicle, _texture_directory):
 		stage.restore_camera(previous_camera)
 	else:
 		_refresh_lod_options()
@@ -1174,12 +1286,15 @@ func _save_view_to(path: String) -> void:
 		options[key] = control.value if control is HSlider else control.button_pressed
 	var state := {
 		"model": ViewFile.pack_path(path, _path),
+		"texture_directory": ViewFile.pack_path(path, _texture_directory),
 		"hdri": ViewFile.pack_path(path, _hdri_path),
 		"hdri_preset": _hdri_picker.selected,
 		"sky_mode": _sky_picker.selected,
 		"options": options,
 		"background": _background_option.selected,
 		"background_color": _background_color.color.to_html(),
+		"floor_color": _floor_color.color.to_html(false),
+		"floor_offset": _floor_offset.value,
 		"display": _display.selected,
 		"vertex_layer": _color_layer.get_item_text(_color_layer.selected),
 		"vertex_channel": _color_channel.selected,
@@ -1198,11 +1313,13 @@ func _save_view_to(path: String) -> void:
 
 
 func _open_view(path: String) -> bool:
-	var state := ViewFile.read(path)
+	var state := ViewFile.read(path, _model_extensions())
 	if state.is_empty():
 		_feedback("Soubor není platná relace WoB Model Viewer.", true)
 		return false
-	if not await _load_model(ViewFile.unpack_path(path, state["model"])):
+	var folder: Variant = state.get("texture_directory", "")
+	var texture_directory := ViewFile.unpack_path(path, folder) if folder is String else ""
+	if not await _load_model(ViewFile.unpack_path(path, state["model"]), false, null, texture_directory):
 		return false
 	_view_path = path
 	var options: Variant = state.get("options", {})
@@ -1218,6 +1335,13 @@ func _open_view(path: String) -> bool:
 	if color is String and Color.html_is_valid(color):
 		_background_color.color = Color.html(color)
 		stage.custom_background(_background_color.color)
+	var floor_color: Variant = state.get("floor_color")
+	if floor_color is String and Color.html_is_valid(floor_color):
+		_floor_color.color = Color.html(floor_color)
+		stage.set_floor_color(_floor_color.color)
+	var floor_offset: Variant = state.get("floor_offset")
+	if (floor_offset is float or floor_offset is int) and is_finite(float(floor_offset)):
+		_floor_offset.value = float(floor_offset)
 	var back: Variant = state.get("background")
 	if back is float or back is int:
 		_set_background(clampi(int(back), 0, _background_option.item_count - 1))
@@ -1268,7 +1392,7 @@ func _refresh_geometry() -> void:
 		metric.x, metric.y, metric.z, metric.w, extents.x, extents.y, extents.z,
 	]
 	_geometry.text += "\n" + (tr("Soubor %s · %s") % [
-		_path.get_extension().to_upper(), _file_size(stage.model.source.bytes.size())
+		_path.get_extension().to_upper(), _file_size(_model_file_bytes())
 	])
 	if _display.selected == 6:
 		var topology := stage.quad_statistics()
@@ -1281,7 +1405,9 @@ func _refresh_model_info(announce := true) -> void:
 	for key: String in stage.model.counts:
 		report.append("%s  ×  %d" % [key, stage.model.counts[key]])
 	if report.is_empty():
-		report.append(tr("Vykreslení podle materiálů GLB."))
+		report.append(_original_materials_description())
+	for folder in stage.model.texture_folders:
+		report.append(tr("Textury: %s") % folder)
 	var notes := stage.model.notes
 	if not notes.is_empty():
 		report.append("")
@@ -1319,12 +1445,20 @@ func _refresh_clips() -> void:
 	_select_clip(0)
 
 
-func _select_clip(index: int) -> void:
-	_timeline.max_value = stage.select_clip(index)
+func _choose_clip(index: int) -> void:
+	var clip := stage.clips[index]
+	if stage.animation_player == clip.player and stage.current_clip == clip.name:
+		return
+	var playing := stage.animation_player != null and stage.animation_player.is_playing()
+	_select_clip(index, playing)
+
+
+func _select_clip(index: int, keep_playing := false) -> void:
+	_timeline.max_value = stage.select_clip(index, keep_playing)
 	_movie.tooltip_text = _movie.get_item_text(index)
 	_timeline.set_value_no_signal(0.0)
 	_time.text = "0.00 s"
-	_play.text = "Přehrát"
+	_play.text = "Pozastavit" if keep_playing else "Přehrát"
 
 
 func _toggle_play() -> void:
@@ -1499,8 +1633,15 @@ func _refresh_dialogs() -> void:
 	_log_dialog.ok_button_text = tr("Zavřít")
 	_log_copy.text = tr("Zkopírovat protokol")
 	_open_dialog.title = tr("Otevřít model")
-	_open_dialog.filters = PackedStringArray(["*.glb,*.gltf,*.wobview,*_manifest.json ; " + tr("Model, relace nebo manifest vozu")])
+	var model_patterns := PackedStringArray()
+	for extension in _picker_model_extensions():
+		model_patterns.append("*." + extension)
+	model_patterns.append_array(PackedStringArray(["*.wobview", "*_manifest.json"]))
+	_open_dialog.filters = PackedStringArray([",".join(model_patterns) + " ; " + tr("Model, relace nebo manifest vozu")])
 	_hdri_dialog.title = tr("Otevřít HDRI")
+	_textures_dialog.title = tr("Vyber složku s texturami")
+	_floor_color.tooltip_text = tr("Barva podlahy")
+	_floor_offset.tooltip_text = tr("Posun podlahy a mřížky od základní výšky modelu")
 	_hdri_dialog.filters = PackedStringArray(["*.hdr,*.exr ; " + tr("Panorama HDRI")])
 	_save_dialog.title = tr("Uložit snímek 3840 × 2160")
 	_save_dialog.filters = PackedStringArray(["*.png ; " + tr("Obraz PNG")])
@@ -1532,6 +1673,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				else:
 					_save_view()
 			KEY_E: _show_capture()
+			KEY_L: _show_log()
 			KEY_Q: _request_quit()
 			_: return
 	elif stage.model and not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed:
@@ -1540,7 +1682,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			KEY_2: stage.frame(Vector2.ZERO)
 			KEY_3: stage.frame(Vector2(PI / 2, 0.0))
 			KEY_4: stage.frame(Vector2(0.0, 1.555))
-			KEY_W: _toggle_display(1)
+			KEY_W: _toggle_display(Stage.WIREFRAME_MODE)
 			KEY_Q: _toggle_display(6)
 			KEY_P: _toggle_display(5)
 			KEY_G: _toggle_option("grid")
@@ -1583,9 +1725,10 @@ func _process_arguments() -> void:
 	for argument in args:
 		if argument.begins_with("--screenshot="):
 			capture_path = argument.trim_prefix("--screenshot=")
-		elif not argument.begins_with("-") and argument.get_extension().to_lower() in ["glb", "gltf", "wobview", "json"] \
-				and model_path.is_empty():
-			model_path = argument
+		elif not argument.begins_with("-") and model_path.is_empty():
+			var extension := argument.get_extension().to_lower()
+			if extension in _model_extensions() or extension in ["wobview", "json"]:
+				model_path = argument
 	if model_path.is_empty():
 		return
 	var success := await _open_path(model_path)
