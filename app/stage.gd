@@ -2,6 +2,7 @@ extends SubViewportContainer
 
 const Materials = preload("res://materials.gd")
 const TopologyOverlay = preload("res://topology_overlay.gd")
+const WireframeMesh = preload("res://wireframe_mesh.gd")
 const BUILTIN_HDRI := "res://production/lighting/lilienstein_2k.hdr"
 const HDRI_PRESETS := [BUILTIN_HDRI, "res://art/lighting/kloppenheim_06_puresky_2k.hdr",
 	"res://art/lighting/moonlit_golf_2k.hdr"]
@@ -9,6 +10,11 @@ const CELESTIAL_SKY = preload("res://celestial_sky.gdshader")
 const SCREENSHOT_SIZE := Vector2i(3840, 2160)
 const ORBIT_SPEED := 0.008
 const AUTO_ORBIT_SPEED := 0.38
+const WIREFRAME_MODE := 1
+const WIREFRAME_WIDTH_MIN := 0.5
+const WIREFRAME_WIDTH_MAX := 8.0
+const WIREFRAME_WIDTH_DEFAULT := 1.2
+const DEFAULT_FLOOR_COLOR := Color("#383937")
 const POINTS_MODE := 5
 const QUADS_MODE := 6
 const COLOR_MODE := 7
@@ -16,6 +22,7 @@ const UV0_MODE := 8
 const UV2_MODE := 9
 const CYCLE_SKY_MODE := 3
 const ATTRIBUTE_SHADER = preload("res://attribute_preview.gdshader")
+const WIREFRAME_SHADER = preload("res://wireframe_preview.gdshader")
 const QUAD_LINE_SHADER := """
 shader_type spatial;
 render_mode unshaded, depth_draw_never, shadows_disabled;
@@ -32,7 +39,7 @@ void fragment() {
 }
 """
 const DRAW_MODES := [
-	Viewport.DEBUG_DRAW_DISABLED, Viewport.DEBUG_DRAW_WIREFRAME, Viewport.DEBUG_DRAW_UNSHADED,
+	Viewport.DEBUG_DRAW_DISABLED, Viewport.DEBUG_DRAW_DISABLED, Viewport.DEBUG_DRAW_UNSHADED,
 	Viewport.DEBUG_DRAW_NORMAL_BUFFER, Viewport.DEBUG_DRAW_OVERDRAW,
 ]
 
@@ -70,6 +77,8 @@ var _cycle_seconds := 45.0
 var cycle_hour := 12.0
 var _grid: MeshInstance3D
 var _floor: MeshInstance3D
+var _floor_material: StandardMaterial3D
+var _floor_offset := 0.0
 var _hdri_on := true
 var _background := 0
 var _custom_background := Color("#55575c")
@@ -91,6 +100,11 @@ var _bone_material: StandardMaterial3D
 var _point_material: StandardMaterial3D
 var _point_instances: Dictionary[MeshInstance3D, MeshInstance3D]
 var _mesh_layers: Dictionary[MeshInstance3D, int]
+var _wireframe_material: ShaderMaterial
+var _wireframe_meshes: Dictionary[ArrayMesh, ArrayMesh]
+var _wireframe_instances: Dictionary[MeshInstance3D, MeshInstance3D]
+var _wireframe_prepared := false
+var _wireframe_width := WIREFRAME_WIDTH_DEFAULT
 var _quad_material: ShaderMaterial
 var _quad_instances: Dictionary[MeshInstance3D, MeshInstance3D]
 var _quad_statistics := Vector2i.ZERO
@@ -150,10 +164,10 @@ func _ready() -> void:
 	get_window().focus_exited.connect(_end_drag)
 
 	_floor = MeshInstance3D.new()
-	var floor_material := StandardMaterial3D.new()
-	floor_material.albedo_color = Color("#383937")
-	floor_material.roughness = 0.9
-	_floor.material_override = floor_material
+	_floor_material = StandardMaterial3D.new()
+	_floor_material.albedo_color = DEFAULT_FLOOR_COLOR
+	_floor_material.roughness = 0.9
+	_floor.material_override = _floor_material
 	_floor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_floor.hide()
 	viewport_3d.add_child(_floor)
@@ -180,6 +194,10 @@ func _ready() -> void:
 	_point_material.albedo_color = Color("#f1bd83")
 	_point_material.use_point_size = true
 	_point_material.point_size = 4.2
+
+	_wireframe_material = ShaderMaterial.new()
+	_wireframe_material.shader = WIREFRAME_SHADER
+	_wireframe_material.set_shader_parameter("width_px", _wireframe_width)
 
 	_quad_material = ShaderMaterial.new()
 	var line_shader := Shader.new()
@@ -212,6 +230,9 @@ func _install_model(pending: Materials) -> void:
 	_model_anchor.position = Vector3.ZERO
 	_motion_node = null
 	_point_instances.clear()
+	_wireframe_instances.clear()
+	_wireframe_meshes.clear()
+	_wireframe_prepared = false
 	_quad_instances.clear()
 	_inspection_nodes.clear()
 	_mesh_layers.clear()
@@ -275,7 +296,7 @@ func _collect_clips(node: Node) -> void:
 		_collect_clips(child)
 
 
-func select_clip(index: int) -> float:
+func select_clip(index: int, keep_playing := false) -> float:
 	if animation_player:
 		animation_player.mixer_applied.disconnect(_apply_in_place)
 		animation_player.stop()
@@ -287,7 +308,8 @@ func select_clip(index: int) -> float:
 	animation_player.speed_scale = _animation_speed
 	animation_player.play(current_clip)
 	animation_player.advance(0)
-	animation_player.pause()
+	if not keep_playing:
+		animation_player.pause()
 	_find_motion_track(clip)
 	if _motion_node:
 		_motion_origin = _motion_position()
@@ -492,7 +514,9 @@ func _process(delta: float) -> void:
 		_update_camera()
 	if _skeleton_overlay.visible:
 		_draw_skeletons()
-	if _display_mode == POINTS_MODE:
+	if _display_mode == WIREFRAME_MODE:
+		_sync_debug_morphs(_wireframe_instances)
+	elif _display_mode == POINTS_MODE:
 		_sync_debug_morphs(_point_instances)
 	elif _display_mode == QUADS_MODE:
 		_sync_debug_morphs(_quad_instances)
@@ -600,6 +624,17 @@ func floor_visible(enabled: bool) -> void:
 	_floor.visible = enabled
 
 
+func set_floor_color(color: Color) -> void:
+	_floor_material.albedo_color = color
+
+
+func set_floor_offset(offset: float) -> void:
+	_floor_offset = offset
+	var height := bounds.position.y + _floor_offset
+	_grid.position.y = height
+	_floor.position.y = height - _radius * 0.005
+
+
 func _make_floor_and_grid() -> void:
 	var center := Vector3(bounds.get_center().x, bounds.position.y, bounds.get_center().z)
 	var step := pow(10.0, floorf(log(_radius) / log(10.0))) * 0.2
@@ -609,8 +644,9 @@ func _make_floor_and_grid() -> void:
 	var floor_mesh := PlaneMesh.new()
 	floor_mesh.size = Vector2.ONE * (2.0 * half)
 	_floor.mesh = floor_mesh
-	_floor.position = center - Vector3.UP * _radius * 0.005
+	_floor.position = center
 	_grid.position = center
+	set_floor_offset(_floor_offset)
 	var lines := ImmediateMesh.new()
 	var line_style := StandardMaterial3D.new()
 	line_style.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -834,7 +870,13 @@ func apply_hdri(decoded: Variant) -> String:
 
 
 func wireframe(enabled: bool) -> void:
-	display_mode(1 if enabled else 0)
+	display_mode(WIREFRAME_MODE if enabled else 0)
+
+
+func set_wireframe_width(value: float) -> void:
+	_wireframe_width = clampf(value, WIREFRAME_WIDTH_MIN, WIREFRAME_WIDTH_MAX)
+	if _wireframe_material:
+		_wireframe_material.set_shader_parameter("width_px", _wireframe_width)
 
 
 func display_mode(index: int) -> void:
@@ -885,6 +927,9 @@ func _apply_model_display() -> void:
 		_attribute_input = input
 	var points := _display_mode == POINTS_MODE
 	var quads := _display_mode == QUADS_MODE
+	var wires := _display_mode == WIREFRAME_MODE
+	if wires:
+		_prepare_wireframe()
 	if points and _point_instances.is_empty():
 		_make_point_instances()
 	if quads:
@@ -894,8 +939,14 @@ func _apply_model_display() -> void:
 		var surface := _isolated_surface if instance == _isolated else -1
 		var original_layers := _mesh_layers[instance]
 		instance.layers = original_layers if visible_part and surface == -1 and not attributes else 0
+		var wire_view := _wireframe_instances.get(instance) as MeshInstance3D
 		var point_view := _point_instances.get(instance) as MeshInstance3D
 		var quad_view := _quad_instances.get(instance) as MeshInstance3D
+		if wire_view:
+			wire_view.visible = wires and visible_part and surface == -1
+			wire_view.layers = original_layers
+			if wire_view.visible:
+				instance.layers = 0
 		if point_view:
 			point_view.visible = points and visible_part and surface == -1
 			point_view.layers = original_layers
@@ -909,6 +960,14 @@ func _apply_model_display() -> void:
 
 
 func _make_inspection_view(instance: MeshInstance3D, surface: int, attributes: bool, points: bool, quads: bool) -> void:
+	if _display_mode == WIREFRAME_MODE:
+		var wires := _wireframe_meshes.get(instance.mesh) as ArrayMesh
+		if wires and surface >= 0 and surface < wires.get_surface_count() \
+				and wires.surface_get_primitive_type(surface) == Mesh.PRIMITIVE_TRIANGLES:
+			var part := _copy_surface(wires, surface)
+			if part:
+				_add_inspection_node(instance, part, _wireframe_material)
+				return
 	var mesh := _attribute_meshes.get(instance) as ArrayMesh if attributes else instance.mesh as ArrayMesh
 	var has_mesh := mesh != null
 	if not has_mesh:
@@ -979,6 +1038,29 @@ func _copy_surface(source: ArrayMesh, surface: int) -> ArrayMesh:
 	mesh.add_surface_from_arrays(source.surface_get_primitive_type(surface), source.surface_get_arrays(surface),
 		source.surface_get_blend_shape_arrays(surface), {}, flags)
 	return mesh
+
+
+func _prepare_wireframe() -> void:
+	if _wireframe_prepared:
+		return
+	_wireframe_prepared = true
+	for instance in model.meshes:
+		var source := instance.mesh as ArrayMesh
+		if source == null:
+			continue
+		if not _wireframe_meshes.has(source):
+			_wireframe_meshes[source] = WireframeMesh.build(source)
+		var mesh: ArrayMesh = _wireframe_meshes[source]
+		if not mesh:
+			continue
+		var preview := _make_debug_instance(instance, mesh, null)
+		for surface in range(mesh.get_surface_count()):
+			var material := instance.get_active_material(surface)
+			if mesh.surface_get_primitive_type(surface) == Mesh.PRIMITIVE_TRIANGLES:
+				material = _wireframe_material
+			preview.set_surface_override_material(surface, material)
+		_copy_morphs(instance, preview)
+		_wireframe_instances[instance] = preview
 
 
 func quad_statistics() -> Vector2i:

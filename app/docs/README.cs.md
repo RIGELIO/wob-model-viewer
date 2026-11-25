@@ -30,15 +30,17 @@ Ponech složku `_materialy-z-hry` se souborem `index.json` a adresářem `assets
 4. V panelu **Zobrazení** vyber barvu pozadí nebo panorama. Vypnutím pozadí získáš průhledné PNG. Mřížku, podlahu pro stíny, kostru a ortografický pohled můžeš zapínat samostatně. Vedle produkčních materiálů jsou k dispozici wireframe, režim bez osvětlení, normály, overdraw a **Body**. Velikost bodů mění průměr vykreslených vrcholů v režimu **Body**. **Geometrie** uvádí statistiky sítě a časová osa přehrává vložené klipy.
 5. **Soubor → Uložit** nebo **Uložit jako** uloží odkaz na model, kameru, osvětlení, nastavení zobrazení a polohu animace do `.wobview`. Relaci znovu otevři přes **Soubor → Otevřít**. **Ctrl+E** nebo **Uložit 4K PNG** vykreslí aktuální 3D scénu do PNG o rozměrech 3840 × 2160.
 
-Při průhledném pozadí Godot Forward+ vypíná podpovrchový rozptyl světla v kůži.
+Při průhledném pozadí se kůže zobrazuje bez podpovrchového rozptylu světla.
 
 Viewer se spouští v maximalizovaném okně. Animace se po stisknutí **Přehrát** opakují. Zruš zaškrtnutí **Smyčka**, pokud chceš klip přehrát jednou.
+
+Při výběru jiného klipu za běhu se nový klip hned přehrává. Když je animace pozastavená, zůstane pozastavený i nově vybraný klip.
 
 Voličem u časové osy nastav rychlost **0,25× až 2×**. **Na místě** potlačí vodorovný posun u klipů s rozpoznaným kořenem pohybu a zachová výšku a pohyb končetin. Volba se hodí pro kontrolu chůze a běhu.
 
 V **Osvětlení** zvol **Cyklus dne a noci**. Čas můžeš nastavit ručně nebo zapnout **Přehrávat cyklus**. **Délka cyklu** určuje, za kolik sekund uplyne celých 24 hodin. Čas a nastavení se ukládají do `.wobview`.
 
-Indikátor se zobrazí také při přepínání panoramat a oblohy, přípravě bodů a náhledů atributů nebo exportu 4K snímku.
+Indikátor se zobrazí také při přepínání panoramat a oblohy, přípravě bodů, quadů a náhledů atributů nebo exportu 4K snímku.
 
 ## Kontrola dílů a atributů
 
@@ -50,14 +52,16 @@ Indikátor se zobrazí také při přepínání panoramat a oblohy, přípravě 
 
 U modelu pojmenovaného například `postava_lod0.glb` prohlížeč vyhledá související soubory ve stejné složce, včetně variant jako `postava_lod1_helma.glb`. Seznam LOD ukazuje počty trojúhelníků a vrcholů ze zdrojové scény GLB a velikost každého souboru. Při přepnutí úrovně zůstane kamera na stejném místě.
 
-**Wireframe** zobrazuje trojúhelníky GLB. Režim **Quady (odhad)** v edici Pro odhaduje čtyřúhelníky spojením sousedních trojúhelníků a skrytím odhadnutých úhlopříček. Odhadované čtyřúhelníky se mohou od původní topologie lišit.
+**Wireframe** zobrazuje hrany trojúhelníků. V části **Zobrazení** se na stejném místě zobrazuje **Tloušťka čar** pro wireframe nebo **Velikost bodů** v režimu Body. Obě hodnoty se ukládají odděleně do relace. Režim **Quady (odhad)** v edici Pro odhaduje čtyřúhelníky spojením sousedních trojúhelníků a skrytím odhadnutých úhlopříček. Odhadované čtyřúhelníky se mohou od původní topologie lišit.
+
+Barvu podlahy změníš vzorníkem u přepínače **Podlaha**. **Posun podlahy** pohybuje podlahou a mřížkou vůči výšce modelu v metrech, takže můžeš zkontrolovat třeba kontakt při pádu. Barva i posun se ukládají do relace `.wobview`.
 
 ## Klávesové zkratky
 
 | Klávesy | Akce |
 | --- | --- |
 | **1** nebo **F** · **2** · **3** · **4** | Zarámovat · Zepředu · Z boku · Shora |
-| **W** · **P** | Wireframe · Body |
+| **W** · **Q** · **P** | Wireframe · Odhad čtyřúhelníků (Pro) · Body |
 | **G** · **K** · **A** · **B** · **O** | Mřížka · Kostra · Automatické otáčení · Zobrazení pozadí · Orto |
 | **Page Up** · **Page Down** | Předchozí LOD · Další LOD |
 | **Mezerník** | Přehrát nebo pozastavit animaci |
@@ -72,7 +76,9 @@ Prohlížeč podle názvu modelu a materiálu přiřazuje produkční shadery k�
 
 Panel **Materiály a diagnostika** vypisuje chybějící atributy, textury i neznámé mapování shaderu. Kde je to možné, zůstává původní materiál z GLB. KeenFace hlavy bez materiálu a neprůhledná čepice LOD3 z referenční sady v5 se při chybějících produkčních podkladech zobrazí neutrálně a s upozorněním.
 
-Kliknutím na žluté upozornění ve spodní liště otevřeš protokol se seznamem konkrétních chyb a upozornění. **Nápověda → Protokol** otevře historii událostí z běžící relace i po změně stavové hlášky. Tlačítkem **Zkopírovat protokol** přeneseš text do schránky.
+Kliknutím na žluté upozornění nebo na tlačítko **Protokol** ve spodní liště otevřeš historii aktuální relace. Protokol je dostupný také z **Nápověda → Protokol** nebo klávesami **Ctrl+L**. Tlačítkem **Zkopírovat protokol** přeneseš text do schránky.
+
+Viewer hledá textury podle přesného názvu ve složce modelu a až dvě úrovně nad ní, včetně obvyklých složek `textury_4k`, `textury`, `textures` a `maps`. Pokud mapy nenajde, použij **Materiály a diagnostika → Načíst textury…**. Výběr začne o úroveň výš než model. Aplikace zachová kameru a složku uloží do relace.
 
 Vlastní mapování lze nastavit souborem `nazev-modelu.wob.json` ve stejné složce jako model. Klíče v `surfaces` spojují původní název uzlu a index primitivy od nuly. Příklad a názvy shaderů najdeš v [anglickém návodu](https://github.com/RIGELIO/wob-model-viewer#production-materials-and-diagnostics). Balíček obsahuje manifest původu a SHA-256 produkčních prostředků.
 

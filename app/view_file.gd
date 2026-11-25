@@ -4,7 +4,7 @@ const FORMAT := "wob-model-viewer"
 const VERSION := 1
 
 
-static func read(path: String) -> Dictionary:
+static func read(path: String, extensions := PackedStringArray(["glb", "gltf"])) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null or file.get_length() > 1024 * 1024:
 		return {}
@@ -12,7 +12,7 @@ static func read(path: String) -> Dictionary:
 	if not data is Dictionary or data.get("format") != FORMAT or data.get("version") != VERSION:
 		return {}
 	var model: Variant = data.get("model")
-	if not model is String or not model.get_extension().to_lower() in ["glb", "gltf"]:
+	if not model is String or not model.get_extension().to_lower() in extensions:
 		return {}
 	return data
 

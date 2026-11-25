@@ -3,6 +3,7 @@ extends RefCounted
 const GlbData = preload("res://glb_data.gd")
 const VehicleManifest = preload("res://vehicle_manifest.gd")
 const GameMaterials = preload("res://game_materials.gd")
+const TextureSearch = preload("res://texture_search.gd")
 const VEHICLE_DIR := "res://production/vehicles/"
 const SHADER_DIR := "res://production/shaders/"
 const TEXTURE_DIR := "res://production/textures/"
@@ -42,17 +43,23 @@ var notes: PackedStringArray:
 			localized.append("%s · %s" % [entry[0], message] if not entry[0].is_empty() else message)
 		return localized
 var counts: Dictionary
+var texture_folders := PackedStringArray()
 var meshes: Array[MeshInstance3D]
 var source: GlbData
 var root: Node
 var vehicle: RefCounted
 var vehicle_state := ""
+var texture_directory := ""
 var _pairs: Dictionary
 var _resources: Dictionary
 var _model_path: String
 var _sidecar: Dictionary
 var _notes: Array[Array]
 var _catalog_hair := false
+var _guide_catalog := false
+var _texture_search: TextureSearch
+var _guide_shader_code := ""
+var _guide_head: Array[Material]
 var _game: GameMaterials
 var _used_game_slots: Dictionary[String, bool]
 var _document: GLTFDocument
@@ -68,6 +75,7 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 # Prepare glTF resources and decode external maps before building the live scene.
 func prepare_model(path: String, manifest: RefCounted = null) -> String:
 	_model_path = path
+	_texture_search = TextureSearch.new(path, texture_directory)
 	source = GlbData.new(path)
 	if not source.error.is_empty():
 		return source.error
@@ -84,12 +92,14 @@ func prepare_model(path: String, manifest: RefCounted = null) -> String:
 		_game = GameMaterials.find(path, _file_texture)
 	_read_sidecar()
 	var rewritten := original.duplicate(true)
-	var remapped := false
+	var remapped := _restore_missing_images(rewritten)
 	var node_groups := {}
 	for node_index: int in range(nodes.size()):
 		if not nodes[node_index] is Dictionary:
 			return tr("GLB má neplatný uzel.")
-		_catalog_hair = _catalog_hair or str(nodes[node_index].get("name", "")).to_lower() == "vlasy_mikro_swept"
+		var node_tag := str(nodes[node_index].get("name", "")).to_lower()
+		_catalog_hair = _catalog_hair or node_tag == "vlasy_mikro_swept"
+		_guide_catalog = _guide_catalog or node_tag.begins_with("vlasy_guideclump_")
 		var mesh_index := int(nodes[node_index].get("mesh", -1))
 		if mesh_index >= 0:
 			if mesh_index >= mesh_defs.size():
@@ -145,6 +155,8 @@ func prepare_model(path: String, manifest: RefCounted = null) -> String:
 	GLTFDocument.unregister_gltf_document_extension(source_nodes)
 	if result != OK:
 		return tr("Godot model nenačetl (%s).") % error_string(result)
+	if _guide_catalog:
+		_prepare_guide_companions()
 	_prepare_external_images()
 	return ""
 
@@ -180,11 +192,67 @@ func _prepare_external_images() -> void:
 		if profile.textures is Dictionary:
 			for uri: Variant in profile.textures.values():
 				paths.append(_local_texture_path(str(uri)))
+		if not str(profile.atlas).is_empty():
+			paths.append_array(_texture_search.find_atlas(str(profile.atlas)))
+		elif profile.shader == "vlasy_karty":
+			paths.append(_texture_search.find("vlasy_atlas.png"))
 	if _game:
 		paths.append_array(_game.texture_files(slots))
 	for path in paths:
 		if not path.is_empty() and not _images.has(path):
 			_images[path] = _decode_texture(path)
+
+
+func _restore_missing_images(json: Dictionary) -> bool:
+	var changed := false
+	var mime_types := {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
+	for image: Dictionary in json.get("images", []):
+		var uri := str(image.get("uri", ""))
+		if uri.is_empty() or uri.begins_with("data:") or not GlbData.relative_file(uri):
+			continue
+		var relative := GlbData.decode_file_uri(uri)
+		var original := _model_path.get_base_dir().path_join(relative)
+		if relative == uri.uri_decode().replace("\\", "/") and FileAccess.file_exists(original):
+			continue
+		var found := _texture_search.find(uri)
+		var mime: String = mime_types.get(found.get_extension().to_lower(), "")
+		if found.is_empty() or mime.is_empty():
+			_note("", "Chybí odkazovaná textura %s. Zvol Načíst textury…", [relative])
+			continue
+		var file := FileAccess.open(found, FileAccess.READ)
+		if not file or file.get_length() > 32 * 1024 * 1024:
+			continue
+		var data := file.get_buffer(file.get_length())
+		if data.is_empty():
+			continue
+		image["uri"] = "data:" + mime + ";base64," + Marshalls.raw_to_base64(data)
+		_record_texture_folder(found)
+		changed = true
+	return changed
+
+
+func _prepare_guide_companions() -> void:
+	var shader_path := _texture_search.find_relative("shadery_godot4/vlasy_mikro_4k.gdshader")
+	if not shader_path.is_empty():
+		var file := FileAccess.open(shader_path, FileAccess.READ)
+		if file and file.get_length() <= 64 * 1024:
+			_guide_shader_code = file.get_as_text()
+	var head_path := _texture_search.find_relative("rozpracovane/podklad_hlavy/keenface_hlava2.glb")
+	if head_path.is_empty():
+		return
+	var document := GLTFDocument.new()
+	var state := GLTFState.new()
+	if document.append_from_file(head_path, state, IMPORT_FLAGS) != OK:
+		return
+	var materials := state.get_materials()
+	var expected := ["Head_Skin", "Eye_L", "Eye_R", "Teeth", "Cornea_L", "Cornea_R"]
+	if materials.size() != expected.size():
+		return
+	for index in range(materials.size()):
+		if not materials[index] or materials[index].resource_name != expected[index]:
+			return
+	_guide_head = materials
+	_record_texture_folder(head_path)
 
 
 func _bind_scene(node: Node) -> void:
@@ -308,10 +376,26 @@ func _profile(node_name: String, tag: String, surface: int) -> Dictionary:
 		atlas = "strniste_shell_2k" if legacy else "strniste_shell_4k"
 		# Both catalog generations inherit the two head masks. The LOD generator exports
 		# BeardDensity first, with the inherited masks shifted to COLOR_1 and COLOR_2.
-		color = "COLOR_2" if legacy or (_catalog_hair and name.begins_with("stubbleshell4k_")) else "COLOR_0"
+		color = "COLOR_2" if legacy or ((_catalog_hair or _guide_catalog) and name.begins_with("stubbleshell4k_")) else "COLOR_0"
 		parameters = _shell_parameters(name, legacy)
+	elif _guide_catalog and name.ends_with("_lod3_opaque") and (
+			(name.begins_with("vlasy_guideclump_") or name.begins_with("vousy_hrube_v3_"))):
+		detail = "Neprůhledná silueta LOD3 nemá v exportu produkční materiál."
 	elif name.begins_with("vlasy_lod3_opaque"):
 		detail = "HairShade v COLOR_0. Pro neprůhlednou čepici LOD3 chybí odpovídající produkční shader nebo vložený materiál."
+	elif _guide_catalog and (name.begins_with("vlasy_guideclump_") or name.begins_with("vousy_hrube_v3_")
+			or name == "vousy_stredni_1419_huste_v5" or name.begins_with("oboci_3d_") or name.begins_with("rasy_3d_")):
+		role = "vlasy_mikro_4k"
+		if name.begins_with("vlasy_guideclump_"):
+			atlas = "vlasy_mikro_4k"
+		elif name.begins_with("oboci_3d_") or name.begins_with("rasy_3d_"):
+			atlas = "oboci_rasy_mikro_4k"
+		else:
+			atlas = "vousy_hrube_v3_4k"
+		if name.contains("_lod1") and name.begins_with("vlasy_guideclump_"):
+			parameters["alfa_boost"] = 1.32
+		if name.ends_with("_lod2"):
+			parameters.merge({"alfa_boost": 1.8, "normala_sila": 0.0, "anizotropie": 0.0})
 	elif name.begins_with("vlasy_mikro") or name.begins_with("vlasy_lod") \
 			or name.begins_with("vousy_wiry") or role == "vlasy_mikro_4k":
 		role = "vlasy_mikro_4k"
@@ -379,9 +463,16 @@ func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
 		return
 	var original := instance.mesh.surface_get_material(surface) as BaseMaterial3D
 	if role.is_empty():
+		if (label.to_lower() == "head_shorthair" and str(profile.material_name).is_empty()
+				and not _guide_head.is_empty() and instance.mesh.get_surface_count() == _guide_head.size()):
+			var companion := _guide_head[surface]
+			instance.set_surface_override_material(surface, companion)
+			counts[companion.resource_name] = int(counts.get(companion.resource_name, 0)) + 1
+			return
 		if not str(profile.detail).is_empty():
 			_note(label, profile.detail)
-		if label.to_lower() == "head_shorthair" or label.to_lower().begins_with("vlasy_lod3_opaque"):
+		if (label.to_lower() == "head_shorthair" or label.to_lower().begins_with("vlasy_lod3_opaque")
+				or (_guide_catalog and label.to_lower().ends_with("_lod3_opaque"))):
 			_neutral_placeholder(instance, surface, original)
 		return
 	var attrs: Dictionary = profile.attributes
@@ -407,6 +498,12 @@ func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
 		_note(label, "Produkční shader %s není součástí balíčku.", [role])
 		return
 	var shader := _resource(SHADER_DIR + role + ".gdshader") as Shader
+	if role == "vlasy_mikro_4k" and not _guide_shader_code.is_empty():
+		if not _resources.has("guide_shader"):
+			var project_shader := Shader.new()
+			project_shader.code = _guide_shader_code
+			_resources["guide_shader"] = project_shader
+		shader = _resources["guide_shader"]
 	if shader == null:
 		_note(label, "Chybí produkční shader %s.", [role])
 		return
@@ -429,12 +526,19 @@ func _bind(instance: MeshInstance3D, surface: int, profile: Dictionary) -> void:
 						orm = original.metallic_texture if original.metallic_texture else original.ao_texture
 				textures["orm_tex"] = orm
 		"vlasy_karty":
-			textures["atlas_tex"] = _resource(TEXTURE_DIR + "vlasy_atlas.png")
+			textures["atlas_tex"] = _file_texture(_texture_search.find("vlasy_atlas.png"))
+			if textures["atlas_tex"] == null:
+				textures["atlas_tex"] = _resource(TEXTURE_DIR + "vlasy_atlas.png")
 		"vlasy_mikro_4k", "vousy_strniste_shell":
 			var atlas := str(profile.atlas)
 			if atlas == atlas.get_file():
-				textures["atlas_tex"] = _resource(TEXTURE_DIR + atlas + "_atlas.png")
-				textures["normal_tex"] = _resource(TEXTURE_DIR + atlas + "_normal.png")
+				var pair := _texture_search.find_atlas(atlas)
+				if pair.size() == 2:
+					textures["atlas_tex"] = _file_texture(pair[0])
+					textures["normal_tex"] = _file_texture(pair[1])
+				else:
+					textures["atlas_tex"] = _resource(TEXTURE_DIR + atlas + "_atlas.png")
+					textures["normal_tex"] = _resource(TEXTURE_DIR + atlas + "_normal.png")
 	var overrides: Variant = profile.textures
 	if overrides is Dictionary:
 		for uniform: String in overrides:
@@ -519,9 +623,7 @@ func _local_texture(uri: String) -> Texture2D:
 
 
 func _local_texture_path(uri: String) -> String:
-	if uri.is_empty() or not GlbData.relative_file(uri):
-		return ""
-	return _model_path.get_base_dir().path_join(uri.uri_decode().replace("\\", "/"))
+	return _texture_search.find(uri)
 
 
 func _file_texture(path: String) -> Texture2D:
@@ -534,7 +636,14 @@ func _file_texture(path: String) -> Texture2D:
 		return null
 	var texture := ImageTexture.create_from_image(image)
 	_resources[path] = texture
+	_record_texture_folder(path)
 	return texture
+
+
+func _record_texture_folder(path: String) -> void:
+	var folder := path.get_base_dir()
+	if not folder in texture_folders:
+		texture_folders.append(folder)
 
 
 static func _decode_texture(path: String) -> Image:

@@ -2,6 +2,7 @@ extends RefCounted
 
 const MAGIC := 0x46546C67
 const JSON_CHUNK := 0x4E4F534A
+const HEX_DIGITS := "0123456789ABCDEF"
 
 var bytes: PackedByteArray
 var json: Dictionary
@@ -74,9 +75,21 @@ func _binary_json(size: int) -> PackedByteArray:
 static func relative_file(uri: String) -> bool:
 	if uri.to_lower().contains("%00"):
 		return false
-	var normalized := uri.uri_decode().replace("\\", "/")
+	var normalized := decode_file_uri(uri)
 	return not normalized.begins_with("/") and not ":" in normalized \
 		and not ".." in normalized.split("/")
+
+
+static func decode_file_uri(uri: String) -> String:
+	# File paths preserve plus signs and allow either case for percent escapes.
+	var segments := uri.replace("+", "%2B").split("%")
+	for index in range(1, segments.size()):
+		var prefix := segments[index].left(2).to_upper()
+		if prefix.length() == 2 and prefix[0] in HEX_DIGITS and prefix[1] in HEX_DIGITS:
+			segments[index] = prefix + segments[index].substr(2)
+		else:
+			segments[index] = "25" + segments[index]
+	return "%".join(segments).uri_decode().replace("\\", "/")
 
 
 func with_json(replacement: Dictionary) -> PackedByteArray:
