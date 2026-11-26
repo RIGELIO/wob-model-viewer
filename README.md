@@ -4,11 +4,13 @@
 
 WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
+![Empty studio with scene tree, clickable cube, inspector and animation timeline](screenshots/studio-workspace.png)
+
 ## Day and night
 
 | Day | Night |
 | --- | --- |
-| ![Day mode with the sun visible](screenshots/viewer-day.png) | ![Night mode with the moon visible](screenshots/viewer-night.png) |
+| ![Day mode with the sun visible](screenshots/studio-cabin-day.png) | ![Night mode with the moon visible](screenshots/studio-cabin-night.png) |
 
 ## Download and run
 
@@ -24,15 +26,15 @@ To update on Windows, download and run the newer setup. It detects the registere
 
 ## Learn the viewer
 
-Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Tools** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools.
+Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Model** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools. Use the Scene tree on the left to show or hide meshes and select materials, skeletons and clips. The bottom timeline has previous frame, play, next frame, speed and loop controls.
 
 ## Animation tools
 
-Viewer 1.5 is free and runs offline without an account or activation. Use **Tools → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
+Viewer 1.5 is free and runs offline without an account or activation. Use **Model → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
 
-Use **Tools → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
+Use **Model → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
 
-Use **Tools → Animation Range** to set the interval, frame rate and output size before choosing **Export animation GIF**. Keep the included GIF encoder beside the portable executable.
+Use **Model → Animation Range** to set the interval, frame rate and output size before choosing **Export animation GIF**. Keep the included GIF encoder beside the portable executable.
 
 ## Vehicle manifests
 
@@ -141,24 +143,22 @@ The three built-in panoramas are available offline. Godot notices are bundled wi
 
 ## Gallery
 
-![Craft wagon rendered with production materials](screenshots/craft-wagon-4k.png)
+### Crossbowman animation
 
-**Crossbowman animation in the shaded view**
+The animation is shown in Points mode with the skeleton overlay. The wireframe view shows the same rig with the Lilienstein panorama and floor grid.
 
-![The crossbowman animation playing in WoB Model Viewer with the Lilienstein panorama and grid](screenshots/crossbow-animation.gif)
+![Crossbowman motion in Points mode with the skeleton and animation timeline](screenshots/studio-crossbowman.gif)
 
-**Crossbowman in triangle wireframe with the grid**
+| Points and skeleton | Triangle wireframe |
+| --- | --- |
+| ![Crossbowman pose displayed as points and bones](screenshots/studio-crossbowman-points.png) | ![Crossbowman displayed in triangle wireframe with the grid](screenshots/studio-crossbowman-wireframe.png) |
 
-![A frame of the crossbowman animation in wireframe with the Lilienstein panorama and grid](screenshots/crossbow-wireframe.png)
+### Craft wagon
 
-**Crossbowman animation in Points mode with the skeleton overlay**
+The viewer loads the Wars of Bohemia materials and shows the model's LOD controls. The GIF switches between materials, wireframe and the primary UV checkerboard.
 
-![The crossbowman animation playing as points with the skeleton overlay on a dark background](screenshots/crossbow-points-animation.gif)
+![Craft wagon with production materials and LOD controls](screenshots/studio-wagon-materials.png)
 
-[Full-size Points and skeleton screenshot](screenshots/crossbow-points-skeleton.png)
+![Switching the wagon from materials to wireframe and the UV checkerboard](screenshots/studio-inspection.gif)
 
-**LOD comparison and material diagnostics in Czech**
-
-![Czech interface with LOD controls and material diagnostics](screenshots/viewer-czech.png)
-
-[Inferred quad view in an earlier release](screenshots/viewer-lod-quads.png) · [About WoB Model Viewer](screenshots/viewer-about.png)
+[Full-size UV checkerboard](screenshots/studio-wagon-uv.png)

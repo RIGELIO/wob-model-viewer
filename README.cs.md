@@ -4,11 +4,13 @@
 
 Offline desktopový prohlížeč GLB, glTF a FBX pro kontrolu geometrie, materiálů a animací. Podporuje původní shadery postav a sdílené atlasy Wars of Bohemia.
 
+![Prázdné studio se stromem scény, orientační kostkou, inspektorem a časovou osou](screenshots/studio-workspace.png)
+
 ## Den a noc
 
 | Den | Noc |
 | --- | --- |
-| ![Denní režim s viditelným sluncem](screenshots/viewer-day.png) | ![Noční režim s viditelným měsícem](screenshots/viewer-night.png) |
+| ![Denní režim s viditelným sluncem](screenshots/studio-cabin-day.png) | ![Noční režim s viditelným měsícem](screenshots/studio-cabin-night.png) |
 
 ## Stažení a spuštění
 
@@ -24,15 +26,15 @@ Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná re
 
 ## První kroky
 
-V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky **Pohled**, **Animace** a **Nástroje** zpřístupňují ovládání. Nastavení přehrávání, materiálů, osvětlení, zobrazení a editace najdeš vpravo v inspektoru.
+V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky **Pohled**, **Animace** a **Model** zpřístupňují ovládání. Nastavení přehrávání, materiálů, osvětlení, zobrazení a editace najdeš vpravo v inspektoru. Vlevo je strom scény s viditelností sítí a výběrem materiálů, kostry a klipů. Časová osa dole obsahuje krok zpět, přehrávání, krok vpřed, rychlost a smyčku.
 
 ## Nástroje animace
 
-Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Nástroje → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
+Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Model → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
 
-Pro model bez kostry zvol **Nástroje → Navrhnout novou kostru**. Začni lidskou nebo zvířecí šablonou nebo klikni na **Přidat kloub** a umísti ho do pohledu. Tažením upravíš polohu kloubu. Návrh `.wobrig` můžeš znovu otevřít a kostru vyexportovat do samostatného GLB.
+Pro model bez kostry zvol **Model → Navrhnout novou kostru**. Začni lidskou nebo zvířecí šablonou nebo klikni na **Přidat kloub** a umísti ho do pohledu. Tažením upravíš polohu kloubu. Návrh `.wobrig` můžeš znovu otevřít a kostru vyexportovat do samostatného GLB.
 
-Před volbou **Export animace GIF** nastav interval, FPS a rozlišení v nabídce **Nástroje → Rozsah animace**. Přiložený kodér GIF ponech vedle přenosného programu.
+Před volbou **Export animace GIF** nastav interval, FPS a rozlišení v nabídce **Model → Rozsah animace**. Přiložený kodér GIF ponech vedle přenosného programu.
 
 ## Manifesty vozů
 
@@ -44,7 +46,7 @@ Ponech složku `_materialy-z-hry` se souborem `index.json` a adresářem `assets
 
 ## Ovládání
 
-1. Přetáhni `.glb` nebo `.gltf` do okna nebo jej otevři klávesami **Ctrl+O**. Během importu se zobrazí název souboru a animované kolečko. Soubory `.bin` a textury odkazované z `.gltf` ponech na jejich relativních cestách ve složce modelu. **EN / CS** přepíná jazyk, **F1** otevírá nápovědu a **F11** přepíná celou obrazovku.
+1. Přetáhni `.glb` nebo `.gltf` do okna nebo jej otevři klávesami **Ctrl+O**. Během importu se zobrazí název souboru a animované kolečko. Soubory `.bin` a textury odkazované z `.gltf` ponech na jejich relativních cestách ve složce modelu. Jazyk přepneš v nabídce **Okno**, **F1** otevírá nápovědu a **F11** přepíná celou obrazovku.
 2. **Levé tlačítko myši** otáčí pohledem. Pravé nebo prostřední tlačítko posouvá pohled a kolečko mění přiblížení. **F** zarámuje model. Kliknutím na stěnu orientační kostky nastavíš směr pohledu. Tažením za kostku pohled plynule otočíš. Přepínač posunu mění posun v rovině pohledu na posun po zemi.
 3. V panelu **Osvětlení** vyber vestavěné panorama z Poly Haven nebo načti vlastní HDR či EXR v poměru 2 : 1. **Obloha HDRI** zobrazí původní panorama. Režimy **Den · Slunce** a **Noc · Měsíc** přidají viditelný zdroj přímého světla. Azimut a výška mění jeho polohu. Tlačítko **Ukázat zdroj** k němu otočí kameru. HDRI, přímé světlo a odrazy HDRI mají samostatné přepínače.
 4. V panelu **Zobrazení** vyber barvu pozadí nebo panorama. Vypnutím pozadí získáš průhledné PNG. Mřížku, podlahu pro stíny, kostru a ortografický pohled můžeš zapínat samostatně. Vedle produkčních materiálů jsou k dispozici wireframe, režim bez osvětlení, normály, overdraw a **Body**. Velikost bodů mění průměr vykreslených vrcholů v režimu **Body**. **Geometrie** uvádí statistiky sítě a časová osa přehrává vložené klipy.
@@ -122,18 +124,24 @@ Tři vestavěná panoramata fungují offline. Licenční informace Godotu jsou s
 
 © 2026 RIGELIO Studio. Licence MIT umožňuje používání, úpravy a šíření se zachováním copyrightu a licenčního textu. Podrobnosti jsou v souborech [LICENSE](LICENSE) a [RESOURCE-LICENSES.md](RESOURCE-LICENSES.md). Verzi, copyright a licenci najdeš v aplikaci přes **Nápověda → O programu**.
 
-## Kušník v prohlížeči
+## Galerie
 
-**Animace kušníka v zobrazení materiálů**
+### Animace kušníka
 
-![Přehrávání animace kušníka s panoramatem Lilienstein a mřížkou](screenshots/crossbow-animation.gif)
+GIF ukazuje animaci v režimu Body se zapnutou kostrou. Wireframe zachycuje stejnou postavu s panoramatem Lilienstein a mřížkou.
 
-**Kušník ve wireframe s mřížkou**
+![Animace kušníka v režimu Body s kostrou a časovou osou](screenshots/studio-crossbowman.gif)
 
-![Záběr animace kušníka ve wireframe s panoramatem Lilienstein a mřížkou](screenshots/crossbow-wireframe.png)
+| Body a kostra | Trojúhelníkový wireframe |
+| --- | --- |
+| ![Póza kušníka v bodech se zobrazenými kostmi](screenshots/studio-crossbowman-points.png) | ![Kušník ve wireframe s mřížkou](screenshots/studio-crossbowman-wireframe.png) |
 
-**Animace kušníka v režimu Body se zobrazenou kostrou**
+### Řemeslný vůz
 
-![Animace kušníka v bodech se zobrazenou kostrou na tmavém pozadí](screenshots/crossbow-points-animation.gif)
+Viewer načte produkční materiály z Wars of Bohemia a ukáže přepínač LOD. GIF střídá materiály, wireframe a šachovnici první UV vrstvy.
 
-[Původní snímek bodů a kostry v plném rozlišení](screenshots/crossbow-points-skeleton.png)
+![Řemeslný vůz s produkčními materiály a ovládáním LOD](screenshots/studio-wagon-materials.png)
+
+![Přepínání materiálů, wireframe a UV šachovnice na voze](screenshots/studio-inspection.gif)
+
+[UV šachovnice v plném rozlišení](screenshots/studio-wagon-uv.png)
