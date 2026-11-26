@@ -196,6 +196,7 @@ def import_project(godot, stage, logs):
 
 def export(args, stage):
     import_project(args.godot, stage, args.logs)
+    go_root = Path(subprocess.check_output([args.go, "env", "GOROOT"], text=True).strip())
     for name, (platform, template_name, executable) in TEMPLATES.items():
         target = args.out / name
         target.mkdir()
@@ -212,6 +213,7 @@ def export(args, stage):
         subprocess.run([args.go, "build", "-trimpath", "-ldflags=-s -w", "-o", str(gif_encoder),
                         str(HERE / "tools" / "gif.go")], env=env, check=True)
         gif_encoder.chmod(0o755)
+        shutil.copy2(go_root / "LICENSE", target / "Go-LICENSE.txt")
         for guide in (HERE / "docs").glob("README.*.md"):
             shutil.copy2(guide, target)
         shutil.copy2(HERE / "art" / "icon.png", target)

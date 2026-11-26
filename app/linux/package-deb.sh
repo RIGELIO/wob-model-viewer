@@ -32,7 +32,7 @@ install -m644 "$build/Linux/icon.png" "$stage/usr/share/icons/hicolor/256x256/ap
 install -m644 "$build/Linux/README.en.md" "$build/Linux/README.cs.md" \
     "$build/Linux/PRODUCTION-RESOURCES.json" "$build/Linux/Godot-COPYRIGHT.txt" \
     "$build/Linux/Godot-LICENSE.txt" "$build/Linux/CormorantGaramond-OFL.txt" \
-    "$build/Linux/RESOURCE-LICENSES.md" "$stage/usr/share/doc/$pkg/"
+    "$build/Linux/Go-LICENSE.txt" "$build/Linux/RESOURCE-LICENSES.md" "$stage/usr/share/doc/$pkg/"
 install -m644 "$build/Linux/LICENSE" "$stage/usr/share/doc/$pkg/copyright"
 
 install -m644 "$source_dir/com.rigelio.WoBModelViewer.desktop" "$stage/usr/share/applications/"
