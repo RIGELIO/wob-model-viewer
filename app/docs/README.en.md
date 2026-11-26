@@ -16,15 +16,15 @@ To update on Windows, download and run the newer setup. It detects the registere
 
 ## Learn the viewer
 
-Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Tools** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools.
+Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Model** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools. Use the Scene tree on the left to show or hide meshes and select materials, skeletons and clips. The bottom timeline has previous frame, play, next frame, speed and loop controls.
 
 ## Animation tools
 
-Viewer 1.5 is free and runs offline without an account or activation. Use **Tools → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
+Viewer 1.5 is free and runs offline without an account or activation. Use **Model → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
 
-Use **Tools → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
+Use **Model → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
 
-Use **Tools → Animation Range** to set the interval, frame rate and output size before choosing **Export animation GIF**. Keep the included GIF encoder beside the portable executable.
+Use **Model → Animation Range** to set the interval, frame rate and output size before choosing **Export animation GIF**. Keep the included GIF encoder beside the portable executable.
 
 ## Vehicle manifests
 

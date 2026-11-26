@@ -4,11 +4,13 @@
 
 WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
+![Empty studio with scene tree, clickable cube, inspector and animation timeline](screenshots/studio-workspace.png)
+
 ## Day and night
 
 | Day | Night |
 | --- | --- |
-| ![Day mode with the sun visible](screenshots/viewer-day.png) | ![Night mode with the moon visible](screenshots/viewer-night.png) |
+| ![Day mode with the sun visible](screenshots/studio-cabin-day.png) | ![Night mode with the moon visible](screenshots/studio-cabin-night.png) |
 
 ## Download and run
 
@@ -24,19 +26,19 @@ To update on Windows, download and run the newer setup. It detects the registere
 
 ## Learn the viewer
 
-Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Tools** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools.
+Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Model** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools. Use the Scene tree on the left to show or hide meshes and select materials, skeletons and clips. The bottom timeline has previous frame, play, next frame, speed and loop controls.
 
 ## Animation tools
 
-Viewer 1.5 is free and runs offline without an account or activation. Use **Tools → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
+Viewer 1.5 is free and runs offline without an account or activation. Use **Model → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
 
-Use **Tools → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
+Use **Model → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
 
-Use **Tools → Animation Range** to set the interval, frame rate and output size before choosing **Export animation GIF**. Keep the included GIF encoder beside the portable executable.
+Use **Model → Animation Range** to set the interval, frame rate and output size before choosing **Export animation GIF**. Keep the included GIF encoder beside the portable executable.
 
 ## Vehicle manifests
 
-Open a `vuz_*_manifest.json` or one of the adjacent GLBs. The viewer applies the original wagon shader and resolves the manifest's albedo, normal and ORM maps. Tiled models retain their `UV2` and `COLOR_0` semantics. The viewport toolbar lets you select the vehicle state and level of detail. The `*_atlas.json` file describes the UV atlas.
+Open a `vuz_*_manifest.json` or one of the adjacent GLBs. The viewer applies the original wagon shader and resolves the manifest's albedo, normal and ORM maps. Tiled models retain their `UV2` and `COLOR_0` semantics. Use **Model & LOD** in the right-hand inspector to select the vehicle state and level of detail. The `*_atlas.json` file describes the UV atlas.
 
 ## Local WoB materials
 
@@ -44,7 +46,7 @@ Keep the local `_materialy-z-hry` folder, including `index.json` and `assets/`, 
 
 ## Inspect a model
 
-1. Drop a `.glb`, `.gltf` or `.fbx` anywhere in the window or press **Ctrl+O**. The viewer shows the filename and a spinner during import. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Use **EN / CS** to switch languages, **F1** for help and **F11** for full screen.
+1. Drop a `.glb`, `.gltf` or `.fbx` anywhere in the window or press **Ctrl+O**. The viewer shows the filename and a spinner during import. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Switch languages from **Window**. Press **F1** for help and **F11** for full screen.
 2. Drag with the **left mouse button** to orbit. Drag with the right or middle button to pan and scroll to zoom. **F** frames the model. Click a face on the view cube to align the camera, or drag the cube to orbit. Enable **Auto-rotate** to orbit continuously. The **Screen-space pan** toggle switches between view-aligned and ground-plane movement.
 3. Under **Lighting**, choose a built-in Poly Haven panorama or load a 2:1 HDR or EXR file. **HDRI** shows the panorama as photographed. **Day · Sun** and **Night · Moon** add a visible light source aligned with the direct light. Adjust its azimuth and elevation to move it, or use **Aim at source** to bring it into view. Ambient HDRI, direct light and HDRI reflections have separate controls.
 4. **View** provides background colors and the HDRI panorama. Turn off **Show background** for transparent PNG exports. Toggle the grid, shadow-catching floor, skeleton overlay and orthographic projection independently. Inspect shaded, wireframe, unlit, normal-buffer, overdraw or **Points** views. **Point size** controls the size of vertex dots in **Points** mode. **Geometry** shows mesh statistics, and the timeline plays and scrubs embedded clips.
@@ -72,7 +74,7 @@ The viewer also shows progress feedback when switching panoramas or skies, prepa
 
 If a model is named like `character_lod0.glb`, the viewer finds matching files in the same folder, including variants such as `character_lod1_helma.glb`. The LOD list shows the triangle and vertex counts from the source GLB scene and the size of each file. Switch levels from the list to compare them while keeping the current camera.
 
-**Wireframe** shows triangle edges. In **View**, the same control position shows **Line width** in wireframe mode or **Point size** in Points mode. The session stores both values independently. **Inferred quads** in Pro estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
+**Wireframe** shows triangle edges. In **View**, the same control position shows **Line width** in wireframe mode or **Point size** in Points mode. The session stores both values independently. **Inferred quads** estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
 
 Use the color swatch next to **Floor** to change its color. **Floor offset** moves the floor and grid in meters relative to the model's baseline, which helps inspect animated ground contact. The session saves both settings.
 
@@ -83,7 +85,7 @@ In **View**, turn on **Model axes** or press **M**. Drag an arrow to move the mo
 | Keys | Action |
 | --- | --- |
 | **1** or **F** · **2** · **3** · **4** | Frame · Front · Side · Top |
-| **W** · **Q** · **P** | Wireframe · Inferred quads (Pro) · Points |
+| **W** · **Q** · **P** | Wireframe · Inferred quads · Points |
 | **G** · **K** · **A** · **B** · **O** | Grid · Skeleton · Auto-rotate · Show background · Ortho |
 | **M** | Toggle model axes |
 | **Page Up** · **Page Down** | Previous LOD · Next LOD |
@@ -141,24 +143,22 @@ The three built-in panoramas are available offline. Godot notices are bundled wi
 
 ## Gallery
 
-![Craft wagon rendered with production materials](screenshots/craft-wagon-4k.png)
+### Crossbowman animation
 
-**Crossbowman animation in the shaded view**
+The animation is shown in Points mode with the skeleton overlay. The wireframe view shows the same rig with the Lilienstein panorama and floor grid.
 
-![The crossbowman animation playing in WoB Model Viewer with the Lilienstein panorama and grid](screenshots/crossbow-animation.gif)
+![Crossbowman motion in Points mode with the skeleton and animation timeline](screenshots/studio-crossbowman.gif)
 
-**Crossbowman in triangle wireframe with the grid**
+| Points and skeleton | Triangle wireframe |
+| --- | --- |
+| ![Crossbowman pose displayed as points and bones](screenshots/studio-crossbowman-points.png) | ![Crossbowman displayed in triangle wireframe with the grid](screenshots/studio-crossbowman-wireframe.png) |
 
-![A frame of the crossbowman animation in wireframe with the Lilienstein panorama and grid](screenshots/crossbow-wireframe.png)
+### Craft wagon
 
-**Crossbowman animation in Points mode with the skeleton overlay**
+The viewer loads the Wars of Bohemia materials and shows the model's LOD controls. The GIF switches between materials, wireframe and the primary UV checkerboard.
 
-![The crossbowman animation playing as points with the skeleton overlay on a dark background](screenshots/crossbow-points-animation.gif)
+![Craft wagon with production materials and LOD controls](screenshots/studio-wagon-materials.png)
 
-[Full-size Points and skeleton screenshot](screenshots/crossbow-points-skeleton.png)
+![Switching the wagon from materials to wireframe and the UV checkerboard](screenshots/studio-inspection.gif)
 
-**LOD comparison and material diagnostics in Czech**
-
-![Czech interface with LOD controls and material diagnostics](screenshots/viewer-czech.png)
-
-[Inferred quad view in an earlier release](screenshots/viewer-lod-quads.png) · [About WoB Model Viewer](screenshots/viewer-about.png)
+[Full-size UV checkerboard](screenshots/studio-wagon-uv.png)

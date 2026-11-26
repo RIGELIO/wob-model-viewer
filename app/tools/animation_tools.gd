@@ -83,10 +83,10 @@ func open_job_model(model_path: String, clip: String) -> bool:
 
 func _make_controls() -> void:
 	_menu = MenuButton.new()
-	_menu.text = "Nástroje"
+	_menu.text = "Model"
 	var header: Control = viewer._menu_help.get_parent()
 	header.add_child(_menu)
-	header.move_child(_menu, viewer._menu_help.get_index())
+	header.move_child(_menu, viewer._menu_window.get_index())
 	_menu.about_to_popup.connect(_refresh_menu)
 	_menu.get_popup().id_pressed.connect(_dispatch)
 

@@ -16,15 +16,15 @@ Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná re
 
 ## První kroky
 
-V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky **Pohled**, **Animace** a **Nástroje** zpřístupňují ovládání. Nastavení přehrávání, materiálů, osvětlení, zobrazení a editace najdeš vpravo v inspektoru.
+V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky **Pohled**, **Animace** a **Model** zpřístupňují ovládání. Nastavení přehrávání, materiálů, osvětlení, zobrazení a editace najdeš vpravo v inspektoru. Vlevo je strom scény s viditelností sítí a výběrem materiálů, kostry a klipů. Časová osa dole obsahuje krok zpět, přehrávání, krok vpřed, rychlost a smyčku.
 
 ## Nástroje animace
 
-Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Nástroje → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
+Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Model → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
 
-Pro model bez kostry zvol **Nástroje → Navrhnout novou kostru**. Začni lidskou nebo zvířecí šablonou nebo klikni na **Přidat kloub** a umísti ho do pohledu. Tažením upravíš polohu kloubu. Návrh `.wobrig` můžeš znovu otevřít a kostru vyexportovat do samostatného GLB.
+Pro model bez kostry zvol **Model → Navrhnout novou kostru**. Začni lidskou nebo zvířecí šablonou nebo klikni na **Přidat kloub** a umísti ho do pohledu. Tažením upravíš polohu kloubu. Návrh `.wobrig` můžeš znovu otevřít a kostru vyexportovat do samostatného GLB.
 
-Před volbou **Export animace GIF** nastav interval, FPS a rozlišení v nabídce **Nástroje → Rozsah animace**. Přiložený kodér GIF ponech vedle přenosného programu.
+Před volbou **Export animace GIF** nastav interval, FPS a rozlišení v nabídce **Model → Rozsah animace**. Přiložený kodér GIF ponech vedle přenosného programu.
 
 ## Manifesty vozů
 
@@ -36,7 +36,7 @@ Ponech složku `_materialy-z-hry` se souborem `index.json` a adresářem `assets
 
 ## Ovládání
 
-1. Přetáhni `.glb` nebo `.gltf` do okna nebo jej otevři klávesami **Ctrl+O**. Během importu se zobrazí název souboru a animované kolečko. Soubory `.bin` a textury odkazované z `.gltf` ponech na jejich relativních cestách ve složce modelu. **EN / CS** přepíná jazyk, **F1** otevírá nápovědu a **F11** přepíná celou obrazovku.
+1. Přetáhni `.glb` nebo `.gltf` do okna nebo jej otevři klávesami **Ctrl+O**. Během importu se zobrazí název souboru a animované kolečko. Soubory `.bin` a textury odkazované z `.gltf` ponech na jejich relativních cestách ve složce modelu. Jazyk přepneš v nabídce **Okno**, **F1** otevírá nápovědu a **F11** přepíná celou obrazovku.
 2. **Levé tlačítko myši** otáčí pohledem. Pravé nebo prostřední tlačítko posouvá pohled a kolečko mění přiblížení. **F** zarámuje model. Kliknutím na stěnu orientační kostky nastavíš směr pohledu. Tažením za kostku pohled plynule otočíš. Přepínač posunu mění posun v rovině pohledu na posun po zemi.
 3. V panelu **Osvětlení** vyber vestavěné panorama z Poly Haven nebo načti vlastní HDR či EXR v poměru 2 : 1. **Obloha HDRI** zobrazí původní panorama. Režimy **Den · Slunce** a **Noc · Měsíc** přidají viditelný zdroj přímého světla. Azimut a výška mění jeho polohu. Tlačítko **Ukázat zdroj** k němu otočí kameru. HDRI, přímé světlo a odrazy HDRI mají samostatné přepínače.
 4. V panelu **Zobrazení** vyber barvu pozadí nebo panorama. Vypnutím pozadí získáš průhledné PNG. Mřížku, podlahu pro stíny, kostru a ortografický pohled můžeš zapínat samostatně. Vedle produkčních materiálů jsou k dispozici wireframe, režim bez osvětlení, normály, overdraw a **Body**. Velikost bodů mění průměr vykreslených vrcholů v režimu **Body**. **Geometrie** uvádí statistiky sítě a časová osa přehrává vložené klipy.

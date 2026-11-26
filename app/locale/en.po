@@ -676,20 +676,20 @@ msgstr "In Lighting on the right, select an HDRI panorama or load your own. Adju
 msgid "Přehrávání a rozbor pohybu"
 msgstr "Playback and motion analysis"
 
-msgid "Vyber klip vpravo v části Přehrávání animace. Přehrávej, krokuj nebo přepínej smyčku v horní nabídce Animace. Rychlost uprav vpravo, čas zvol na spodní časové ose.\n\nPro animaci s kostrou otevři Nástroje → Analyzovat pohyb. Kliknutím na nález přejdeš na jeho čas. Rozsah a vzorkování nastav v Nástroje → Rozsah animace."
-msgstr "Choose a clip in Animation Playback on the right. Use the top Animation menu to play, step or toggle looping. Adjust speed on the right and use the bottom timeline to seek.\n\nFor a clip with an animated skeleton, choose Tools → Analyze Motion. Click a finding to jump to its time. Set the interval and sample rate in Tools → Animation Range."
+msgid "Vyber klip vpravo v části Přehrávání animace. Přehrávej, krokuj nebo přepínej smyčku v horní nabídce Animace. Rychlost uprav vpravo, čas zvol na spodní časové ose.\n\nPro animaci s kostrou otevři Model → Analyzovat pohyb. Kliknutím na nález přejdeš na jeho čas. Rozsah a vzorkování nastav v Model → Rozsah animace."
+msgstr "Choose a clip in Animation Playback on the right. Use the top Animation menu to play, step or toggle looping. Adjust speed on the right and use the bottom timeline to seek.\n\nFor a clip with an animated skeleton, choose Model → Analyze Motion. Click a finding to jump to its time. Set the interval and sample rate in Model → Animation Range."
 
 msgid "Úpravy pohybu a nová kostra"
 msgstr "Editing motion and creating a skeleton"
 
-msgid "Pro animovanou kostru otevři Nástroje → Editor pohybu. Klikni na kost v pohledu a použij ovládání v pravém panelu k úpravě rotace snímku, přichycení končetiny nebo kreslení značky.\n\nPro model bez kostry zvol Nástroje → Navrhnout novou kostru. Vpravo vyber šablonu nebo Přidat kloub. Kliknutím ho umísti a tažením dolaď."
-msgstr "For an animated skeleton, choose Tools → Motion Editor. Select a joint in the viewport, then use the inspector to edit a frame’s rotation, pin a limb or draw an annotation.\n\nFor an unrigged model, choose Tools → Draft a New Skeleton. Pick a template or choose Add Joint in the inspector. Click to place the joint and drag it to adjust its position."
+msgid "Pro animovanou kostru otevři Model → Editor pohybu. Klikni na kost v pohledu a použij ovládání v pravém panelu k úpravě rotace snímku, přichycení končetiny nebo kreslení značky.\n\nPro model bez kostry zvol Model → Navrhnout novou kostru. Vpravo vyber šablonu nebo Přidat kloub. Kliknutím ho umísti a tažením dolaď."
+msgstr "For an animated skeleton, choose Model → Motion Editor. Select a joint in the viewport, then use the inspector to edit a frame’s rotation, pin a limb or draw an annotation.\n\nFor an unrigged model, choose Model → Draft a New Skeleton. Pick a template or choose Add Joint in the inspector. Click to place the joint and drag it to adjust its position."
 
 msgid "Uložení práce a export"
 msgstr "Saving and exporting"
 
-msgid "Soubor → Uložit jako uloží relaci pohledu do souboru .wobview. Z nabídky Soubor vytvoř i snímek 4K.\n\nV nabídce Nástroje můžeš uložit report s úpravami nebo vyexportovat GIF. Před GIFem nastav časový výřez, FPS a rozlišení v nabídce Rozsah animace. Návrh kostry se ukládá v pravém panelu jako .wobrig nebo exportuje do nového GLB."
-msgstr "Choose File → Save As to save a .wobview session. Use the File menu to capture a 4K screenshot.\n\nIn Tools, save a report with edits or export a GIF. Choose the animation interval, frame rate and resolution in Animation Range before exporting a GIF. Save a skeleton draft as .wobrig or export it to a new GLB from the right panel."
+msgid "Soubor → Uložit jako uloží relaci pohledu do souboru .wobview. Z nabídky Soubor vytvoř i snímek 4K.\n\nV nabídce Model můžeš uložit report s úpravami nebo vyexportovat GIF. Před GIFem nastav časový výřez, FPS a rozlišení v nabídce Rozsah animace. Návrh kostry se ukládá v pravém panelu jako .wobrig nebo exportuje do nového GLB."
+msgstr "Choose File → Save As to save a .wobview session. Use the File menu to capture a 4K screenshot.\n\nIn Model, save a report with edits or export a GIF. Choose the animation interval, frame rate and resolution in Animation Range before exporting a GIF. Save a skeleton draft as .wobrig or export it to a new GLB from the right panel."
 
 msgid "Průvodce krok za krokem"
 msgstr "Step-by-step Guide"
@@ -723,3 +723,129 @@ msgstr "Next Frame"
 
 msgid "Otevřít inspektor"
 msgstr "Show Inspector"
+
+msgid "Klip"
+msgstr "Clip"
+
+msgid "Mezerník"
+msgstr "Space"
+
+msgid "Scéna"
+msgstr "Scene"
+
+msgid "Sbalit nebo rozbalit scénu"
+msgstr "Collapse or expand the scene"
+
+msgid "Síť"
+msgstr "Mesh"
+
+msgid "Viditelnost vrstvy"
+msgstr "Layer visibility"
+
+msgid "Okno"
+msgstr "Window"
+
+msgid "Panel scény"
+msgstr "Scene panel"
+
+msgid "Automaticky skrývat inspektor"
+msgstr "Auto-hide inspector"
+
+msgid "Automaticky skrývat lištu"
+msgstr "Auto-hide toolbar"
+
+msgid "Skrýt horní lištu"
+msgstr "Hide toolbar"
+
+msgid "Posun modelu"
+msgstr "Move model"
+
+msgid "Otočení modelu"
+msgstr "Rotate model"
+
+msgid "Perspektiva"
+msgstr "Perspective"
+
+msgid "Materiál"
+msgstr "Material"
+
+msgid "Bez materiálu"
+msgstr "No material"
+
+msgid "Materiál PBR"
+msgstr "PBR Material"
+
+msgid "Produkční shader"
+msgstr "Production Shader"
+
+msgid "Základní barva"
+msgstr "Base Color"
+
+msgid "Drsnost"
+msgstr "Roughness"
+
+msgid "Kovovost"
+msgstr "Metallic"
+
+msgid "Normála"
+msgstr "Normal"
+
+msgid "Normálová mapa"
+msgstr "Normal map"
+
+msgid "(žádná)"
+msgstr "(none)"
+
+msgid "Vybrat normálovou mapu"
+msgstr "Choose normal map"
+
+msgid "Texturu se nepodařilo načíst."
+msgstr "Could not load the texture."
+
+msgid "Klíčové světlo"
+msgstr "Key Intensity"
+
+msgid "Výplňové světlo"
+msgstr "Fill Intensity"
+
+msgid "Obrysové světlo"
+msgstr "Rim Intensity"
+
+msgid "Směr"
+msgstr "Direction"
+
+msgid "Azimut"
+msgstr "Azimuth"
+
+msgid "Výška"
+msgstr "Elevation"
+
+msgid "Předvolba"
+msgstr "Preset"
+
+msgid "Venku · zataženo"
+msgstr "Outdoor (overcast)"
+
+msgid "Čistá obloha"
+msgstr "Clear sky"
+
+msgid "Měsíční světlo"
+msgstr "Moonlight"
+
+msgid "Rozšířené osvětlení"
+msgstr "Advanced Lighting"
+
+msgid "Rychlost"
+msgstr "Speed"
+
+msgid "Materiálové sloty"
+msgstr "Materials"
+
+msgid "Klipy animace"
+msgstr "Animations"
+
+msgid "Vzít barvu z náhledu"
+msgstr "Sample a color from the viewer"
+
+msgid "Bez modelu"
+msgstr "No model"

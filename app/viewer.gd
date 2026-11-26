@@ -1,5 +1,8 @@
 extends Control
 
+const UiGlyphs = preload("res://ui_glyphs.gd")
+const SceneOutline = preload("res://scene_outline.gd")
+const MaterialInspector = preload("res://material_inspector.gd")
 const Tutorial = preload("res://tutorial.gd")
 const AnimationTools = preload("res://tools/animation_tools.gd")
 const FbxMaterials = preload("res://tools/fbx_materials.gd")
@@ -10,12 +13,12 @@ const LodCatalog = preload("res://lod_catalog.gd")
 const VehicleManifest = preload("res://vehicle_manifest.gd")
 const APP_ICON = preload("res://art/icon.png")
 const TITLE_FONT = preload("res://art/CormorantGaramond.ttf")
-const INK := Color("#121315")
-const PANEL := Color("#1a1b1e")
-const BORDER := Color("#433c33")
-const WHITE := Color("#f4eee2")
-const MUTED := Color("#b8b1a6")
-const GOLD := Color("#edbd7c")
+const INK := Color("#1d1d1c")
+const PANEL := Color("#1e1e1e")
+const BORDER := Color("#434143")
+const WHITE := Color("#efeae5")
+const MUTED := Color("#b2aaa2")
+const GOLD := Color("#d7af75")
 const LOCALES := ["en", "cs"]
 const HDRI_NAMES := ["Lilienstein", "Kloppenheim 06 · Pure Sky", "Moonlit Golf"]
 const LOG_LIMIT := 200
@@ -48,6 +51,124 @@ class LoadingArtwork extends TextureRect:
 		material = orbit
 
 
+class ViewAxes extends Control:
+	var stage: Control
+	var axes := [Vector3.RIGHT, Vector3.UP, Vector3.BACK]
+	var colors := [Color("#e87873"), Color("#a1c77c"), Color("#7299e4")]
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if not stage.camera:
+			return
+		var basis: Basis = stage.orientation_display_basis().transposed()
+		var center := Vector2(30, 38)
+		for axis in axes.size():
+			var point: Vector3 = basis * axes[axis]
+			var offset := Vector2(point.x, -point.y) * 31.0
+			if offset.length() > 5.0:
+				draw_line(center, center + offset, colors[axis], 1.8, true)
+				var end := center + offset
+				var back := offset.normalized() * 6.0
+				draw_colored_polygon(PackedVector2Array([end, end - back + back.orthogonal() * 0.5,
+					end - back - back.orthogonal() * 0.5]), colors[axis])
+				draw_string(get_theme_default_font(), end + offset.normalized() * 8.0 + Vector2(-3, 4),
+					["X", "Y", "Z"][axis], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, colors[axis])
+
+
+class LightDirectionDial extends Control:
+	signal moved(azimuth: float, elevation: float)
+
+	var azimuth := -35.0
+	var elevation := 42.0
+	var dragging := false
+
+	func _ready() -> void:
+		custom_minimum_size = Vector2(85.0, 85.0)
+		mouse_default_cursor_shape = CURSOR_POINTING_HAND
+
+	func update_direction(new_azimuth: float, new_elevation: float) -> void:
+		azimuth = new_azimuth
+		elevation = new_elevation
+		queue_redraw()
+
+	func _draw() -> void:
+		var center := size * 0.5
+		var radius := minf(center.x, center.y) - 5.0
+		draw_circle(center, radius, Color("#201e1d"), true, -1.0, true)
+		var highlight := center + Vector2(0.17, -0.26) * radius
+		for band in range(35, 0, -1):
+			var fraction := band / 35.0
+			var shade := Color("#201e1d").lerp(Color("#57504a"), pow(1.0 - fraction, 1.6))
+			draw_circle(highlight, radius * 0.72 * fraction, shade, true, -1.0, true)
+		draw_arc(center, radius, 0.0, TAU, 64, Color("#6c6054"), 1.0, true)
+		var angle := deg_to_rad(azimuth - 90.0)
+		var distance := radius * clampf(1.0 - elevation / 90.0, 0.0, 1.0)
+		var dot := center + Vector2.from_angle(angle) * distance
+		draw_circle(dot + Vector2.ONE, 7.0, Color("#161514"), true, -1.0, true)
+		draw_circle(dot, 6.5, Color("#c49b61"), true, -1.0, true)
+		draw_circle(dot - Vector2(0.6, 0.9), 5.1, Color("#ecc78f"), true, -1.0, true)
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			dragging = event.pressed
+			if dragging:
+				_apply_pointer(event.position)
+			accept_event()
+		elif event is InputEventMouseMotion and dragging:
+			_apply_pointer(event.position)
+			accept_event()
+
+	func _apply_pointer(point: Vector2) -> void:
+		var relative := point - size * 0.5
+		var radius := minf(size.x, size.y) * 0.5 - 5.0
+		var angle := wrapf(rad_to_deg(relative.angle()) + 90.0, -180.0, 180.0)
+		moved.emit(angle, clampf((1.0 - relative.length() / radius) * 90.0, 0.0, 90.0))
+
+
+class TimelineRuler extends Control:
+	var duration := 0.0:
+		set(value):
+			duration = value
+			queue_redraw()
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+		custom_minimum_size.y = 36.0
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if duration <= 0.0 or size.x < 12.0:
+			return
+		var width := size.x - 6.0
+		var mark_count := clampi(floori(width / 190.0), 2, 6)
+		var rough_interval := duration / mark_count
+		var unit := pow(10.0, floorf(log(rough_interval) / log(10.0)))
+		var interval := unit
+		for multiple: float in [1.0, 2.0, 5.0, 10.0]:
+			interval = unit * multiple
+			if interval >= rough_interval:
+				break
+		var minor := interval / 4.0
+		var marks := floori(duration / minor)
+		var font := get_theme_default_font()
+		var tick_color := Color("#c6baac")
+		for index in range(marks + 1):
+			var seconds := index * minor
+			var x := 3.0 + seconds / duration * width
+			var major := index % 4 == 0
+			draw_line(Vector2(x, 0.0), Vector2(x, 18.0 if major else 9.0), tick_color)
+			if major and width - x > 58.0:
+				draw_string(font, Vector2(x, 30.0), String.num(seconds, 2) + " s", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, WHITE)
+		draw_line(Vector2(size.x - 3.0, 0.0), Vector2(size.x - 3.0, 7.0), tick_color)
+		draw_string(font, Vector2(0.0, 30.0), String.num(duration, 2) + " s",
+			HORIZONTAL_ALIGNMENT_RIGHT, width, 15, WHITE)
+
+
 class ViewerPanel extends RefCounted:
 	var body: Control
 	var slot: Container
@@ -60,14 +181,12 @@ class ViewerPanel extends RefCounted:
 	var close_after := 0
 
 var stage: Stage
-var _file_name: Label
 var _status: Button
 var _open_log: Button
 var _log_dialog: AcceptDialog
 var _log_text: TextEdit
 var _log_copy: Button
 var _log_entries := PackedStringArray()
-var _blank: CenterContainer
 var _geometry: Label
 var _lod_table: GridContainer
 var _lod_picker: OptionButton
@@ -88,6 +207,13 @@ var _in_place: CheckBox
 var _speed: SpinBox
 var _timeline: HSlider
 var _time: Label
+var _ruler: TimelineRuler
+var _transport_clip: OptionButton
+var _transport_play: Button
+var _transport_previous: Button
+var _transport_next: Button
+var _transport_speed: SpinBox
+var _transport_loop: Button
 var _open_dialog: FileDialog
 var _hdri_dialog: FileDialog
 var _textures_dialog: FileDialog
@@ -100,6 +226,21 @@ var _menu_file: MenuButton
 var _menu_help: MenuButton
 var _menu_view: MenuButton
 var _menu_animation: MenuButton
+var _menu_window: MenuButton
+var _window_commands: Array[Callable]
+var _scene_panel: PanelContainer
+var _outline: SceneOutline
+var _editor_materials: MaterialInspector
+var _material_section: VBoxContainer
+var _lighting_section: VBoxContainer
+var _inspector_tabs: Array[Button]
+var _light_dial: LightDirectionDial
+var _light_azimuth: SpinBox
+var _light_elevation: SpinBox
+var _parts_section: VBoxContainer
+var _viewport_tools: Array[Button]
+var _viewport_projection: OptionButton
+var _viewport_fullscreen: Button
 var _view_commands: Array[Callable]
 var _animation_commands: Array[Callable]
 var _tutorial: Tutorial
@@ -116,8 +257,6 @@ var _panel_menu_owner: ViewerPanel
 var _panel_menu_items: Array[CheckButton]
 var _header_row: HBoxContainer
 var _pointer_in_window := true
-var _capture_button: Button
-var _language: OptionButton
 var _display: OptionButton
 var _color_controls: HBoxContainer
 var _color_layer: OptionButton
@@ -127,7 +266,6 @@ var _parts: Tree
 var _isolate_button: Button
 var _show_all_button: Button
 var _part_rows: Dictionary
-var _wire: CheckButton
 var _wire_in_view: CheckBox
 var _gizmo: OrientationGizmo
 var _background_option: OptionButton
@@ -145,7 +283,6 @@ var _azimuth := -35.0
 var _elevation := 42.0
 var _point_size_row: HBoxContainer
 var _wireframe_width_row: HBoxContainer
-var _fullscreen: Button
 var _windowed_mode := Window.MODE_WINDOWED
 var _loading_mask: ColorRect
 var _loading_title: Label
@@ -168,16 +305,12 @@ func _ready() -> void:
 	backdrop.color = INK
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(backdrop)
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 12 if side in ["left", "right"] else 8)
-	add_child(margin)
 	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 8)
-	margin.add_child(layout)
+	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layout.add_theme_constant_override("separation", 0)
+	add_child(layout)
 	_header_row = HBoxContainer.new()
-	_header_row.add_theme_constant_override("separation", 7)
+	_header_row.add_theme_constant_override("separation", 0)
 	layout.add_child(_header_row)
 	var header_slot := HBoxContainer.new()
 	header_slot.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -185,18 +318,24 @@ func _ready() -> void:
 	var header := _make_header(header_slot)
 	var split := HBoxContainer.new()
 	split.size_flags_vertical = SIZE_EXPAND_FILL
-	split.add_theme_constant_override("separation", 7)
+	split.add_theme_constant_override("separation", 4)
 	layout.add_child(split)
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = SIZE_EXPAND_FILL
 	split.add_child(left)
-	_make_viewport(left)
+	var workspace := HSplitContainer.new()
+	workspace.size_flags_vertical = SIZE_EXPAND_FILL
+	left.add_child(workspace)
+	_make_scene_panel(workspace)
+	var center := VBoxContainer.new()
+	center.size_flags_horizontal = SIZE_EXPAND_FILL
+	workspace.add_child(center)
+	_make_viewport(center)
 	_make_timeline(left)
 	var inspector_slot := VBoxContainer.new()
 	split.add_child(inspector_slot)
 	var inspector := _make_inspector(inspector_slot)
 	var edge := VBoxContainer.new()
-	edge.custom_minimum_size.x = 31
 	split.add_child(edge)
 	_floating_toolbar_slot = HBoxContainer.new()
 	_floating_toolbar_slot.hide()
@@ -205,6 +344,7 @@ func _ready() -> void:
 	inspector_edge.size_flags_vertical = SIZE_EXPAND_FILL
 	edge.add_child(inspector_edge)
 	_make_panels(header, header_slot, inspector, inspector_edge, inspector_slot)
+	_outline.rebuild(stage, "", [])
 	var status_row := HBoxContainer.new()
 	status_row.add_theme_constant_override("separation", 8)
 	layout.add_child(status_row)
@@ -267,6 +407,11 @@ func _make_menu(row: HBoxContainer) -> void:
 	_menu_animation.about_to_popup.connect(_refresh_animation_menu)
 	_menu_animation.get_popup().id_pressed.connect(func(id: int): _animation_commands[id].call())
 	row.add_child(_menu_animation)
+	_menu_window = MenuButton.new()
+	_menu_window.text = "Okno"
+	_menu_window.about_to_popup.connect(_refresh_window_menu)
+	_menu_window.get_popup().id_pressed.connect(func(id: int): _window_commands[id].call())
+	row.add_child(_menu_window)
 	_menu_help = MenuButton.new()
 	_menu_help.text = "Nápověda"
 	_menu_help.get_popup().id_pressed.connect(func(id: int):
@@ -277,6 +422,38 @@ func _make_menu(row: HBoxContainer) -> void:
 			3: _tutorial.open_guide()
 	)
 	row.add_child(_menu_help)
+
+
+func _refresh_window_menu() -> void:
+	var menu := _menu_window.get_popup()
+	menu.clear()
+	_window_commands.clear()
+	_menu_command(menu, _window_commands, tr("Panel scény"), _toggle_scene_panel,
+		true, KEY_NONE, int(_scene_panel.visible))
+	_menu_command(menu, _window_commands, tr("Inspektor"), _show_or_hide_inspector,
+		true, KEY_NONE, int(_inspector_panel.mode == PanelMode.PINNED))
+	_menu_command(menu, _window_commands, tr("Automaticky skrývat inspektor"),
+		_set_panel_mode.bind(_inspector_panel, PanelMode.AUTO_HIDE), true, KEY_NONE,
+		int(_inspector_panel.mode == PanelMode.AUTO_HIDE))
+	_menu_command(menu, _window_commands, tr("Skrýt horní lištu"),
+		_set_panel_mode.bind(_toolbar_panel, PanelMode.HIDDEN), true)
+	_menu_command(menu, _window_commands, tr("Automaticky skrývat lištu"),
+		_set_panel_mode.bind(_toolbar_panel, PanelMode.AUTO_HIDE), true, KEY_NONE,
+		int(_toolbar_panel.mode == PanelMode.AUTO_HIDE))
+	menu.add_separator()
+	_menu_command(menu, _window_commands, tr("English"), _change_locale.bind(0), true,
+		KEY_NONE, int(TranslationServer.get_locale() == "en"))
+	_menu_command(menu, _window_commands, tr("Čeština"), _change_locale.bind(1), true,
+		KEY_NONE, int(TranslationServer.get_locale() == "cs"))
+
+
+func _toggle_scene_panel() -> void:
+	_scene_panel.visible = not _scene_panel.visible
+
+
+func _show_or_hide_inspector() -> void:
+	var mode := PanelMode.HIDDEN if _inspector_panel.mode == PanelMode.PINNED else PanelMode.PINNED
+	_set_panel_mode(_inspector_panel, mode)
 
 
 func _refresh_menu() -> void:
@@ -334,7 +511,7 @@ func _refresh_view_menu() -> void:
 	menu.add_separator()
 	_menu_command(menu, _view_commands, tr("Otevřít inspektor"),
 		focus_inspector.bind(_inspector_list), not _loading)
-	_menu_command(menu, _view_commands, tr(_fullscreen.text), _toggle_fullscreen, true, KEY_F11)
+	_menu_command(menu, _view_commands, tr(_fullscreen_caption()), _toggle_fullscreen, true, KEY_F11)
 
 
 func _refresh_animation_menu() -> void:
@@ -357,15 +534,21 @@ func _refresh_animation_menu() -> void:
 		focus_inspector.bind(_animation_controls), not _loading)
 
 
+func _animation_frame_step(clip: Animation) -> float:
+	return clip.step if clip.step > 0.0 else 1.0 / 30.0
+
+
 func _step_preview_frame(direction: int) -> void:
 	var player: AnimationPlayer = stage.animation_player
 	if not player:
 		return
-	var clip := player.get_animation(stage.current_clip)
-	var step := clip.step if clip.step > 0.0 else 1.0 / 30.0
+	var step := _animation_frame_step(player.get_animation(stage.current_clip))
+	var position := player.current_animation_position / step
+	var frame := floori(position + 0.000001) + 1 if direction > 0 else ceili(position - 0.000001) - 1
 	player.pause()
-	var frame := roundi(player.current_animation_position / step) + direction
 	stage.seek(clampf(frame * step, 0.0, player.current_animation_length))
+	_sync_play_buttons(false)
+	_sync_timeline_readout(player.current_animation_position)
 
 
 func _file_action(id: int) -> void:
@@ -434,26 +617,12 @@ func _show_log_dialog() -> void:
 
 func _make_header(layout: HBoxContainer) -> HBoxContainer:
 	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 10)
 	header.size_flags_horizontal = SIZE_EXPAND_FILL
 	header.add_theme_constant_override("separation", 7)
 	layout.add_child(header)
-	_icon(header, 28)
+	header.custom_minimum_size.y = 34
 	_make_menu(header)
-	_file_name = _label(header, "Žádný otevřený model", 14, WHITE)
-	_file_name.size_flags_horizontal = SIZE_EXPAND_FILL
-	_file_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_file_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_button(header, "Otevřít", _show_open, "Ctrl+O", true)
-	_capture_button = _button(header, "4K PNG", _show_capture, "Ctrl+E")
-	_capture_button.disabled = true
-	_fullscreen = _button(header, "Celá obrazovka", _toggle_fullscreen, "F11")
-	_language = OptionButton.new()
-	_language.add_item("EN")
-	_language.add_item("CS")
-	_language.select(LOCALES.find(TranslationServer.get_locale()))
-	_language.tooltip_text = "Language / Jazyk"
-	_language.item_selected.connect(_change_locale)
-	header.add_child(_language)
 	return header
 
 
@@ -621,8 +790,10 @@ func _set_panel_mode(panel: ViewerPanel, mode: int, persist := true) -> void:
 				panel.handle.grab_focus.call_deferred()
 		_header_row.visible = pinned
 		_floating_toolbar_slot.visible = not pinned
+		panel.handle.visible = not pinned
 	else:
 		panel.slot.visible = pinned
+		panel.handle.visible = not pinned
 	_refresh_panel_handle(panel)
 	if persist:
 		var settings := ConfigFile.new()
@@ -697,20 +868,25 @@ func _toggle_fullscreen() -> void:
 	_sync_fullscreen()
 
 
+func _fullscreen_caption() -> String:
+	return "Zpět do okna" if get_window().mode in [Window.MODE_FULLSCREEN, Window.MODE_EXCLUSIVE_FULLSCREEN] else "Celá obrazovka"
+
+
 func _sync_fullscreen() -> void:
-	var full := get_window().mode in [Window.MODE_FULLSCREEN, Window.MODE_EXCLUSIVE_FULLSCREEN]
-	_fullscreen.text = "Zpět do okna" if full else "Celá obrazovka"
-	_fullscreen.tooltip_text = "F11 / Esc" if full else "F11"
+	_viewport_fullscreen.tooltip_text = tr(_fullscreen_caption()) + " · F11"
 
 
 func _make_viewport(parent: VBoxContainer) -> void:
 	var card := PanelContainer.new()
 	card.size_flags_vertical = SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override("panel", _box(PANEL, BORDER, 9, 7))
+	card.add_theme_stylebox_override("panel", _box(PANEL, BORDER, 2, 1))
 	parent.add_child(card)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 0)
 	card.add_child(column)
+	var tool_strip := HBoxContainer.new()
+	tool_strip.custom_minimum_size.y = 48.0
+	column.add_child(tool_strip)
 	var area := Control.new()
 	area.size_flags_vertical = SIZE_EXPAND_FILL
 	area.clip_contents = true
@@ -718,33 +894,13 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	stage = Stage.new()
 	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	area.add_child(stage)
-	var toolbar := HBoxContainer.new()
-	toolbar.add_theme_constant_override("separation", 5)
-	toolbar.position = Vector2(5, 5)
-	area.add_child(toolbar)
+	_setup_viewport_tools(tool_strip)
 	_vehicle_picker = OptionButton.new()
 	_vehicle_picker.item_selected.connect(_select_vehicle_state)
 	_vehicle_picker.hide()
 	_lod_picker = OptionButton.new()
 	_lod_picker.item_selected.connect(_select_lod)
 	_lod_picker.hide()
-	_wire = CheckButton.new()
-	_wire.text = "Wireframe"
-	_wire.toggled.connect(func(value: bool): _choose_display(Stage.WIREFRAME_MODE if value else 0))
-	toolbar.add_child(_wire)
-
-	_blank = CenterContainer.new()
-	_blank.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_blank.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	area.add_child(_blank)
-	var empty_box := VBoxContainer.new()
-	empty_box.add_theme_constant_override("separation", 9)
-	empty_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_blank.add_child(empty_box)
-	_icon(empty_box, 94).size_flags_horizontal = SIZE_SHRINK_CENTER
-	_heading(empty_box, "Přetáhni sem GLB nebo glTF", 38, WHITE).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var choose := _button(empty_box, "Vybrat soubor", _show_open)
-	choose.size_flags_horizontal = SIZE_SHRINK_CENTER
 	_gizmo = OrientationGizmo.new()
 	_gizmo.stage = stage
 	_gizmo.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -752,11 +908,96 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	_gizmo.offset_top = 6
 	_gizmo.offset_right = -6
 	_gizmo.offset_bottom = 124
-	_gizmo.hide()
 	area.add_child(_gizmo)
-	var hint := _label(column, "  Levé tlačítko orbit  ·  Pravé nebo prostřední posun  ·  Kolečko zoom", 12, MUTED)
-	hint.custom_minimum_size.y = 27
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var axes := ViewAxes.new()
+	axes.stage = stage
+	area.add_child(axes)
+	axes.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	axes.offset_left = 14
+	axes.offset_right = 100
+	axes.offset_top = -100
+	axes.offset_bottom = -14
+	area.tooltip_text = tr("Levé tlačítko orbit · Pravé nebo prostřední posun · Kolečko zoom")
+
+
+func _setup_viewport_tools(toolbar: HBoxContainer) -> void:
+	var selected_style := UiGlyphs.tool_surface()
+	for tool in range(3):
+		var tip: String = ["Výběr", "Posun modelu", "Otočení modelu"][tool]
+		var glyph: String = ["select", "move", "rotate"][tool]
+		var button := _icon_button(toolbar, glyph, _choose_viewport_tool.bind(tool), tip, Color("#e4bc80") if tool == 0 else MUTED)
+		button.toggle_mode = true
+		button.flat = tool != 0
+		button.add_theme_stylebox_override("pressed", selected_style)
+		button.add_theme_stylebox_override("hover_pressed", selected_style)
+		_viewport_tools.append(button)
+	_viewport_tools[0].set_pressed_no_signal(true)
+	toolbar.add_child(VSeparator.new())
+	_icon_button(toolbar, "frame", stage.frame, "Zarámovat").flat = true
+	_icon_button(toolbar, "grid", _toggle_option.bind("grid"), "Mřížka").flat = true
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = SIZE_EXPAND_FILL
+	toolbar.add_child(spacer)
+	_viewport_projection = OptionButton.new()
+	_viewport_projection.add_item("Perspektiva")
+	_viewport_projection.add_item("Orto")
+	_viewport_projection.item_selected.connect(func(mode: int): _options.ortho.button_pressed = mode == 1)
+	toolbar.add_child(_viewport_projection)
+	_viewport_fullscreen = _icon_button(toolbar, "fullscreen", _toggle_fullscreen, "Celá obrazovka")
+	_viewport_fullscreen.flat = true
+
+
+func _choose_viewport_tool(tool: int) -> void:
+	for index in _viewport_tools.size():
+		_viewport_tools[index].set_pressed_no_signal(index == tool)
+		_viewport_tools[index].flat = index != tool
+		_viewport_tools[index].icon = UiGlyphs.texture(["select", "move", "rotate"][index], Color("#e4bc80") if index == tool else MUTED, 22)
+	stage.model_gizmo_tool(tool)
+	_options.model_axes.button_pressed = tool != 0
+
+
+func _icon_button(parent: Container, name: String, action: Callable, title: String, color := MUTED) -> Button:
+	var button := _button(parent, "", action, title)
+	button.icon = UiGlyphs.texture(name, color, 22)
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.custom_minimum_size = Vector2(46, 34)
+	button.size_flags_vertical = SIZE_SHRINK_CENTER
+	return button
+
+
+func _make_scene_panel(parent: Container) -> void:
+	_scene_panel = PanelContainer.new()
+	_scene_panel.custom_minimum_size.x = 210.0
+	_scene_panel.add_theme_stylebox_override("panel", _box(INK, BORDER, 2, 8))
+	parent.add_child(_scene_panel)
+	_outline = SceneOutline.new()
+	_outline.item_chosen.connect(_scene_item_selected)
+	_scene_panel.add_child(_outline)
+	_outline.visibility_changed_for_mesh.connect(func(mesh: MeshInstance3D, state: bool):
+		if stage:
+			stage.set_part_visible(mesh, state)
+	)
+
+
+func _scene_item_selected(kind: String, data: Variant) -> void:
+	match kind:
+		"mesh":
+			for index in _editor_materials.targets.size():
+				if _editor_materials.targets[index].instance == data:
+					_editor_materials.select_slot(index)
+					break
+			focus_inspector(_material_section)
+		"material":
+			_editor_materials.select_slot(int(data))
+			focus_inspector(_material_section)
+		"materials":
+			focus_inspector(_material_section)
+		"skeleton":
+			_options.skeleton.button_pressed = true
+		"animations":
+			focus_inspector(_animation_controls)
+		"clip":
+			_choose_clip(int(data))
 
 
 func _start_viewer() -> void:
@@ -902,32 +1143,157 @@ func _make_timeline(parent: VBoxContainer) -> void:
 	_in_place.tooltip_text = "Potlačí vodorovný posun kořene animace."
 	_speed = make_animation_speed_control(_set_animation_speed)
 	controls.add_child(_speed)
-	var row := HBoxContainer.new()
-	parent.add_child(row)
-	_heading(row, "Animace", 23, GOLD)
+	_make_transport(parent)
+	_refresh_clips()
+
+
+func _make_transport(parent: VBoxContainer) -> void:
+	var dock := PanelContainer.new()
+	dock.add_theme_stylebox_override("panel", _box(PANEL, GOLD.darkened(0.36), 5, 18))
+	dock.custom_minimum_size.y = 214
+	parent.add_child(dock)
+	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 9)
+	dock.add_child(layout)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 18)
+	row.alignment = FlowContainer.ALIGNMENT_BEGIN
+	row.add_theme_constant_override("v_separation", 6)
+	layout.add_child(row)
+
+	var clip_group := HBoxContainer.new()
+	clip_group.add_theme_constant_override("separation", 13)
+	clip_group.size_flags_vertical = SIZE_SHRINK_CENTER
+	row.add_child(clip_group)
+	var clip_icon := TextureRect.new()
+	clip_icon.texture = UiGlyphs.texture("clip", GOLD, 25)
+	clip_icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	clip_group.add_child(clip_icon)
+	var clip_label := _label(clip_group, "Klip", 15, WHITE)
+	clip_label.uppercase = true
+	clip_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_transport_clip = OptionButton.new()
+	_transport_clip.custom_minimum_size.x = 230
+	_transport_clip.size_flags_horizontal = SIZE_EXPAND_FILL
+	_transport_clip.fit_to_longest_item = false
+	_transport_clip.item_selected.connect(_choose_clip)
+	clip_group.add_child(_transport_clip)
+
+	row.add_child(VSeparator.new())
+	var transport := HBoxContainer.new()
+	transport.add_theme_constant_override("separation", 10)
+	row.add_child(transport)
+	_transport_previous = _icon_button(transport, "previous", _step_preview_frame.bind(-1), "Předchozí snímek")
+	_transport_play = _icon_button(transport, "play", _toggle_play, "Přehrát", INK)
+	_transport_next = _icon_button(transport, "next", _step_preview_frame.bind(1), "Následující snímek")
+	for control: Button in [_transport_previous, _transport_play, _transport_next]:
+		control.custom_minimum_size = Vector2(46, 42)
+		control.size_flags_vertical = SIZE_SHRINK_CENTER
+		control.add_theme_font_size_override("font_size", 21)
+	_transport_play.custom_minimum_size = Vector2(58, 58)
+	_transport_play.add_theme_stylebox_override("normal", UiGlyphs.play_surface())
+	_transport_play.add_theme_stylebox_override("hover", UiGlyphs.play_surface(0.12))
+	_transport_play.add_theme_stylebox_override("pressed", _box(GOLD.darkened(0.15), GOLD, 29, 8.0))
+	_transport_play.add_theme_stylebox_override("disabled", _box(Color("#3c3732"), BORDER, 29, 8.0))
+	_transport_play.add_theme_color_override("font_color", INK)
+	_transport_play.add_theme_color_override("font_hover_color", INK)
+	_transport_play.add_theme_color_override("font_pressed_color", INK)
+
+	row.add_child(VSeparator.new())
+	_time = _label(row, "", 18, WHITE)
+	var digits := SystemFont.new()
+	digits.font_names = PackedStringArray(["Cascadia Mono", "Liberation Mono", "DejaVu Sans Mono"])
+	_time.add_theme_font_override("font", digits)
+	_time.custom_minimum_size.x = 206
+	_time.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_time.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var speed_group := HBoxContainer.new()
+	speed_group.size_flags_vertical = SIZE_SHRINK_CENTER
+	row.add_child(speed_group)
+	_label(speed_group, "Rychlost", 14, MUTED).vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_transport_speed = make_animation_speed_control(_set_animation_speed)
+	speed_group.add_child(_transport_speed)
+	_transport_loop = Button.new()
+	_transport_loop.icon = UiGlyphs.texture("loop", GOLD, 26)
+	_transport_loop.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_transport_loop.size_flags_vertical = SIZE_SHRINK_CENTER
+	_transport_loop.tooltip_text = "Smyčka"
+	_transport_loop.toggle_mode = true
+	_transport_loop.custom_minimum_size = Vector2(40, 32)
+	_transport_loop.set_pressed_no_signal(_loop.button_pressed)
+	_transport_loop.toggled.connect(func(value: bool): _loop.button_pressed = value)
+	_loop.toggled.connect(_transport_loop.set_pressed_no_signal)
+	row.add_child(VSeparator.new())
+	row.add_child(_transport_loop)
+	layout.add_child(HSeparator.new())
+	var timeline_margin := MarginContainer.new()
+	timeline_margin.add_theme_constant_override("margin_left", 24)
+	timeline_margin.add_theme_constant_override("margin_right", 24)
+	timeline_margin.add_theme_constant_override("margin_top", 13)
+	layout.add_child(timeline_margin)
+	var timeline_controls := VBoxContainer.new()
+	timeline_controls.add_theme_constant_override("separation", 0)
+	timeline_margin.add_child(timeline_controls)
+
 	_timeline = HSlider.new()
-	_timeline.size_flags_horizontal = SIZE_EXPAND_FILL
 	_timeline.step = 0.001
+	_timeline.custom_minimum_size.y = 36.0
+	_timeline.add_theme_stylebox_override("slider", _box(Color("#3a3738"), Color("#686465"), 3, 7))
+	_timeline.add_theme_stylebox_override("grabber_area", _box(Color("#936a40"), Color("#c6a06b"), 3, 7))
+	_timeline.add_theme_stylebox_override("grabber_area_highlight", _box(Color("#a87b4b"), Color("#e0bc80"), 3, 7))
+	var thumb := UiGlyphs.playhead()
+	_timeline.add_theme_icon_override("grabber", thumb)
+	_timeline.add_theme_icon_override("grabber_highlight", thumb)
 	_timeline.value_changed.connect(func(value: float):
 		stage.seek(value)
-		_time.text = "%.2f s" % value
+		_sync_timeline_readout(value)
 	)
-	row.add_child(_timeline)
-	_time = _label(row, "0.00 s", 13, MUTED)
-	_time.custom_minimum_size.x = 66
-	_refresh_clips()
+	timeline_controls.add_child(_timeline)
+
+	_ruler = TimelineRuler.new()
+	timeline_controls.add_child(_ruler)
+	dock.resized.connect(func():
+		var compact := dock.size.x < 930.0
+		_transport_clip.custom_minimum_size.x = 125.0 if compact else 247.0
+		_time.custom_minimum_size.x = 124.0 if compact else 210.0
+	)
 
 
 func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	var card := PanelContainer.new()
 	card.custom_minimum_size.x = 340
 	card.size_flags_vertical = SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override("panel", _box(INK, BORDER, 10, 7))
+	card.add_theme_stylebox_override("panel", _box(INK, BORDER, 2, 1))
 	parent.add_child(card)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 7)
 	card.add_child(column)
-	_heading(column, "Inspektor", 25, GOLD)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 0)
+	tabs.custom_minimum_size.y = 49.0
+	column.add_child(tabs)
+	var group := ButtonGroup.new()
+	var active := UiGlyphs.active_tab()
+	for index in 2:
+		var tab := Button.new()
+		tab.text = ["Materiál", "Osvětlení"][index]
+		tab.icon = UiGlyphs.texture(["layers", "sun"][index], GOLD, 23)
+		tab.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		tab.size_flags_horizontal = SIZE_EXPAND_FILL
+		tab.size_flags_stretch_ratio = 0.76 if index == 0 else 1.0
+		tab.toggle_mode = true
+		tab.button_group = group
+		tab.add_theme_font_size_override("font_size", 16)
+		tab.add_theme_constant_override("h_separation", 10)
+		tab.add_theme_stylebox_override("normal", _box(INK, BORDER, 1, 10))
+		tab.add_theme_stylebox_override("hover", _box(Color("#282522"), BORDER, 1, 10))
+		tab.add_theme_stylebox_override("pressed", active)
+		tab.add_theme_stylebox_override("hover_pressed", active)
+		tab.add_theme_color_override("font_pressed_color", Color("#eed398"))
+		tab.pressed.connect(func(): focus_inspector(_material_section if index == 0 else _lighting_section))
+		_inspector_tabs.append(tab)
+		tabs.add_child(tab)
+	_inspector_tabs[0].set_pressed_no_signal(true)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = SIZE_EXPAND_FILL
@@ -938,6 +1304,9 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	scroll.add_child(list)
 	_inspector_scroll = scroll
 	_inspector_list = list
+	_material_section = _section(list, "Materiál", true, true)
+	_editor_materials = MaterialInspector.new()
+	_material_section.add_child(_editor_materials)
 	var model := _section(list, "Model a LOD")
 	var model_options := HFlowContainer.new()
 	model.add_child(model_options)
@@ -945,16 +1314,24 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	model_options.add_child(_lod_picker)
 	_model_section = model.get_parent() as Control
 	_model_section.hide()
-	_section(list, "Přehrávání animace").add_child(_animation_controls)
-	_make_parts(_section(list, "Díly a materiály", true, false))
-	var lighting := _section(list, "Osvětlení")
+	var lighting := _section(list, "Osvětlení", false, true, "sun")
+	_lighting_section = lighting
+	var preset := HBoxContainer.new()
+	lighting.add_child(preset)
+	_label(preset, "Předvolba", 14, WHITE).custom_minimum_size.x = 84
 	_hdri_picker = OptionButton.new()
-	for name in HDRI_NAMES:
-		_hdri_picker.add_item(name)
+	_hdri_picker.size_flags_horizontal = SIZE_EXPAND_FILL
+	for label in ["Venku · zataženo", "Čistá obloha", "Měsíční světlo"]:
+		_hdri_picker.add_item(label)
 	_hdri_picker.select(0)
 	_hdri_picker.tooltip_text = "Vestavěná panoramata Poly Haven"
 	_hdri_picker.item_selected.connect(_choose_hdri)
-	lighting.add_child(_hdri_picker)
+	preset.add_child(_hdri_picker)
+	_primary_light(lighting, "intensity", "Klíčové světlo", 5.0, 1.0, stage.light_intensity)
+	_primary_light(lighting, "fill", "Výplňové světlo", 3.0, 0.30, stage.fill_intensity)
+	_primary_light(lighting, "rim", "Obrysové světlo", 3.0, 0.15, stage.rim_intensity)
+	_make_light_direction(lighting)
+	lighting = _section(list, "Rozšířené osvětlení", true, false)
 	_hdri_name = _label(lighting, "", 13, MUTED)
 	_hdri_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_hdri_name.hide()
@@ -985,10 +1362,12 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_slider(lighting, "hdri_intensity", "Intenzita HDRI", 0.0, 3.0, 0.05, 1.0, stage.hdri_intensity)
 	_slider(lighting, "hdri_rotation", "Otočení HDRI", -180.0, 180.0, 1.0, 0.0,
 		func(v: float): stage.hdri_orientation(v), "°")
-	_slider(lighting, "intensity", "Intenzita světla", 0.0, 5.0, 0.05, 1.25, stage.light_intensity)
 	_slider(lighting, "azimuth", "Azimut světla", -180.0, 180.0, 1.0, _azimuth, _set_azimuth, "°")
 	_slider(lighting, "elevation", "Výška světla", -5.0, 90.0, 1.0, _elevation, _set_elevation, "°")
 
+	_section(list, "Přehrávání animace").add_child(_animation_controls)
+	_parts_section = _section(list, "Díly a materiály", true, false)
+	_make_parts(_parts_section)
 	var viewing := _section(list, "Zobrazení", true)
 	var background := HBoxContainer.new()
 	viewing.add_child(background)
@@ -1043,10 +1422,12 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_wire_in_view = _toggle(aids, "", "Wireframe", false,
 		func(value: bool): _choose_display(Stage.WIREFRAME_MODE if value else 0))
 	_toggle(aids, "skeleton", "Kostra", false, stage.skeleton_visible)
-	var grid_toggle := _toggle(aids, "grid", "Mřížka", false, stage.grid_visible)
+	var grid_toggle := _toggle(aids, "grid", "Mřížka", true, stage.grid_visible)
+	stage.grid_visible(true)
 	var floor_row := HBoxContainer.new()
 	aids.add_child(floor_row)
-	var floor_toggle := _toggle(floor_row, "floor", "Podlaha", false, stage.floor_visible)
+	var floor_toggle := _toggle(floor_row, "floor", "Podlaha", true, stage.floor_visible)
+	stage.floor_visible(true)
 	floor_toggle.size_flags_horizontal = SIZE_EXPAND_FILL
 	_floor_color = ColorPickerButton.new()
 	_floor_color.color = Stage.DEFAULT_FLOOR_COLOR
@@ -1055,7 +1436,8 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_floor_color.color_changed.connect(stage.set_floor_color)
 	floor_row.add_child(_floor_color)
 	_toggle(aids, "screen_space_pan", "Posun v rovině pohledu", true, stage.screen_space_panning)
-	_toggle(aids, "ortho", "Orto", false, stage.orthographic)
+	var projection_toggle := _toggle(aids, "ortho", "Orto", false, stage.orthographic)
+	projection_toggle.toggled.connect(func(ortho: bool): _viewport_projection.select(int(ortho)))
 	var placement := HBoxContainer.new()
 	viewing.add_child(placement)
 	var model_axes := _toggle(placement, "model_axes", "Osy modelu", false, stage.set_model_gizmo_enabled)
@@ -1107,6 +1489,66 @@ func _refresh_floor_height() -> void:
 	_floor_height_row.visible = _options["floor"].button_pressed or _options["grid"].button_pressed
 
 
+func _primary_light(parent: VBoxContainer, id: String, title: String, maximum: float,
+		initial: float, changed: Callable) -> void:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	_label(row, title, 14, MUTED).size_flags_horizontal = SIZE_EXPAND_FILL
+	var input := SpinBox.new()
+	input.min_value = 0.0
+	input.max_value = maximum
+	input.step = 0.01
+	input.value = initial
+	row.add_child(input)
+	var slider := HSlider.new()
+	slider.max_value = maximum
+	slider.step = 0.01
+	slider.value = initial
+	slider.custom_minimum_size.y = 22.0
+	parent.add_child(slider)
+	_options[id] = slider
+	input.value_changed.connect(func(value: float): slider.value = value)
+	slider.value_changed.connect(func(value: float):
+		input.set_value_no_signal(value)
+		changed.call(value)
+	)
+
+
+func _make_light_direction(parent: VBoxContainer) -> void:
+	_label(parent, "Směr", 14, WHITE)
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	_light_dial = LightDirectionDial.new()
+	row.add_child(_light_dial)
+	_light_dial.update_direction(_azimuth, _elevation)
+	var values := VBoxContainer.new()
+	values.size_flags_horizontal = SIZE_EXPAND_FILL
+	values.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(values)
+	_light_azimuth = _make_direction_number(values, "Azimut", -180.0, 180.0, _azimuth, _set_azimuth)
+	_light_elevation = _make_direction_number(values, "Výška", -5.0, 90.0, _elevation, _set_elevation)
+	_light_dial.moved.connect(func(azimuth: float, elevation: float):
+		_light_azimuth.value = azimuth
+		_light_elevation.value = elevation
+	)
+
+
+func _make_direction_number(parent: VBoxContainer, title: String, low: float, high: float,
+		value: float, callback: Callable) -> SpinBox:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	_label(row, title, 14, MUTED).size_flags_horizontal = SIZE_EXPAND_FILL
+	var control := SpinBox.new()
+	control.min_value = low
+	control.max_value = high
+	control.step = 0.1
+	control.value = value
+	control.suffix = "°"
+	control.value_changed.connect(callback)
+	row.add_child(control)
+	return control
+
+
 func add_inspector_tool_group(title: String, controls: Container) -> VBoxContainer:
 	var group := VBoxContainer.new()
 	_inspector_list.add_child(group)
@@ -1117,28 +1559,43 @@ func add_inspector_tool_group(title: String, controls: Container) -> VBoxContain
 
 
 func focus_inspector(control: Control) -> void:
+	if control == _material_section or control == _lighting_section:
+		for index in _inspector_tabs.size():
+			_inspector_tabs[index].set_pressed_no_signal(index == int(control == _lighting_section))
+		control.show()
 	if _inspector_panel.mode != PanelMode.PINNED:
 		_set_panel_mode(_inspector_panel, PanelMode.PINNED, false)
 	_inspector_scroll.ensure_control_visible.call_deferred(control)
 
 
-func _section(parent: VBoxContainer, title: String, foldable := false, expanded := true) -> VBoxContainer:
+func _section(parent: VBoxContainer, title: String, foldable := false, expanded := true, glyph := "") -> VBoxContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _box(PANEL, BORDER, 7, 10))
+	panel.add_theme_stylebox_override("panel", _box(PANEL, BORDER, 2, 10))
 	parent.add_child(panel)
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 6)
 	panel.add_child(layout)
 	if not foldable:
-		_heading(layout, title, 25, GOLD)
+		if glyph.is_empty():
+			_label(layout, title, 16, GOLD)
+		else:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			layout.add_child(row)
+			var icon := TextureRect.new()
+			icon.texture = UiGlyphs.texture(glyph, GOLD, 21)
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+			row.add_child(icon)
+			_label(row, title, 16, Color("#ead4ad"))
 		return layout
 	var heading := Button.new()
-	heading.text = title + ("  ▾" if expanded else "  ▸")
+	heading.text = title
+	heading.icon = UiGlyphs.texture("chevron_down" if expanded else "chevron_right", GOLD, 14)
 	heading.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	heading.flat = true
+	heading.add_theme_constant_override("h_separation", 8)
 	heading.add_theme_color_override("font_color", GOLD)
-	heading.add_theme_font_override("font", _headings)
-	heading.add_theme_font_size_override("font_size", 25)
+	heading.add_theme_font_size_override("font_size", 16)
 	heading.add_theme_stylebox_override("normal", _box(Color.TRANSPARENT, Color.TRANSPARENT, 2, 0))
 	heading.add_theme_stylebox_override("hover", _box(PANEL.lightened(0.06), BORDER, 4, 0))
 	layout.add_child(heading)
@@ -1148,7 +1605,7 @@ func _section(parent: VBoxContainer, title: String, foldable := false, expanded 
 	layout.add_child(content)
 	heading.pressed.connect(func():
 		content.visible = not content.visible
-		heading.text = title + ("  ▾" if content.visible else "  ▸")
+		heading.icon = UiGlyphs.texture("chevron_down" if content.visible else "chevron_right", GOLD, 14)
 	)
 	return content
 
@@ -1157,8 +1614,8 @@ func _toggle(parent: Container, id: String, title: String, initial: bool, action
 	var button := CheckBox.new()
 	button.text = title
 	button.add_theme_font_size_override("font_size", 13)
-	button.add_theme_stylebox_override("normal", _box(Color("#232731"), BORDER, 5, 4))
-	button.add_theme_stylebox_override("hover", _box(Color("#2e3036"), BORDER, 5, 4))
+	button.add_theme_stylebox_override("normal", _box(Color("#262526"), BORDER, 5, 4))
+	button.add_theme_stylebox_override("hover", _box(Color("#333132"), BORDER, 5, 4))
 	button.add_theme_stylebox_override("pressed", _box(Color("#292721"), GOLD.darkened(0.25), 5, 4))
 	button.set_pressed_no_signal(initial)
 	button.toggled.connect(action)
@@ -1181,7 +1638,6 @@ func _set_display(index: int) -> void:
 	_color_controls.visible = index == Stage.COLOR_MODE
 	_attribute_hint.visible = index >= Stage.COLOR_MODE
 	var wireframe := index == Stage.WIREFRAME_MODE
-	_wire.set_pressed_no_signal(wireframe)
 	_wire_in_view.set_pressed_no_signal(wireframe)
 	_wireframe_width_row.visible = wireframe
 	_point_size_row.visible = index == Stage.POINTS_MODE
@@ -1220,6 +1676,7 @@ func _make_parts(panel: VBoxContainer) -> void:
 
 func _refresh_parts() -> void:
 	_parts.clear()
+	var slots: Array[Dictionary]
 	_part_rows.clear()
 	var root := _parts.create_item()
 	for instance in stage.model.meshes:
@@ -1229,7 +1686,10 @@ func _refresh_parts() -> void:
 			var material := stage.model.surface_material_name(instance, surface)
 			var name := material if not material.is_empty() else tr("Bez názvu")
 			_add_part_row(row, "%d · %s" % [surface + 1, name], path, surface, instance, material)
+			slots.append({"label": name, "node": path, "instance": instance, "surface": surface})
 		row.collapsed = true
+	_editor_materials.set_slots(slots)
+	_outline.rebuild(stage, _path, slots)
 	_refresh_part_actions()
 
 
@@ -1408,18 +1868,33 @@ func _button(parent: Container, title: String, clicked: Callable, tip := "", pri
 
 func _viewer_theme() -> Theme:
 	var result := Theme.new()
+	var ui_font := SystemFont.new()
+	ui_font.font_names = PackedStringArray(["Segoe UI", "Inter", "Noto Sans", "DejaVu Sans"])
+	result.default_font = ui_font
 	result.default_font_size = 15
+	result.set_stylebox("scroll", "VScrollBar", _box(INK, Color.TRANSPARENT, 0, 2))
+	result.set_stylebox("grabber", "VScrollBar", _box(Color("#4d4946"), Color.TRANSPARENT, 3, 3))
+	result.set_stylebox("grabber_highlight", "VScrollBar", _box(Color("#6d655c"), Color.TRANSPARENT, 3, 3))
+	result.set_icon("grabber", "HSlider", UiGlyphs.texture("dot", GOLD, 15))
+	result.set_icon("grabber_highlight", "HSlider", UiGlyphs.texture("dot", GOLD.lightened(0.12), 15))
+	result.set_stylebox("panel", "Tree", _box(INK, Color.TRANSPARENT, 0, 2))
+	result.set_stylebox("selected", "Tree", _box(Color("#473c33"), Color.TRANSPARENT, 4, 3))
+	result.set_stylebox("selected_focus", "Tree", _box(Color("#473c33"), Color.TRANSPARENT, 4, 3))
+	result.set_color("font_color", "Tree", WHITE)
+	result.set_color("font_selected_color", "Tree", WHITE)
+	result.set_constant("item_margin", "Tree", 20)
+	result.set_constant("v_separation", "Tree", 5)
 	for control_type in ["Button", "OptionButton"]:
 		result.set_color("font_color", control_type, WHITE)
 		result.set_color("font_hover_color", control_type, WHITE)
 		result.set_color("font_pressed_color", control_type, GOLD)
 		result.set_color("font_disabled_color", control_type, MUTED.darkened(0.35))
-		result.set_stylebox("normal", control_type, _box(Color("#232b38"), BORDER, 7, 8))
-		result.set_stylebox("hover", control_type, _box(Color("#313a49"), BORDER.lightened(0.2), 7, 8))
-		result.set_stylebox("pressed", control_type, _box(Color("#222835"), GOLD.darkened(0.25), 7, 8))
+		result.set_stylebox("normal", control_type, _box(Color("#262526"), BORDER, 7, 8))
+		result.set_stylebox("hover", control_type, _box(Color("#333132"), BORDER.lightened(0.2), 7, 8))
+		result.set_stylebox("pressed", control_type, _box(Color("#4a3d30"), GOLD.darkened(0.25), 7, 8))
 		result.set_stylebox("disabled", control_type, _box(PANEL, BORDER.darkened(0.2), 7, 8))
 		result.set_stylebox("focus", control_type, _box(Color.TRANSPARENT, GOLD, 7, 8))
-	result.set_stylebox("slider", "HSlider", _box(Color("#343d4b"), Color("#343d4b"), 2, 2))
+	result.set_stylebox("slider", "HSlider", _box(Color("#454242"), Color("#454242"), 2, 2))
 	result.set_stylebox("grabber_area", "HSlider", _box(GOLD.darkened(0.28), GOLD.darkened(0.28), 2, 2))
 	result.set_stylebox("grabber_area_highlight", "HSlider", _box(GOLD, GOLD, 2, 2))
 	return result
@@ -1548,12 +2023,7 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	_texture_directory = texture_directory
 	_textures_button.disabled = not path.get_extension().to_lower() in ["glb", "gltf"]
 	_view_path = ""
-	_file_name.text = path.get_file()
-	_file_name.tooltip_text = path
 	_open_dialog.current_dir = path.get_base_dir()
-	_blank.hide()
-	_gizmo.show()
-	_capture_button.disabled = false
 	if not keep_lod_family:
 		_lod_entries = loaded.lods
 		for entry: Dictionary in _lod_entries:
@@ -1617,6 +2087,8 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 	var camera := stage.camera_state()
 	var placement := stage.model_transform_state()
 	var isolation := stage.isolation_state()
+	var hidden := stage.hidden_parts_state()
+	var previews := _editor_materials.snapshot(_path)
 	var row := _parts.get_selected()
 	var selection: Variant = row.get_metadata(0) if row else null
 	var view_path := _view_path
@@ -1637,6 +2109,9 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 	stage.restore_model_transform(placement)
 	stage.restore_camera(camera, false)
 	_restore_part_selection(selection, isolation)
+	stage.restore_hidden_parts(hidden)
+	_editor_materials.restore(previews, _path)
+	_outline.rebuild(stage, _path, _editor_materials.targets)
 	if _restore_clip(clip, seconds) and playing:
 		_toggle_play()
 	var notes := stage.model.notes.size()
@@ -1782,6 +2257,8 @@ func _save_view_to(path: String) -> void:
 		"vertex_layer": _color_layer.get_item_text(_color_layer.selected),
 		"vertex_channel": _color_channel.selected,
 		"isolation": stage.isolation_state(),
+		"hidden_parts": stage.hidden_parts_state(),
+		"material_previews": _editor_materials.snapshot(path),
 		"camera": stage.camera_state(),
 		"model_transform": stage.model_transform_state(),
 		"clip": str(stage.current_clip),
@@ -1805,6 +2282,9 @@ func _open_view(path: String) -> bool:
 	var texture_directory := ViewFile.unpack_path(path, folder) if folder is String else ""
 	if not await _load_model(ViewFile.unpack_path(path, state["model"]), false, null, texture_directory):
 		return false
+	stage.restore_hidden_parts(state.get("hidden_parts", []))
+	_editor_materials.restore(state.get("material_previews", []), path)
+	_outline.rebuild(stage, _path, _editor_materials.targets)
 	_view_path = path
 	var options: Variant = state.get("options", {})
 	if not options is Dictionary or not options.get("model_axes") is bool:
@@ -1912,27 +2392,38 @@ func _refresh_model_info(announce := true) -> void:
 
 func _refresh_clips() -> void:
 	_movie.clear()
+	_transport_clip.clear()
 	_movie.tooltip_text = ""
+	_transport_clip.tooltip_text = ""
 	var available := not stage.clips.is_empty()
+	_timeline.visible = available
+	_ruler.visible = available
 	_movie.disabled = not available
-	_play.disabled = not available
-	_loop.disabled = not available
-	_in_place.disabled = not available
+	_transport_clip.disabled = not available
+	for control: BaseButton in [_play, _loop, _in_place, _transport_play, _transport_previous,
+			_transport_next, _transport_loop]:
+		control.disabled = not available
 	_speed.editable = available
+	_transport_speed.editable = available
 	_timeline.editable = available
-	_play.text = "Přehrát"
-	_time.text = "0.00 s"
+	_sync_play_buttons(false)
 	_timeline.set_value_no_signal(0.0)
 	if not available:
+		_timeline.max_value = 0.0
+		_ruler.duration = 0.0
 		_movie.add_item("Bez animací")
+		_transport_clip.add_item("Bez animací")
+		_sync_timeline_readout(0.0)
 		return
 	for clip in stage.clips:
 		_movie.add_item(str(clip.name))
-	_movie.select(0)
+		_transport_clip.add_item(str(clip.name))
 	_select_clip(0)
 
 
 func _choose_clip(index: int) -> void:
+	if index < 0 or index >= stage.clips.size():
+		return
 	var clip := stage.clips[index]
 	if stage.animation_player == clip.player and stage.current_clip == clip.name:
 		return
@@ -1942,18 +2433,36 @@ func _choose_clip(index: int) -> void:
 
 func _select_clip(index: int, keep_playing := false) -> void:
 	_timeline.max_value = stage.select_clip(index, keep_playing)
-	_movie.tooltip_text = _movie.get_item_text(index)
+	_ruler.duration = _timeline.max_value
+	_movie.select(index)
+	_transport_clip.select(index)
+	var clip_name := _movie.get_item_text(index)
+	_movie.tooltip_text = clip_name
+	_transport_clip.tooltip_text = clip_name
 	_timeline.set_value_no_signal(0.0)
-	_time.text = "0.00 s"
-	_play.text = "Pozastavit" if keep_playing else "Přehrát"
+	_sync_timeline_readout(0.0)
+	_sync_play_buttons(keep_playing)
 
 
 func _toggle_play() -> void:
-	_play.text = "Pozastavit" if stage.toggle_play() else "Přehrát"
+	_sync_play_buttons(stage.toggle_play())
+
+
+func _sync_play_buttons(playing: bool) -> void:
+	var action := "Pozastavit" if playing else "Přehrát"
+	_play.text = action
+	_transport_play.icon = UiGlyphs.texture("pause" if playing else "play", INK, 24)
+	_transport_play.tooltip_text = tr(action) + " · " + tr("Mezerník")
+
+
+func _sync_timeline_readout(seconds: float) -> void:
+	_time.text = "%.2f / %.2f s" % [seconds, _timeline.max_value]
 
 
 func _set_animation_speed(value: Variant) -> void:
-	_speed.set_value_no_signal(stage.animation_speed(value))
+	var speed := stage.animation_speed(value)
+	_speed.set_value_no_signal(speed)
+	_transport_speed.set_value_no_signal(speed)
 
 
 func _process(_delta: float) -> void:
@@ -1964,18 +2473,25 @@ func _process(_delta: float) -> void:
 	if not stage.animation_player:
 		return
 	var active := stage.animation_player.is_playing()
-	_play.text = "Pozastavit" if active else "Přehrát"
+	_sync_play_buttons(active)
+	_transport_loop.set_pressed_no_signal(_loop.button_pressed)
 	_timeline.set_value_no_signal(stage.animation_player.current_animation_position)
-	_time.text = "%.2f s" % _timeline.value
+	_sync_timeline_readout(_timeline.value)
 
 
 func _set_azimuth(value: float) -> void:
 	_azimuth = value
+	_light_azimuth.set_value_no_signal(value)
+	_options.azimuth.set_value_no_signal(value)
+	_light_dial.update_direction(_azimuth, _elevation)
 	stage.light_direction(_azimuth, _elevation)
 
 
 func _set_elevation(value: float) -> void:
 	_elevation = value
+	_light_elevation.set_value_no_signal(value)
+	_options.elevation.set_value_no_signal(value)
+	_light_dial.update_direction(_azimuth, _elevation)
 	stage.light_direction(_azimuth, _elevation)
 
 
@@ -2054,12 +2570,10 @@ func _capture(path: String) -> Error:
 		path += ".png"
 	if not _begin_loading(path.get_file(), path, "Vykresluji snímek 4K…"):
 		return ERR_BUSY
-	_capture_button.disabled = true
 	_feedback("Vykresluji snímek 4K…")
 	await _paint_loading()
 	var error := await stage.screenshot(path)
 	_finish_loading()
-	_capture_button.disabled = false
 	if error == OK:
 		_feedback(tr("Snímek 3840 × 2160 uložen · %s") % path)
 	else:
