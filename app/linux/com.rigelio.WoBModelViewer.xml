@@ -9,6 +9,10 @@
     <sub-class-of type="application/json"/>
     <glob pattern="*.gltf"/>
   </mime-type>
+  <mime-type type="application/vnd.autodesk.fbx">
+    <comment>FBX model</comment>
+    <glob pattern="*.fbx"/>
+  </mime-type>
   <mime-type type="application/x-wobview">
     <comment>WoB Model Viewer saved view</comment>
     <comment xml:lang="cs">Uložený pohled WoB Model Vieweru</comment>

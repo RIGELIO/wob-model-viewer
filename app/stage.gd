@@ -11,6 +11,10 @@ const CELESTIAL_SKY = preload("res://celestial_sky.gdshader")
 const SCREENSHOT_SIZE := Vector2i(3840, 2160)
 const ORBIT_SPEED := 0.008
 const AUTO_ORBIT_SPEED := 0.38
+const ANIMATION_SPEED_MIN := 0.0
+const ANIMATION_SPEED_MAX := 2.0
+const ANIMATION_SPEED_STEP := 0.01
+const ANIMATION_SPEED_DEFAULT := 1.0
 const WIREFRAME_MODE := 1
 const WIREFRAME_WIDTH_MIN := 0.5
 const WIREFRAME_WIDTH_MAX := 8.0
@@ -64,7 +68,7 @@ var _show_source := true
 var _hdri_angle := 0.0
 var _direct_strength := 1.25
 var _animation_loop := Animation.LOOP_LINEAR
-var _animation_speed := 1.0
+var _animation_speed := ANIMATION_SPEED_DEFAULT
 var _animation_in_place := false
 var _model_placement: Node3D
 var _model_anchor: Node3D
@@ -338,10 +342,17 @@ func animation_loop(enabled: bool) -> void:
 		animation_player.get_animation(current_clip).loop_mode = _animation_loop
 
 
-func animation_speed(value: float) -> void:
-	_animation_speed = value
+static func normalized_animation_speed(value: Variant) -> float:
+	if (not value is float and not value is int) or not is_finite(float(value)):
+		return ANIMATION_SPEED_DEFAULT
+	return snappedf(clampf(float(value), ANIMATION_SPEED_MIN, ANIMATION_SPEED_MAX), ANIMATION_SPEED_STEP)
+
+
+func animation_speed(value: Variant) -> float:
+	_animation_speed = normalized_animation_speed(value)
 	if animation_player:
-		animation_player.speed_scale = value
+		animation_player.speed_scale = _animation_speed
+	return _animation_speed
 
 
 func animation_in_place(enabled: bool) -> void:

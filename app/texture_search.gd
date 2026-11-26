@@ -10,6 +10,7 @@ var _bases: PackedStringArray
 var _directories: PackedStringArray
 var _paths: Dictionary[String, String]
 var _relative_paths: Dictionary[String, String]
+var _missing_directories: Dictionary[String, bool]
 var _pairs: Dictionary[String, PackedStringArray]
 
 
@@ -25,6 +26,7 @@ func set_directory(path: String) -> void:
 	_paths.clear()
 	_relative_paths.clear()
 	_pairs.clear()
+	_missing_directories.clear()
 	_add_directory(_model_directory)
 	var manual := _absolute_path(path)
 	_add_directory(manual, false)
@@ -101,7 +103,7 @@ func _add_directory(directory: String, include_texture_dirs := true) -> void:
 				_directories.append(child)
 
 
-static func _first_file(directories: PackedStringArray, filename: String) -> String:
+func _first_file(directories: PackedStringArray, filename: String) -> String:
 	for directory in directories:
 		var path := _existing_file(directory, filename)
 		if not path.is_empty():
@@ -114,6 +116,12 @@ static func _absolute_path(path: String) -> String:
 	return absolute.simplify_path() if absolute.is_absolute_path() else ""
 
 
-static func _existing_file(directory: String, filename: String) -> String:
+func _existing_file(directory: String, filename: String) -> String:
+	if _missing_directories.has(directory):
+		return ""
 	var path := directory.path_join(filename).simplify_path()
-	return path if FileAccess.file_exists(path) else ""
+	if FileAccess.file_exists(path):
+		return path
+	if not DirAccess.dir_exists_absolute(directory):
+		_missing_directories[directory] = true
+	return ""

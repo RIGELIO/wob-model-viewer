@@ -1,4 +1,4 @@
-﻿Unicode true
+Unicode true
 ManifestDPIAware true
 RequestExecutionLevel user
 SetCompressor /SOLID zlib
@@ -7,7 +7,7 @@ SetCompressor /SOLID zlib
 !include "LogicLib.nsh"
 !define APP "WoB Model Viewer"
 !define EXE "WoB Model Viewer.exe"
-!define VERSION "1.4.6"
+!define VERSION "1.5.0"
 !define INSTALLER_SOURCE "${__FILEDIR__}"
 !define UNINSTALL "Software\Microsoft\Windows\CurrentVersion\Uninstall\RIGELIO.WoBModelViewer"
 !define CAP "Software\RIGELIO\WoBModelViewer\Capabilities"
@@ -153,6 +153,7 @@ Section "WoB Model Viewer"
     SetOutPath "$INSTDIR"
     SetOverwrite on
     File "${EXE}"
+    File "wob-gif.exe"
     File "README.en.md"
     File "README.cs.md"
     File "PRODUCTION-RESOURCES.json"
@@ -175,13 +176,14 @@ Section "WoB Model Viewer"
     WriteRegDWORD HKCU "${UNINSTALL}" "NoRepair" 1
     !insertmacro RegisterType ".glb" "GLB" "glTF Binary Model"
     !insertmacro RegisterType ".gltf" "GLTF" "glTF Model"
+    !insertmacro RegisterType ".fbx" "FBX" "FBX Model"
     !insertmacro RegisterType ".wobview" "View" "WoB Model Viewer View"
     ReadRegStr $0 HKCR ".wobview" ""
     ${If} $0 == ""
         WriteRegStr HKCU "Software\Classes\.wobview" "" "RIGELIO.WoBModelViewer.View"
     ${EndIf}
     WriteRegStr HKCU "${CAP}" "ApplicationName" "${APP}"
-    WriteRegStr HKCU "${CAP}" "ApplicationDescription" "Offline GLB, glTF and saved view viewer"
+    WriteRegStr HKCU "${CAP}" "ApplicationDescription" "Offline GLB, glTF, FBX and saved view viewer"
     WriteRegStr HKCU "Software\RegisteredApplications" "${APP}" "${CAP}"
     System::Call "shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)"
 SectionEnd
@@ -204,6 +206,7 @@ Section "Uninstall"
     Abort
     clean_done:
     Delete "$INSTDIR\${EXE}"
+    Delete "$INSTDIR\wob-gif.exe"
     Delete "$INSTDIR\README.en.md"
     Delete "$INSTDIR\README.cs.md"
     Delete "$INSTDIR\PRODUCTION-RESOURCES.json"
@@ -220,6 +223,7 @@ Section "Uninstall"
     DeleteRegKey HKCU "${UNINSTALL}"
     !insertmacro UnregisterType ".glb" "GLB"
     !insertmacro UnregisterType ".gltf" "GLTF"
+    !insertmacro UnregisterType ".fbx" "FBX"
     !insertmacro UnregisterType ".wobview" "View"
     EnumRegValue $0 HKCU "${CAP}\FileAssociations" 0
     ${If} $0 == ""

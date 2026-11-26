@@ -1,0 +1,316 @@
+msgid ""
+msgstr ""
+"Language: en\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "−1 snímek"
+msgstr "−1 frame"
+
+msgid "+1 snímek"
+msgstr "+1 frame"
+
+msgid "Výběr"
+msgstr "Select"
+
+msgid "Tečka"
+msgstr "Dot"
+
+msgid "Čára"
+msgstr "Line"
+
+msgid "Šipka"
+msgstr "Arrow"
+
+msgid "Kruh"
+msgstr "Circle"
+
+msgid "Klik vybere kost, tažení vybere oblast, Ctrl+klik přidá nebo odebere kost."
+msgstr "Click a joint, drag a box, or Ctrl-click to add or remove a joint."
+
+msgid "Rotace snímku"
+msgstr "Frame rotation"
+
+msgid "Smazat značku"
+msgstr "Delete mark"
+
+msgid "Náhled úprav"
+msgstr "Preview edits"
+
+msgid "Rozsah animace"
+msgstr "Animation range"
+
+msgid "Od (s)"
+msgstr "From (s)"
+
+msgid "Do (s)"
+msgstr "To (s)"
+
+msgid "Značka (s)"
+msgstr "Mark (s)"
+
+msgid "Rozbor pohybu"
+msgstr "Motion analysis"
+
+msgid "Náhled korekce"
+msgstr "Preview correction"
+
+msgid "Analyzovat pohyb"
+msgstr "Analyze motion"
+
+msgid "Nálezy na časové ose"
+msgstr "Timeline findings"
+
+msgid "Export animace GIF"
+msgstr "Export GIF animation"
+
+msgid "Export reportu a úprav"
+msgstr "Export report and edits"
+
+msgid "Soubor FBX nelze otevřít (%s)."
+msgstr "Could not open the FBX file (%s)."
+
+msgid "Godot model FBX nenačetl (%s)."
+msgstr "Godot could not load the FBX model (%s)."
+
+msgid "Z FBX se nepodařilo vytvořit scénu."
+msgstr "Could not create a scene from the FBX file."
+
+msgid "Vyber kost nebo oblast kostí."
+msgstr "Select a joint or a group of joints."
+
+msgid "Prohlížeč právě zpracovává jinou operaci."
+msgstr "The viewer is busy."
+
+msgid "Nejprve spusť rozbor aktuálního klipu."
+msgstr "Analyze the current clip first."
+
+msgid "V nastaveném rozsahu nebyl nalezen žádný problém."
+msgstr "No issues found in the selected range."
+
+msgid "Prokluz chodidla"
+msgstr "Foot slide"
+
+msgid "Průnik chodidla podlahou"
+msgstr "Foot below floor"
+
+msgid "Šablona kostry"
+msgstr "Rig template"
+
+msgid "Člověk"
+msgstr "Human"
+
+msgid "Čtyřnožec"
+msgstr "Quadruped"
+
+msgid "Prázdná kostra"
+msgstr "Empty rig"
+
+msgid "Přidat kloub"
+msgstr "Add joint"
+
+msgid "Zkušební póza"
+msgstr "Test pose"
+
+msgid "Návrh kostry"
+msgstr "Rig draft"
+
+msgid "Ukončit zkušební pózu"
+msgstr "End test pose"
+
+msgid "Osa zkušební rotace"
+msgstr "Test rotation axis"
+
+msgid "Úhel zkušební rotace"
+msgstr "Test rotation angle"
+
+msgid "Výchozí póza"
+msgstr "Rest pose"
+
+msgid "Zkušební póza vyžaduje statický model bez kostry, zobrazení Materiály a vypnutou izolaci."
+msgstr "A test pose requires a static model without a rig, Materials mode, and isolation turned off."
+
+msgid "Přiřazuji váhy vrcholům…"
+msgstr "Calculating vertex weights…"
+
+msgid "Váhy vrcholu"
+msgstr "Vertex weights"
+
+msgid "Kost pro ruční úpravu váhy"
+msgstr "Bone for manual weight adjustment"
+
+msgid "Klikni na plochu a vyber nejbližší vrchol."
+msgstr "Click a face to select its nearest vertex."
+
+msgid "Použít váhu"
+msgstr "Apply weight"
+
+msgid "Váhu tohoto vrcholu nelze změnit."
+msgstr "This vertex weight could not be changed."
+
+msgid "Exportovat nové GLB s kostrou"
+msgstr "Export a new rigged GLB"
+
+msgid "GLB neumí uložit některé materiály projektu."
+msgstr "GLB cannot store some project materials."
+
+msgid "Ruční váhy pro %d vrcholů se neshodují s touto sítí."
+msgstr "Manual weights for %d vertices do not match this mesh."
+
+msgid "Exportovat současný náhled do nového GLB?"
+msgstr "Export the current preview to a new GLB?"
+
+msgid "Exportuji GLB s kostrou…"
+msgstr "Exporting the rigged GLB…"
+
+msgid "Pro export vyber nový soubor GLB."
+msgstr "Choose a new GLB filename for the export."
+
+msgid "Export GLB selhal (%s)."
+msgstr "GLB export failed (%s)."
+
+msgid "Pro tento model se nepodařilo připravit náhled vah."
+msgstr "A weight preview could not be prepared for this model."
+
+msgid "Přejmenovat kloub"
+msgstr "Rename joint"
+
+msgid "Nejprve vyber kloub."
+msgstr "Select a joint first."
+
+msgid "Název kloubu je neplatný nebo už existuje."
+msgstr "The joint name is invalid or already in use."
+
+msgid "Otevřít návrh kostry"
+msgstr "Open rig draft"
+
+msgid "Uložit návrh kostry"
+msgstr "Save rig draft"
+
+msgid "Klikni do pohledu a umísti kloub."
+msgstr "Click in the viewport to place the joint."
+
+msgid "Nahradit rozpracovanou kostru zvolenou šablonou?"
+msgstr "Replace this rig draft with the selected template?"
+
+msgid "Nahradit rozpracovanou kostru uloženým návrhem?"
+msgstr "Replace this rig draft with the saved draft?"
+
+msgid "Nejprve přidej klouby nebo zvol šablonu."
+msgstr "Add joints or choose a template first."
+
+msgid "Neplatný návrh kostry nebo jiný model."
+msgstr "Invalid rig draft or different model."
+
+msgid "Upravit cíl IK"
+msgstr "Adjust IK target"
+
+msgid "Nejprve připni končetinu v aktuálním klipu."
+msgstr "Pin a limb in the current clip first."
+
+msgid "Skok rotace"
+msgstr "Rotation spike"
+
+msgid "Návaznost smyčky"
+msgstr "Loop seam"
+
+msgid "Export GIF selhal. Ověř rozsah, FPS a cílový soubor."
+msgstr "GIF export failed. Check the range, frame rate and destination."
+
+msgid "Soubor nelze uložit."
+msgstr "Unable to save the file."
+
+msgid "Uloženo · %s"
+msgstr "Saved · %s"
+
+msgid "Vykresluji animaci GIF…"
+msgstr "Rendering GIF animation…"
+
+msgid "Komprimuji GIF…"
+msgstr "Encoding GIF…"
+
+msgid "GIF uložen · %s"
+msgstr "GIF saved · %s"
+
+msgid "Přichytit končetinu"
+msgstr "Pin limb"
+
+msgid "Uvolnit IK"
+msgstr "Clear IK"
+
+msgid "Vyber jednu koncovou kost."
+msgstr "Select one end joint."
+
+msgid "Tato kost netvoří platnou dvoučlánkovou končetinu."
+msgstr "This joint is not part of a valid two-bone chain."
+
+msgid "Zobrazit nález"
+msgstr "Show finding"
+
+msgid "Náhled pohybu na vytvořené kostře"
+msgstr "Preview movement on the drafted rig"
+
+msgid "Ruční póza"
+msgstr "Manual pose"
+
+msgid "Chůze na místě"
+msgstr "In-place walk"
+
+msgid "Běh / klus na místě"
+msgstr "In-place run / trot"
+
+msgid "Poloha ve smyčce pohybu"
+msgstr "Position in the movement cycle"
+
+msgid "Pozastavit pohyb"
+msgstr "Pause motion"
+
+msgid "Přehrát pohyb"
+msgstr "Play motion"
+
+msgid "Odstranit nepřiřazené váhy"
+msgstr "Remove unmatched weights"
+
+msgid "Odstranit nepřiřazené ruční váhy z rozpracovaného návrhu?"
+msgstr "Remove unmatched manual weights from the current rig draft?"
+
+msgid "Nepřiřazené ruční váhy byly odstraněny."
+msgstr "Unmatched manual weights removed."
+
+msgid "Obnovené ruční váhy: %d."
+msgstr "Recovered manual weights: %d."
+
+msgid "Exportovat nové GLB s kostrou a pohyby"
+msgstr "Export a new GLB with rig and motions"
+
+msgid "Vrchol má konflikt s uloženou váhou. Zkontroluj návrh kostry."
+msgstr "This vertex conflicts with a saved weight. Check the rig draft."
+
+msgid "Předchozí snímek (30 FPS)"
+msgstr "Previous frame (30 FPS)"
+
+msgid "Následující snímek (30 FPS)"
+msgstr "Next frame (30 FPS)"
+
+msgid "Nástroje"
+msgstr "Tools"
+
+msgid "Editor pohybu"
+msgstr "Motion Editor"
+
+msgid "Navrhnout novou kostru"
+msgstr "Draft a new skeleton"
+
+msgid "Model už má kostru. Pro výběr a úpravy jeho kostí použij Editor pohybu."
+msgstr "The model already has a skeleton. Use the Motion Editor to select and edit its joints."
+
+msgid "Tato animace neobsahuje kostru, jejíž klouby lze upravit."
+msgstr "This animation has no skeleton with editable joints."
+
+msgid "Rozbor vyžaduje kostru a rozsah do 900 snímků."
+msgstr "Motion analysis requires a skeleton and an interval of up to 900 samples."
+
+msgid "Zvol platný rozsah do 900 vzorků v nabídce Rozsah animace."
+msgstr "Choose a valid interval of up to 900 samples in Animation Range."
+
+msgid "%s · %.3f–%.3f s · %d FPS · %d nálezů"
+msgstr "%s · %.3f–%.3f s · %d FPS · %d findings"

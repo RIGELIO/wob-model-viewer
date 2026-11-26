@@ -21,10 +21,11 @@ function Set-UserValue($Path, $Name, $Value, $Kind = [Microsoft.Win32.RegistryVa
 
 $capabilities = 'Software\RIGELIO\WoBModelViewer\Capabilities'
 Set-UserValue $capabilities 'ApplicationName' $displayName
-Set-UserValue $capabilities 'ApplicationDescription' 'Offline GLB, glTF and saved view viewer'
+Set-UserValue $capabilities 'ApplicationDescription' 'Offline GLB, glTF, FBX and saved view viewer'
 foreach ($type in @(
     @{ Extension = '.glb'; Id = 'GLB'; Description = 'glTF Binary Model' }
     @{ Extension = '.gltf'; Id = 'GLTF'; Description = 'glTF Model' }
+    @{ Extension = '.fbx'; Id = 'FBX'; Description = 'FBX Model' }
     @{ Extension = '.wobview'; Id = 'View'; Description = 'WoB Model Viewer View' }
 )) {
     $progId = "RIGELIO.WoBModelViewer.$($type.Id)"

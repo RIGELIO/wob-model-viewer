@@ -420,10 +420,10 @@ msgstr "Could not read the full file."
 msgid "glTF odkazuje mimo složku modelu. Vlož zdroj do modelu nebo použij relativní cestu."
 msgstr "The glTF references a resource outside the model folder. Embed the resource or use a relative path."
 
-msgid "Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\nM: osy modelu. Táhni šipku pro posun nebo kruh pro otočení.\n\nW: trojúhelníkový wireframe. Q: odhad quadů (Pro). P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
-msgstr "Drop a GLB, glTF, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick a view cube face or drag the cube to orbit.\nM: model axes. Drag an arrow to move or a ring to rotate.\n\nW: triangle wireframe. Q: inferred quads (Pro). P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+L: log. Ctrl+Q: quit. F1: help.\nF11: full screen. Esc: return to the window."
-msgid "Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR."
-msgstr "Open GLB, glTF, WOBVIEW, a vehicle manifest, HDR or EXR."
+msgid "Přetáhni GLB, glTF, FBX, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\nM: osy modelu. Táhni šipku pro posun nebo kruh pro otočení.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
+msgstr "Drop a GLB, glTF, FBX, HDRI or saved view into the window.\n\nMouse: left to orbit, right or middle to pan, scroll to zoom.\nF / 1: frame. 2: front. 3: side. 4: top.\nClick a view cube face or drag the cube to orbit.\nM: model axes. Drag an arrow to move or a ring to rotate.\n\nW: triangle wireframe. Q: inferred quads. P: points.\nG: grid. K: skeleton. A: auto-rotate.\nB: background. O: orthographic view.\nPage Up / Page Down: previous / next LOD. Space: animation.\n\nCtrl+O: open. Ctrl+S: save. Ctrl+Shift+S: save as.\nCtrl+E: 4K screenshot. Ctrl+L: log. Ctrl+Q: quit. F1: help.\nF11: full screen. Esc: return to the window."
+msgid "Otevři GLB, glTF, FBX, WOBVIEW, manifest vozu, HDR nebo EXR."
+msgstr "Open GLB, glTF, FBX, WOBVIEW, a vehicle manifest, HDR or EXR."
 
 msgid "Atlasové JSON obsahuje rozložení UV. Otevři manifest vozu nebo GLB."
 msgstr "The atlas JSON describes the UV layout. Open the vehicle manifest or a GLB."
@@ -632,8 +632,25 @@ msgstr "Copy log"
 msgid "Zavřít"
 msgstr "Close"
 
-msgid "Quady (odhad) · Pro"
-msgstr "Inferred quads · Pro"
 
-msgid "Odhad quadů je součástí Pro."
-msgstr "Inferred quads are included in Pro."
+
+msgid "Lišta"
+msgstr "Toolbar"
+
+msgid "Horní lišta"
+msgstr "Top toolbar"
+
+msgid "Inspektor"
+msgstr "Inspector"
+
+msgid "Připnout"
+msgstr "Pin"
+
+msgid "Automaticky skrývat"
+msgstr "Auto-hide"
+
+msgid "Skrýt"
+msgstr "Hide"
+
+msgid "Lištu a inspektor můžeš připnout, skrýt nebo nastavit automatické skrývání. Skryté panely obnovíš z jejich okrajových nabídek."
+msgstr "Pin, hide or auto-hide the toolbar and inspector. Use their edge menus to restore hidden panels."

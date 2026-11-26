@@ -1,5 +1,7 @@
 extends Control
 
+const AnimationTools = preload("res://tools/animation_tools.gd")
+const FbxMaterials = preload("res://tools/fbx_materials.gd")
 const Stage = preload("res://stage.gd")
 const ViewFile = preload("res://view_file.gd")
 const OrientationGizmo = preload("res://orientation_gizmo.gd")
@@ -15,25 +17,46 @@ const MUTED := Color("#b8b1a6")
 const GOLD := Color("#edbd7c")
 const LOCALES := ["en", "cs"]
 const HDRI_NAMES := ["Lilienstein", "Kloppenheim 06 · Pure Sky", "Moonlit Golf"]
-const ANIMATION_SPEEDS := [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
 const LOG_LIMIT := 200
 const SETTINGS := "user://viewer.cfg"
+const PANEL_CLOSE_DELAY_MSEC := 420
 enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, FRAME, QUIT }
+enum PanelMode { PINNED, AUTO_HIDE, HIDDEN }
 
-class LoadingSpinner extends Control:
-	var angle := 0.0
+class LoadingArtwork extends TextureRect:
+	const ART = preload("res://art/startup.png")
+	const ORBIT = preload("res://loading_orbit.gdshader")
 
-	func _ready() -> void:
-		custom_minimum_size = Vector2.ONE * 34.0
+	func _init(compact: bool) -> void:
+		texture = ART
+		expand_mode = EXPAND_IGNORE_SIZE
+		mouse_filter = MOUSE_FILTER_IGNORE
+		stretch_mode = STRETCH_SCALE if compact else STRETCH_KEEP_ASPECT_CENTERED
+		if compact:
+			custom_minimum_size = Vector2(90, 90)
+			var image := ART.get_image()
+			var half_size := Vector2i(ART.get_size() * 0.5)
+			image.resize(half_size.x, half_size.y, Image.INTERPOLATE_LANCZOS)
+			image.generate_mipmaps()
+			texture = ImageTexture.create_from_image(image)
+			texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var orbit := ShaderMaterial.new()
+		orbit.shader = ORBIT
+		orbit.set_shader_parameter("source_size", ART.get_size())
+		orbit.set_shader_parameter("compact", compact)
+		material = orbit
 
-	func _process(delta: float) -> void:
-		if is_visible_in_tree():
-			angle = fmod(angle + delta * TAU * 1.15, TAU)
-			queue_redraw()
 
-	func _draw() -> void:
-		draw_circle(size * 0.5, 12, Color("#564a3c"), false, 3, true)
-		draw_arc(size * 0.5, 12, angle, angle + PI * 1.35, 32, GOLD, 3, true)
+class ViewerPanel extends RefCounted:
+	var body: Control
+	var slot: Container
+	var overlay: PanelContainer
+	var handle: Button
+	var hover_zone: Control
+	var id: String
+	var caption: String
+	var mode := PanelMode.PINNED
+	var close_after := 0
 
 var stage: Stage
 var _file_name: Label
@@ -43,7 +66,6 @@ var _log_dialog: AcceptDialog
 var _log_text: TextEdit
 var _log_copy: Button
 var _log_entries := PackedStringArray()
-var _pro_enabled := false
 var _blank: CenterContainer
 var _geometry: Label
 var _lod_table: GridContainer
@@ -62,7 +84,7 @@ var _movie: OptionButton
 var _play: Button
 var _loop: CheckBox
 var _in_place: CheckBox
-var _speed: OptionButton
+var _speed: SpinBox
 var _timeline: HSlider
 var _time: Label
 var _open_dialog: FileDialog
@@ -75,6 +97,15 @@ var _about: AcceptDialog
 var _help: AcceptDialog
 var _menu_file: MenuButton
 var _menu_help: MenuButton
+var _toolbar_panel: ViewerPanel
+var _inspector_panel: ViewerPanel
+var _floating_toolbar_slot: HBoxContainer
+var _panel_menu_layer: Control
+var _panel_menu: PanelContainer
+var _panel_menu_owner: ViewerPanel
+var _panel_menu_items: Array[CheckButton]
+var _header_row: HBoxContainer
+var _pointer_in_window := true
 var _capture_button: Button
 var _language: OptionButton
 var _display: OptionButton
@@ -109,7 +140,9 @@ var _windowed_mode := Window.MODE_WINDOWED
 var _loading_mask: ColorRect
 var _loading_title: Label
 var _loading_name: Label
+var _workers: Array[Thread]
 var _loading := false
+var _texture_cache := Stage.Materials.TextureCache.new()
 var _quit_after_load := false
 
 
@@ -133,18 +166,35 @@ func _ready() -> void:
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 8)
 	margin.add_child(layout)
-	_make_header(layout)
+	_header_row = HBoxContainer.new()
+	_header_row.add_theme_constant_override("separation", 7)
+	layout.add_child(_header_row)
+	var header_slot := HBoxContainer.new()
+	header_slot.size_flags_horizontal = SIZE_EXPAND_FILL
+	_header_row.add_child(header_slot)
+	var header := _make_header(header_slot)
 	var split := HBoxContainer.new()
 	split.size_flags_vertical = SIZE_EXPAND_FILL
-	split.add_theme_constant_override("separation", 13)
+	split.add_theme_constant_override("separation", 7)
 	layout.add_child(split)
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = SIZE_EXPAND_FILL
 	split.add_child(left)
 	_make_viewport(left)
 	_make_timeline(left)
-	_make_inspector(split)
-	set_pro_enabled(false)
+	var inspector_slot := VBoxContainer.new()
+	split.add_child(inspector_slot)
+	var inspector := _make_inspector(inspector_slot)
+	var edge := VBoxContainer.new()
+	edge.custom_minimum_size.x = 31
+	split.add_child(edge)
+	_floating_toolbar_slot = HBoxContainer.new()
+	_floating_toolbar_slot.hide()
+	edge.add_child(_floating_toolbar_slot)
+	var inspector_edge := VBoxContainer.new()
+	inspector_edge.size_flags_vertical = SIZE_EXPAND_FILL
+	edge.add_child(inspector_edge)
+	_make_panels(header, header_slot, inspector, inspector_edge, inspector_slot)
 	var status_row := HBoxContainer.new()
 	status_row.add_theme_constant_override("separation", 8)
 	layout.add_child(status_row)
@@ -185,7 +235,9 @@ func _ready() -> void:
 	_refresh_dialogs()
 	get_window().files_dropped.connect(_files_dropped)
 	get_window().size_changed.connect(_sync_fullscreen)
-	_process_arguments.call_deferred()
+	get_window().mouse_entered.connect(func(): _pointer_in_window = true)
+	get_window().mouse_exited.connect(func(): _pointer_in_window = false)
+	_start_viewer.call_deferred()
 
 
 func _make_menu(row: HBoxContainer) -> void:
@@ -249,10 +301,13 @@ func _show_about() -> void:
 func _show_help() -> void:
 	_help.title = tr("Ovládání WoB Model Viewer")
 	_help.dialog_text = tr(
-		"Přetáhni GLB, glTF, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\nM: osy modelu. Táhni šipku pro posun nebo kruh pro otočení.\n\nW: trojúhelníkový wireframe. Q: odhad quadů (Pro). P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
+		"Přetáhni GLB, glTF, FBX, HDRI nebo uloženou relaci do okna.\n\nMyš: levé otáčí, pravé nebo prostřední posouvá, kolečko přibližuje.\nF / 1: zarámovat. 2: zepředu. 3: z boku. 4: shora.\nKlikni na stěnu orientační kostky nebo ji tažením otoč.\nM: osy modelu. Táhni šipku pro posun nebo kruh pro otočení.\n\nW: trojúhelníkový wireframe. Q: odhad quadů. P: body.\nG: mřížka. K: kostra. A: automatické otáčení.\nB: pozadí. O: ortografický pohled.\nPage Up / Page Down: předchozí / další LOD. Mezerník: animace.\n\nCtrl+O: otevřít. Ctrl+S: uložit. Ctrl+Shift+S: uložit jako.\nCtrl+E: snímek 4K. Ctrl+L: protokol. Ctrl+Q: konec. F1: nápověda.\nF11: celá obrazovka. Esc: návrat do okna."
 	)
 	_help.dialog_text += "\n\n" + tr(
 		"Ctrl+R znovu načte model se stejným pohledem, světly a LOD. V části Díly a materiály můžeš izolovat síť nebo povrch. Vertex barvy a UV šachovnici najdeš v Zobrazení."
+	)
+	_help.dialog_text += "\n\n" + tr(
+		"Lištu a inspektor můžeš připnout, skrýt nebo nastavit automatické skrývání. Skryté panely obnovíš z jejich okrajových nabídek."
 	)
 	_help.popup_centered()
 
@@ -289,8 +344,9 @@ func _show_log_dialog() -> void:
 	_log_dialog.grab_focus()
 
 
-func _make_header(layout: VBoxContainer) -> void:
+func _make_header(layout: HBoxContainer) -> HBoxContainer:
 	var header := HBoxContainer.new()
+	header.size_flags_horizontal = SIZE_EXPAND_FILL
 	header.add_theme_constant_override("separation", 7)
 	layout.add_child(header)
 	_icon(header, 28)
@@ -310,6 +366,237 @@ func _make_header(layout: VBoxContainer) -> void:
 	_language.tooltip_text = "Language / Jazyk"
 	_language.item_selected.connect(_change_locale)
 	header.add_child(_language)
+	return header
+
+
+func _make_panels(header: HBoxContainer, header_slot: HBoxContainer,
+		inspector: PanelContainer, edge: VBoxContainer, inspector_slot: VBoxContainer) -> void:
+	var layer := Control.new()
+	layer.mouse_filter = MOUSE_FILTER_IGNORE
+	layer.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	add_child(layer)
+	var top_edge := Control.new()
+	top_edge.mouse_filter = MOUSE_FILTER_IGNORE
+	top_edge.set_anchors_and_offsets_preset(PRESET_TOP_WIDE)
+	top_edge.offset_left = 12
+	top_edge.offset_right = -12
+	top_edge.offset_bottom = 10
+	layer.add_child(top_edge)
+	_toolbar_panel = _make_panel(layer, header, header_slot, _header_row, top_edge, "toolbar", "Horní lišta")
+	_inspector_panel = _make_panel(layer, inspector, inspector_slot, edge, edge, "inspector", "Inspektor")
+	_make_panel_menu(layer)
+	var settings := ConfigFile.new()
+	settings.load(SETTINGS)
+	for panel: ViewerPanel in [_toolbar_panel, _inspector_panel]:
+		var mode: Variant = settings.get_value("panels", panel.id, PanelMode.PINNED)
+		_set_panel_mode(panel, mode if mode is int else PanelMode.PINNED, false)
+	var timer := Timer.new()
+	timer.wait_time = 0.10
+	timer.timeout.connect(_update_auto_panels)
+	add_child(timer)
+	timer.start()
+
+
+func _make_panel(layer: Control, body: Control, slot: Container, handle_parent: Container,
+		hover_zone: Control, id: String, caption: String) -> ViewerPanel:
+	var panel := ViewerPanel.new()
+	panel.body = body
+	panel.slot = slot
+	panel.hover_zone = hover_zone
+	panel.id = id
+	panel.caption = caption
+	panel.overlay = PanelContainer.new()
+	var cover: StyleBox = _box(INK, BORDER, 7, 4) if id == "toolbar" else StyleBoxEmpty.new()
+	panel.overlay.add_theme_stylebox_override("panel", cover)
+	panel.overlay.hide()
+	layer.add_child(panel.overlay)
+	panel.handle = Button.new()
+	panel.handle.custom_minimum_size.x = 31
+	handle_parent.add_child(panel.handle)
+	panel.handle.pressed.connect(_show_panel_menu.bind(panel))
+	return panel
+
+
+func _make_panel_menu(layer: Control) -> void:
+	# A menu inside the viewer keeps the handle and its choices in the same input window.
+	_panel_menu_layer = Control.new()
+	_panel_menu_layer.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	_panel_menu_layer.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed:
+			_dismiss_panel_menu()
+	)
+	layer.add_child(_panel_menu_layer)
+	_panel_menu = PanelContainer.new()
+	_panel_menu.custom_minimum_size.x = 218
+	_panel_menu.add_theme_stylebox_override("panel", _box(INK, BORDER, 7, 5))
+	_panel_menu_layer.add_child(_panel_menu)
+	var choices := VBoxContainer.new()
+	choices.add_theme_constant_override("separation", 2)
+	_panel_menu.add_child(choices)
+	var group := ButtonGroup.new()
+	for mode in range(PanelMode.PINNED, PanelMode.HIDDEN + 1):
+		var item := CheckButton.new()
+		item.button_group = group
+		item.custom_minimum_size.y = 34
+		item.pressed.connect(_choose_panel_mode.bind(mode))
+		choices.add_child(item)
+		_panel_menu_items.append(item)
+	for index in range(_panel_menu_items.size()):
+		var item := _panel_menu_items[index]
+		var previous := item.get_path_to(_panel_menu_items[posmod(index - 1, _panel_menu_items.size())])
+		var next := item.get_path_to(_panel_menu_items[(index + 1) % _panel_menu_items.size()])
+		item.focus_previous = previous
+		item.focus_neighbor_top = previous
+		item.focus_next = next
+		item.focus_neighbor_bottom = next
+	_panel_menu_layer.resized.connect(_place_panel_menu)
+	get_window().focus_exited.connect(_dismiss_panel_menu.bind(false))
+	_panel_menu_layer.hide()
+
+
+func _show_panel_menu(panel: ViewerPanel) -> void:
+	_panel_menu_owner = panel
+	for mode in range(_panel_menu_items.size()):
+		var item := _panel_menu_items[mode]
+		item.text = _panel_mode_title(mode)
+		item.set_pressed_no_signal(mode == panel.mode)
+	_panel_menu_layer.show()
+	_place_panel_menu()
+	_panel_menu_items[panel.mode].grab_focus()
+
+
+func _place_panel_menu() -> void:
+	if _panel_menu_owner == null:
+		return
+	var anchor := _panel_menu_owner.handle.get_global_rect()
+	var bounds := _panel_menu_layer.get_global_rect()
+	_panel_menu.size = _panel_menu.get_combined_minimum_size()
+	var x := clampf(anchor.end.x - _panel_menu.size.x, bounds.position.x, bounds.end.x - _panel_menu.size.x)
+	var y := anchor.end.y + 4.0
+	if y + _panel_menu.size.y > bounds.end.y:
+		y = maxf(bounds.position.y, anchor.position.y - _panel_menu.size.y - 4.0)
+	_panel_menu.global_position = Vector2(x, y)
+
+
+func _dismiss_panel_menu(restore_focus := true) -> void:
+	if _panel_menu_owner == null:
+		return
+	var panel := _panel_menu_owner
+	_panel_menu_owner = null
+	_panel_menu_layer.hide()
+	if restore_focus:
+		panel.handle.grab_focus()
+
+
+func _choose_panel_mode(mode: int) -> void:
+	var panel := _panel_menu_owner
+	if panel == null:
+		return
+	_dismiss_panel_menu()
+	_set_panel_mode(panel, mode)
+
+
+func _panel_mode_title(mode: int) -> String:
+	match mode:
+		PanelMode.AUTO_HIDE: return tr("Automaticky skrývat")
+		PanelMode.HIDDEN: return tr("Skrýt")
+	return tr("Připnout")
+
+
+func _refresh_panel_handle(panel: ViewerPanel) -> void:
+	if panel == _toolbar_panel:
+		panel.handle.text = tr("Lišta") + " ▾" if panel.mode == PanelMode.PINNED else "▾"
+	else:
+		panel.handle.text = "▶" if panel.mode == PanelMode.PINNED else "◀"
+	panel.handle.tooltip_text = "%s · %s" % [tr(panel.caption), _panel_mode_title(panel.mode)]
+
+
+func _set_panel_mode(panel: ViewerPanel, mode: int, persist := true) -> void:
+	if mode < PanelMode.PINNED or mode > PanelMode.HIDDEN:
+		mode = PanelMode.PINNED
+	var pinned := mode == PanelMode.PINNED
+	var parent: Control = panel.slot if pinned else panel.overlay
+	var moving := panel.body.get_parent() != parent
+	if moving or panel.overlay.visible:
+		_focus_panel_handle_if_needed(panel)
+	if moving:
+		panel.body.reparent(parent, false)
+	panel.mode = mode as PanelMode
+	panel.close_after = 0
+	panel.overlay.hide()
+	if panel == _toolbar_panel:
+		var handle_parent: Container = _header_row if pinned else _floating_toolbar_slot
+		if panel.handle.get_parent() != handle_parent:
+			var had_focus := panel.handle.has_focus()
+			panel.handle.reparent(handle_parent, false)
+			if had_focus:
+				panel.handle.grab_focus.call_deferred()
+		_header_row.visible = pinned
+		_floating_toolbar_slot.visible = not pinned
+	else:
+		panel.slot.visible = pinned
+	_refresh_panel_handle(panel)
+	if persist:
+		var settings := ConfigFile.new()
+		settings.load(SETTINGS)
+		settings.set_value("panels", panel.id, mode)
+		settings.save(SETTINGS)
+
+
+func _focus_panel_handle_if_needed(panel: ViewerPanel) -> void:
+	var focused := get_viewport().gui_get_focus_owner()
+	if is_instance_valid(focused) and panel.body.is_ancestor_of(focused):
+		panel.handle.grab_focus()
+
+
+func _update_auto_panels() -> void:
+	if _loading or not is_visible_in_tree():
+		return
+	var pointer := get_global_mouse_position()
+	var now := Time.get_ticks_msec()
+	for panel: ViewerPanel in [_toolbar_panel, _inspector_panel]:
+		if panel.mode == PanelMode.AUTO_HIDE:
+			_update_auto_panel(panel, pointer, now)
+
+
+func _update_auto_panel(panel: ViewerPanel, pointer: Vector2, now: int) -> void:
+	var on_handle := _pointer_in_window and (panel.hover_zone.get_global_rect().has_point(pointer)
+		or panel.handle.get_global_rect().has_point(pointer))
+	var over_panel := _pointer_in_window and panel.overlay.visible \
+		and panel.overlay.get_global_rect().has_point(pointer)
+	if on_handle or over_panel:
+		panel.close_after = now + PANEL_CLOSE_DELAY_MSEC
+		panel.overlay.show()
+	elif panel.overlay.visible and now >= panel.close_after and not _panel_has_popup(panel) \
+			and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_focus_panel_handle_if_needed(panel)
+		panel.overlay.hide()
+	if panel.overlay.visible:
+		_place_panel_overlay(panel)
+
+
+func _place_panel_overlay(panel: ViewerPanel) -> void:
+	var rail := panel.hover_zone.get_global_rect()
+	if panel == _toolbar_panel:
+		panel.overlay.global_position = rail.position + Vector2(0.0, 8.0)
+		panel.overlay.size = Vector2(rail.size.x - _floating_toolbar_slot.size.x - 7.0,
+			panel.body.get_combined_minimum_size().y + 8.0)
+	else:
+		var width := panel.body.get_combined_minimum_size().x
+		var top := rail.position.y
+		if _toolbar_panel.overlay.visible:
+			top = maxf(top, _toolbar_panel.overlay.get_global_rect().end.y + 6.0)
+		panel.overlay.global_position = Vector2(rail.position.x - width - 7.0, top)
+		panel.overlay.size = Vector2(width, rail.end.y - top)
+
+
+func _panel_has_popup(panel: ViewerPanel) -> bool:
+	if _panel_menu_owner == panel:
+		return true
+	for popup: Popup in panel.body.find_children("*", "Popup", true, false):
+		if popup.visible:
+			return true
+	return false
 
 
 func _toggle_fullscreen() -> void:
@@ -386,6 +673,22 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 
+func _start_viewer() -> void:
+	if DisplayServer.get_name() != "headless":
+		var splash := ColorRect.new()
+		splash.color = Color("#111214")
+		splash.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+		add_child(splash)
+		var artwork := LoadingArtwork.new(false)
+		artwork.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+		splash.add_child(artwork)
+		await get_tree().create_timer(0.85).timeout
+		splash.queue_free()
+	var tools := AnimationTools.new()
+	add_child(tools)
+	tools.attach(self)
+
+
 func _make_loading_mask() -> void:
 	_loading_mask = ColorRect.new()
 	_loading_mask.color = Color("#111216ab")
@@ -401,8 +704,9 @@ func _make_loading_mask() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	panel.add_child(row)
-	row.add_child(LoadingSpinner.new())
+	row.add_child(LoadingArtwork.new(true))
 	var text := VBoxContainer.new()
+	text.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(text)
 	_loading_title = _label(text, "Načítám…", 17, WHITE)
 	_loading_name = _label(text, "", 13, MUTED)
@@ -414,6 +718,7 @@ func _make_loading_mask() -> void:
 func _begin_loading(details: String, tooltip := "", title := "Načítám…") -> bool:
 	if _loading or _quit_after_load or stage.capture_in_progress:
 		return false
+	_dismiss_panel_menu(false)
 	_loading = true
 	_loading_title.text = title
 	_loading_name.text = details
@@ -456,13 +761,44 @@ func _notification(what: int) -> void:
 		_request_quit()
 
 
+func _exit_tree() -> void:
+	for worker: Thread in _workers:
+		worker.wait_to_finish()
+	_workers.clear()
+
+
 func _run_worker(task: Callable) -> Variant:
 	var worker := Thread.new()
 	if worker.start(task) != OK:
 		return null
+	_workers.append(worker)
 	while worker.is_alive():
 		await get_tree().process_frame
+	if not _workers.has(worker):
+		return null
+	_workers.erase(worker)
 	return worker.wait_to_finish()
+
+
+static func make_animation_speed_control(changed: Callable, initial := Stage.ANIMATION_SPEED_DEFAULT) -> SpinBox:
+	var control := SpinBox.new()
+	control.min_value = Stage.ANIMATION_SPEED_MIN
+	control.max_value = Stage.ANIMATION_SPEED_MAX
+	control.step = Stage.ANIMATION_SPEED_STEP
+	control.value = Stage.normalized_animation_speed(initial)
+	control.custom_minimum_size.x = 88.0
+	control.select_all_on_focus = true
+	control.suffix = "×"
+	control.tooltip_text = "Rychlost přehrávání animace"
+	var field := control.get_line_edit()
+	field.text_changed.connect(func(text: String):
+		if "," in text:
+			var caret := field.caret_column
+			field.text = text.replace(",", ".")
+			field.caret_column = caret
+	)
+	control.value_changed.connect(changed)
+	return control
 
 
 func _make_timeline(parent: VBoxContainer) -> void:
@@ -478,12 +814,7 @@ func _make_timeline(parent: VBoxContainer) -> void:
 	_loop = _toggle(controls, "animation_loop", "Smyčka", true, stage.animation_loop)
 	_in_place = _toggle(controls, "animation_in_place", "Na místě", false, stage.animation_in_place)
 	_in_place.tooltip_text = "Potlačí vodorovný posun kořene animace."
-	_speed = OptionButton.new()
-	_speed.tooltip_text = "Rychlost přehrávání animace"
-	for speed in ANIMATION_SPEEDS:
-		_speed.add_item("%s×" % speed)
-	_speed.select(ANIMATION_SPEEDS.find(1.0))
-	_speed.item_selected.connect(_select_animation_speed)
+	_speed = make_animation_speed_control(_set_animation_speed)
 	controls.add_child(_speed)
 	var row := HBoxContainer.new()
 	parent.add_child(row)
@@ -501,14 +832,20 @@ func _make_timeline(parent: VBoxContainer) -> void:
 	_refresh_clips()
 
 
-func _make_inspector(parent: HBoxContainer) -> void:
+func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	var card := PanelContainer.new()
 	card.custom_minimum_size.x = 340
+	card.size_flags_vertical = SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _box(INK, BORDER, 10, 7))
 	parent.add_child(card)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 7)
+	card.add_child(column)
+	_heading(column, "Inspektor", 25, GOLD)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	card.add_child(scroll)
+	scroll.size_flags_vertical = SIZE_EXPAND_FILL
+	column.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 8)
@@ -667,6 +1004,7 @@ func _make_inspector(parent: HBoxContainer) -> void:
 	_textures_button.disabled = true
 	_diagnostics = _label(materials, "—", 13, MUTED)
 	_diagnostics.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return card
 
 
 func _refresh_floor_height() -> void:
@@ -720,9 +1058,6 @@ func _toggle(parent: Container, id: String, title: String, initial: bool, action
 
 
 func _choose_display(index: int) -> void:
-	if index == Stage.QUADS_MODE and not _pro_enabled:
-		_feedback("Odhad quadů je součástí Pro.", true)
-		return
 	if stage.model and (index == Stage.WIREFRAME_MODE or index >= Stage.POINTS_MODE):
 		_with_loading(tr(_display.get_item_text(index)), _set_display.bind(index))
 	else:
@@ -730,8 +1065,6 @@ func _choose_display(index: int) -> void:
 
 
 func _set_display(index: int) -> void:
-	if index == Stage.QUADS_MODE and not _pro_enabled:
-		index = 0
 	stage.display_mode(index)
 	_display.select(index)
 	_color_controls.visible = index == Stage.COLOR_MODE
@@ -743,14 +1076,6 @@ func _set_display(index: int) -> void:
 	_point_size_row.visible = index == Stage.POINTS_MODE
 	if stage.model:
 		_refresh_geometry()
-
-
-func set_pro_enabled(enabled: bool) -> void:
-	_pro_enabled = enabled
-	_display.set_item_disabled(Stage.QUADS_MODE, not enabled)
-	_display.set_item_text(Stage.QUADS_MODE, "Quady (odhad)" if enabled else "Quady (odhad) · Pro")
-	if not enabled and _display.selected == Stage.QUADS_MODE:
-		_set_display(0)
 
 
 func _refresh_color_layers(requested := "COLOR_0") -> void:
@@ -1046,7 +1371,7 @@ func _files_dropped(files: PackedStringArray) -> void:
 
 
 func _model_extensions() -> PackedStringArray:
-	return PackedStringArray(["glb", "gltf"])
+	return PackedStringArray(["glb", "gltf", "fbx"])
 
 
 func _picker_model_extensions() -> PackedStringArray:
@@ -1054,22 +1379,22 @@ func _picker_model_extensions() -> PackedStringArray:
 
 
 func _unsupported_drop_message() -> String:
-	return "Otevři GLB, glTF, WOBVIEW, manifest vozu, HDR nebo EXR."
+	return "Otevři GLB, glTF, FBX, WOBVIEW, manifest vozu, HDR nebo EXR."
 
 
-func _model_access_error(_path: String) -> String:
-	return ""
-
-
-func _model_importer(_path: String) -> Stage.Materials:
-	return Stage.Materials.new()
+func _model_importer(path: String) -> Stage.Materials:
+	return FbxMaterials.new() if path.get_extension().to_lower() == "fbx" else Stage.Materials.new()
 
 
 func _model_file_bytes() -> int:
+	if stage.model is FbxMaterials:
+		return stage.model.file_bytes
 	return stage.model.source.bytes.size()
 
 
 func _original_materials_description() -> String:
+	if stage.model is FbxMaterials:
+		return tr("Vykreslení podle importovaných materiálů FBX.")
 	return tr("Vykreslení podle materiálů GLB.")
 
 
@@ -1093,15 +1418,14 @@ func _open_path(path: String) -> bool:
 
 func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = null,
 		texture_directory := "") -> bool:
-	var access_error := _model_access_error(path)
-	if not access_error.is_empty():
-		_feedback(access_error, true, PackedStringArray([path.get_file()]))
-		return false
 	if not _begin_loading(path.get_file(), path):
 		return false
+	var load_started := Time.get_ticks_msec()
 	var importer := _model_importer(path)
 	importer.texture_directory = texture_directory
+	importer.texture_cache = _texture_cache
 	var loaded: Variant = await _run_worker(_prepare_model.bind(importer, path, manifest, not keep_lod_family))
+	var prepare_ms := Time.get_ticks_msec() - load_started
 	var error := tr("Načítání se nepodařilo spustit.")
 	if loaded is Dictionary:
 		error = stage.apply_prepared_model(loaded.model) if loaded.error.is_empty() else loaded.error
@@ -1121,6 +1445,12 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	_capture_button.disabled = false
 	if not keep_lod_family:
 		_lod_entries = loaded.lods
+		for entry: Dictionary in _lod_entries:
+			if entry.path == path:
+				entry.merge({"vertices": stage.geometry.z, "triangles": stage.geometry.w,
+					"bytes": _model_file_bytes()}, true)
+		if _lod_entries.size() > 1:
+			_complete_lod_stats.call_deferred(_lod_entries)
 	_refresh_vehicle_options()
 	_refresh_lod_options()
 	_refresh_menu()
@@ -1129,6 +1459,9 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	_refresh_color_layers(_color_layer.get_item_text(_color_layer.selected))
 	_refresh_model_info()
 	_finish_loading()
+	if "--debug-load" in OS.get_cmdline_user_args():
+		print("LOAD_TIMING ", path.get_file(), " total=", Time.get_ticks_msec() - load_started,
+			" ms prepare=", prepare_ms, " ms phases=", importer.load_timings)
 	if DisplayServer.get_name() == "headless":
 		print(path.get_file(), " ", stage.geometry, " ", stage.model.counts, " | ", stage.model.notes)
 	return true
@@ -1142,6 +1475,29 @@ static func _prepare_model(pending: Stage.Materials, path: String, manifest: Ref
 		var state := pending.vehicle_state
 		lods = LodCatalog.from_manifest(vehicle.states[state]) if vehicle and not state.is_empty() else LodCatalog.discover(path)
 	return {"model": pending, "error": error, "lods": lods}
+
+
+func _complete_lod_stats(entries: Array[Dictionary]) -> void:
+	var pending := PackedStringArray()
+	for entry: Dictionary in entries:
+		if entry.bytes < 0:
+			pending.append(entry.path)
+	if pending.is_empty() or not is_same(entries, _lod_entries):
+		return
+	var stats: Variant = await _run_worker(_read_lod_stats.bind(pending))
+	if not stats is Dictionary or not is_same(entries, _lod_entries):
+		return
+	for entry: Dictionary in entries:
+		if stats.has(entry.path):
+			entry.merge(stats[entry.path], true)
+	_refresh_lod_options()
+
+
+static func _read_lod_stats(paths: PackedStringArray) -> Dictionary:
+	var stats := {}
+	for path: String in paths:
+		stats[path] = LodCatalog.read_stats(path)
+	return stats
 
 
 func _reload_model(selected_texture_directory: Variant = null) -> void:
@@ -1162,6 +1518,7 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 		if not manifest or manifest.state_for(_path).is_empty():
 			_feedback("Manifest vozu nelze načíst nebo už neobsahuje aktuální LOD.", true)
 			return
+	_texture_cache.clear()
 	var folder := _texture_directory if selected_texture_directory == null else str(selected_texture_directory)
 	if not await _load_model(_path, false, manifest, folder):
 		return
@@ -1317,7 +1674,7 @@ func _save_view_to(path: String) -> void:
 		"model_transform": stage.model_transform_state(),
 		"clip": str(stage.current_clip),
 		"time": _timeline.value,
-		"animation_speed": ANIMATION_SPEEDS[_speed.selected],
+		"animation_speed": _speed.value,
 	}
 	var status := ViewFile.write(path, state)
 	if status == OK:
@@ -1377,9 +1734,7 @@ func _open_view(path: String) -> bool:
 		stage.restore_model_transform(placement)
 	if state.get("camera") is Dictionary:
 		stage.restore_camera(state["camera"])
-	var saved_speed: Variant = state.get("animation_speed", 1.0)
-	var speed_index := ANIMATION_SPEEDS.find(float(saved_speed)) if saved_speed is float or saved_speed is int else -1
-	_select_animation_speed(speed_index if speed_index >= 0 else ANIMATION_SPEEDS.find(1.0))
+	_set_animation_speed(state.get("animation_speed", Stage.ANIMATION_SPEED_DEFAULT))
 	_restore_clip(str(state.get("clip", "")), state.get("time"))
 	var mode: Variant = state.get("sky_mode", 0)
 	_select_sky(clampi(int(mode), 0, _sky_picker.item_count - 1) if mode is float or mode is int else 0)
@@ -1451,7 +1806,7 @@ func _refresh_clips() -> void:
 	_play.disabled = not available
 	_loop.disabled = not available
 	_in_place.disabled = not available
-	_speed.disabled = not available
+	_speed.editable = available
 	_timeline.editable = available
 	_play.text = "Přehrát"
 	_time.text = "0.00 s"
@@ -1485,9 +1840,8 @@ func _toggle_play() -> void:
 	_play.text = "Pozastavit" if stage.toggle_play() else "Přehrát"
 
 
-func _select_animation_speed(index: int) -> void:
-	_speed.select(index)
-	stage.animation_speed(ANIMATION_SPEEDS[index])
+func _set_animation_speed(value: Variant) -> void:
+	_speed.set_value_no_signal(stage.animation_speed(value))
 
 
 func _process(_delta: float) -> void:
@@ -1637,6 +1991,8 @@ func _change_locale(index: int) -> void:
 	settings.save(SETTINGS)
 	_refresh_menu()
 	_refresh_dialogs()
+	_refresh_panel_handle(_toolbar_panel)
+	_refresh_panel_handle(_inspector_panel)
 	if stage.model:
 		var row := _parts.get_selected()
 		var selection: Variant = row.get_metadata(0) if row else null
@@ -1673,7 +2029,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	var key: Key = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
-	if key == KEY_F11 or (key == KEY_ESCAPE and get_window().mode == Window.MODE_FULLSCREEN):
+	if key == KEY_ESCAPE and _panel_menu_owner != null:
+		_dismiss_panel_menu()
+	elif key == KEY_F11 or (key == KEY_ESCAPE and get_window().mode == Window.MODE_FULLSCREEN):
 		if DisplayServer.get_name() != "headless":
 			_toggle_fullscreen()
 	elif _loading:
