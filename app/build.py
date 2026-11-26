@@ -100,7 +100,7 @@ def prepare(args, stage):
                  "glb_data.gd", "view_file.gd", "orientation_gizmo.gd", "lod_catalog.gd", "topology_overlay.gd",
                  "vehicle_manifest.gd", "game_materials.gd", "attribute_preview.gdshader", "celestial_sky.gdshader",
                  "wireframe_mesh.gd", "wireframe_preview.gdshader", "texture_search.gd", "model_gizmo.gd",
-                 "loading_orbit.gdshader", "tutorial.gd"):
+                 "loading_orbit.gdshader", "tutorial.gd", "scene_outline.gd", "material_inspector.gd", "ui_glyphs.gd"):
         shutil.copy2(HERE / name, stage / name)
     shutil.copytree(HERE / "tools", stage / "tools", ignore=shutil.ignore_patterns("*.go", "*.uid", "*.import"))
     shutil.copytree(HERE / "locale", stage / "locale")

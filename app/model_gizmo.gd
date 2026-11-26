@@ -15,6 +15,7 @@ const CENTER_RADIUS := 8.0
 const HIT_RADIUS := 7.0
 const SHADOW := Color(0.04, 0.05, 0.07, 0.88)
 
+var mode := 0
 var _projected := false
 var _center := Vector2.ZERO
 var _pixel_scale := 1.0
@@ -160,20 +161,23 @@ func _pick(position: Vector2) -> Vector2i:
 		return Vector2i(-1, -1)
 	var arrow := -1
 	var best_distance := HIT_RADIUS
-	for axis in range(AXES.size()):
-		var offset := _arrow_vector(axis)
-		if offset.length() < MIN_ARROW_LENGTH:
-			continue
-		var from := _center + offset.normalized() * CENTER_RADIUS
-		var closest := Geometry2D.get_closest_point_to_segment(position, from, _center + offset)
-		var distance := position.distance_to(closest)
-		if distance < best_distance:
-			best_distance = distance
-			arrow = axis
+	if mode != 2:
+		for axis in range(AXES.size()):
+			var offset := _arrow_vector(axis)
+			if offset.length() < MIN_ARROW_LENGTH:
+				continue
+			var from := _center + offset.normalized() * CENTER_RADIUS
+			var closest := Geometry2D.get_closest_point_to_segment(position, from, _center + offset)
+			var distance := position.distance_to(closest)
+			if distance < best_distance:
+				best_distance = distance
+				arrow = axis
 	if arrow >= 0:
 		return Vector2i(arrow, -1)
 
 	var hit := Vector2i(-1, -1)
+	if mode == 1:
+		return hit
 	best_distance = HIT_RADIUS
 	var best_depth := -INF
 	for axis in range(_rings.size()):
@@ -245,14 +249,16 @@ func _draw() -> void:
 	if not _projected:
 		return
 	var active := _drag if _drag >= 0 else _hover
-	for axis in range(_rings.size()):
-		var emphasized := active == axis + AXES.size()
-		var color: Color = AXIS_COLORS[axis]
-		color.a = 1.0 if emphasized else 0.64
-		draw_polyline(_rings[axis], SHADOW, 5.0 if emphasized else 3.5, true)
-		draw_polyline(_rings[axis], color, 2.7 if emphasized else 1.5, true)
-	for axis in range(AXES.size()):
-		_draw_arrow(axis, active == axis)
+	if mode != 1:
+		for axis in range(_rings.size()):
+			var emphasized := active == axis + AXES.size()
+			var color: Color = AXIS_COLORS[axis]
+			color.a = 1.0 if emphasized else 0.64
+			draw_polyline(_rings[axis], SHADOW, 5.0 if emphasized else 3.5, true)
+			draw_polyline(_rings[axis], color, 2.7 if emphasized else 1.5, true)
+	if mode != 2:
+		for axis in range(AXES.size()):
+			_draw_arrow(axis, active == axis)
 	draw_circle(_center, 4.0, SHADOW, true, -1.0, true)
 	draw_circle(_center, 2.0, Color("#f1f0e9"), true, -1.0, true)
 

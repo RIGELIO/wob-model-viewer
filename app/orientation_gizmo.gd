@@ -26,7 +26,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if not stage or not stage.camera:
 		return
-	var basis: Basis = stage.camera.global_basis
+	var basis: Basis = stage.orientation_display_basis()
 	if not basis.is_equal_approx(_camera_basis):
 		_camera_basis = basis
 		queue_redraw()
@@ -46,17 +46,19 @@ func _draw() -> void:
 		for corner: Vector2 in CORNERS:
 			polygon.append(_project(inverse * (normal + right * corner.x + up * corner.y)))
 		_polygons[index] = polygon
-		var fill := Color("#323741").lerp(Color("#6d665a"), facing)
+		var fill := Color("#746b5e").lerp(Color("#b6a99a"), facing)
+		if index == 4:
+			fill = Color("#c2b6a6")
 		draw_colored_polygon(polygon, Color("#a77c4c") if index == _hover else fill)
 		var border := polygon.duplicate()
 		border.append(polygon[0])
-		draw_polyline(border, Color("#d1ae7e") if index == _hover else Color("#9d8a70"), 1.2, true)
-		if facing > 0.35:
+		draw_polyline(border, Color("#d1ae7e") if index == _hover else Color("#c2a574"), 1.2, true)
+		if facing > 0.26:
 			var font := get_theme_default_font()
 			var label := tr(LABELS[index])
 			var extent := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
 			draw_string(font, _project(inverse * normal) + Vector2(-extent.x * 0.5, 4.0), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#faf3e6"))
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#211d1b"))
 
 
 func _project(local: Vector3) -> Vector2:

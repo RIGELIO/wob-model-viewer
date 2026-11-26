@@ -19,7 +19,8 @@ const WIREFRAME_MODE := 1
 const WIREFRAME_WIDTH_MIN := 0.5
 const WIREFRAME_WIDTH_MAX := 8.0
 const WIREFRAME_WIDTH_DEFAULT := 1.2
-const DEFAULT_FLOOR_COLOR := Color("#383937")
+const DEFAULT_FLOOR_COLOR := Color("#282829")
+const STUDIO_VIEW := Vector2(0.14, 0.04)
 const POINTS_MODE := 5
 const QUADS_MODE := 6
 const COLOR_MODE := 7
@@ -52,6 +53,8 @@ var viewport_3d: SubViewport
 var camera: Camera3D
 var environment: Environment
 var sunlight: DirectionalLight3D
+var _fill_light: DirectionalLight3D
+var _rim_light: DirectionalLight3D
 var model: Materials
 var clips: Array[Dictionary]
 var animation_player: AnimationPlayer
@@ -66,7 +69,7 @@ var _hdri_textures: Dictionary[int, Texture2D]
 var _sky_mode := 0
 var _show_source := true
 var _hdri_angle := 0.0
-var _direct_strength := 1.25
+var _direct_strength := 1.0
 var _animation_loop := Animation.LOOP_LINEAR
 var _animation_speed := ANIMATION_SPEED_DEFAULT
 var _animation_in_place := false
@@ -90,11 +93,12 @@ var _floor_offset := 0.0
 var _hdri_on := true
 var _background := 0
 var _custom_background := Color("#55575c")
-var _center := Vector3.ZERO
+var _studio_backdrop: CanvasLayer
+var _center := Vector3(0.0, 0.81, 0.0)
 var _radius := 1.0
-var _distance := 3.0
-var _yaw := 0.26
-var _pitch := 0.04
+var _distance := 5.1
+var _yaw := STUDIO_VIEW.x
+var _pitch := STUDIO_VIEW.y
 var _orbiting := false
 var _panning := false
 var _background_on := true
@@ -108,6 +112,7 @@ var _bone_material: StandardMaterial3D
 var _point_material: StandardMaterial3D
 var _point_instances: Dictionary[MeshInstance3D, MeshInstance3D]
 var _mesh_layers: Dictionary[MeshInstance3D, int]
+var _hidden_parts: Dictionary[MeshInstance3D, bool]
 var _wireframe_material: ShaderMaterial
 var _wireframe_meshes: Dictionary[ArrayMesh, ArrayMesh]
 var _wireframe_instances: Dictionary[MeshInstance3D, MeshInstance3D]
@@ -156,12 +161,17 @@ func _ready() -> void:
 	var world_environment := WorldEnvironment.new()
 	world_environment.environment = environment
 	viewport_3d.add_child(world_environment)
+	_studio_backdrop = _make_studio_backdrop()
+	viewport_3d.add_child(_studio_backdrop)
+	environment.background_canvas_max_layer = _studio_backdrop.layer
 	reset_hdri()
 	background(0)
 
 	sunlight = DirectionalLight3D.new()
 	sunlight.shadow_enabled = true
 	viewport_3d.add_child(sunlight)
+	_fill_light = _auxiliary_light(Vector3(-25.0, 48.0, 0.0), 0.30)
+	_rim_light = _auxiliary_light(Vector3(-32.0, 155.0, 0.0), 0.15)
 	light_direction(-35.0, 42.0)
 	light_intensity(_direct_strength)
 
@@ -176,7 +186,9 @@ func _ready() -> void:
 	_floor = MeshInstance3D.new()
 	_floor_material = StandardMaterial3D.new()
 	_floor_material.albedo_color = DEFAULT_FLOOR_COLOR
-	_floor_material.roughness = 0.9
+	_floor_material.roughness = 0.96
+	_floor_material.metallic_specular = 0.0
+	_floor_material.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
 	_floor.material_override = _floor_material
 	_floor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_floor.hide()
@@ -186,6 +198,7 @@ func _ready() -> void:
 	_grid.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_grid.hide()
 	viewport_3d.add_child(_grid)
+	_make_floor_and_grid()
 
 	_bone_material = StandardMaterial3D.new()
 	_bone_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -254,6 +267,7 @@ func _install_model(pending: Materials) -> void:
 	_quad_instances.clear()
 	_inspection_nodes.clear()
 	_mesh_layers.clear()
+	_hidden_parts.clear()
 	_attribute_meshes.clear()
 	_attribute_input = "#"
 	_isolated = null
@@ -441,7 +455,14 @@ func seek(time: float) -> void:
 		animation_player.seek(time, true)
 
 
-func frame(direction := Vector2(0.26, 0.04)) -> void:
+func frame(direction := Vector2(0.63, 0.13)) -> void:
+	if not model:
+		_center = Vector3(0.0, 0.7, 0.0)
+		_yaw = direction.x
+		_pitch = direction.y
+		_distance = 5.1
+		_update_camera()
+		return
 	_center = _placed_model_center()
 	_radius = maxf(bounds.size.length() * 0.5, 0.0001)
 	_yaw = direction.x
@@ -621,20 +642,51 @@ func _update_camera() -> void:
 	camera.position = _center + _orbit_direction() * _distance
 	camera.look_at(_center)
 	camera.near = maxf(0.00001, minf(_distance * 0.12, _radius * 0.03))
-	camera.far = maxf(1.0, _distance + _radius * 12.0)
+	camera.far = maxf(1.0, _distance + _radius * 54.0)
 	camera.size = 2.0 * _distance * tan(deg_to_rad(camera.fov * 0.5))
+
+
+func orientation_display_basis() -> Basis:
+	if not model and is_equal_approx(_yaw, STUDIO_VIEW.x) and is_equal_approx(_pitch, STUDIO_VIEW.y):
+		return Basis(Vector3.UP, 0.57) * Basis(Vector3.RIGHT, -0.37)
+	return camera.global_basis
 
 
 func _orbit_direction() -> Vector3:
 	return Vector3(sin(_yaw) * cos(_pitch), sin(_pitch), cos(_yaw) * cos(_pitch))
 
 
+func _make_studio_backdrop() -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.layer = -1
+	var panel := TextureRect.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var shades := Gradient.new()
+	shades.offsets = PackedFloat32Array([0.0, 0.56, 1.0])
+	shades.colors = PackedColorArray([Color("#363637"), Color("#323233"), Color("#2c2c2d")])
+	var texture := GradientTexture2D.new()
+	texture.width = 320
+	texture.height = 240
+	texture.gradient = shades
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.50, 0.62)
+	texture.fill_to = Vector2(1.0, 0.0)
+	panel.texture = texture
+	panel.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	layer.add_child(panel)
+	return layer
+
+
 func background(index: int) -> void:
 	_background = index
 	if not _background_on:
 		return
-	var colors := [Color("#212226"), Color("#101113"), Color("#c9c9c5")]
-	if index == 3:
+	_studio_backdrop.visible = index == 0
+	var colors := [Color("#2c2c2d"), Color("#111112"), Color("#c9c9c5")]
+	if index == 0:
+		environment.background_mode = Environment.BG_CANVAS
+	elif index == 3:
 		environment.background_mode = Environment.BG_SKY
 	else:
 		environment.background_mode = Environment.BG_COLOR
@@ -647,6 +699,7 @@ func background_enabled(enabled: bool) -> void:
 	if enabled:
 		background(_background)
 	else:
+		_studio_backdrop.hide()
 		environment.background_mode = Environment.BG_CLEAR_COLOR
 
 
@@ -727,10 +780,11 @@ func set_floor_offset(offset: float) -> void:
 
 func _make_floor_and_grid() -> void:
 	var center := Vector3(bounds.get_center().x, bounds.position.y, bounds.get_center().z)
-	var step := pow(10.0, floorf(log(_radius) / log(10.0))) * 0.2
-	var half := maxf(4.0 * _radius, 12.0 * step)
-	var cells := clampi(ceili(half / step), 12, 80)
-	half = step * cells
+	var step := pow(10.0, floorf(log(_radius) / log(10.0))) * (0.5 if model else 0.78)
+	var cells := clampi(ceili(28.0 * _radius / step), 30, 80)
+	var half := step * cells
+	_floor_material.distance_fade_max_distance = half * 0.40
+	_floor_material.distance_fade_min_distance = half * 0.84
 	var floor_mesh := PlaneMesh.new()
 	floor_mesh.size = Vector2.ONE * (2.0 * half)
 	_floor.mesh = floor_mesh
@@ -742,14 +796,18 @@ func _make_floor_and_grid() -> void:
 	line_style.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	line_style.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	line_style.vertex_color_use_as_albedo = true
+	line_style.render_priority = 1
+	line_style.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+	line_style.distance_fade_max_distance = half * 0.26
+	line_style.distance_fade_min_distance = half * 0.65
 	lines.surface_begin(Mesh.PRIMITIVE_LINES, line_style)
 	for index in range(-cells, cells + 1):
 		var offset := index * step
-		var grid_color := Color(0.65, 0.60, 0.52, 0.48 if index % 5 == 0 else 0.20)
+		var grid_color := Color(0.43, 0.42, 0.41, 0.20 if index % 5 == 0 else 0.10)
 		_grid_line(lines, Vector3(-half, 0, offset), Vector3(half, 0, offset),
-			Color("#ba7462") if index == 0 else grid_color)
+			grid_color)
 		_grid_line(lines, Vector3(offset, 0, -half), Vector3(offset, 0, half),
-			Color("#6e93bc") if index == 0 else grid_color)
+			grid_color)
 	lines.surface_end()
 	_grid.mesh = lines
 
@@ -773,6 +831,22 @@ func light_direction(azimuth: float, elevation: float) -> void:
 func light_intensity(value: float) -> void:
 	_direct_strength = value
 	sunlight.light_energy = value * lerpf(1.0, 0.28, _night_mix) * _source_strength
+
+
+func _auxiliary_light(direction: Vector3, intensity: float) -> DirectionalLight3D:
+	var light := DirectionalLight3D.new()
+	light.rotation_degrees = direction
+	light.light_energy = intensity
+	viewport_3d.add_child(light)
+	return light
+
+
+func fill_intensity(value: float) -> void:
+	_fill_light.light_energy = value
+
+
+func rim_intensity(value: float) -> void:
+	_rim_light.light_energy = value
 
 
 func hdri_orientation(degrees: float) -> void:
@@ -799,6 +873,8 @@ func hdri_enabled(enabled: bool) -> void:
 
 func light_enabled(enabled: bool) -> void:
 	sunlight.visible = enabled
+	_fill_light.visible = enabled
+	_rim_light.visible = enabled
 	_update_light_source()
 
 
@@ -993,6 +1069,46 @@ func isolate(instance: MeshInstance3D, surface := -1) -> void:
 	_apply_model_display()
 
 
+func is_part_visible(instance: MeshInstance3D) -> bool:
+	return not _hidden_parts.has(instance)
+
+
+func set_part_visible(instance: MeshInstance3D, visible_part: bool) -> void:
+	if not _mesh_layers.has(instance):
+		return
+	if visible_part:
+		_hidden_parts.erase(instance)
+	else:
+		_hidden_parts[instance] = true
+	_apply_model_display()
+
+
+func hidden_parts_state() -> Array[String]:
+	var paths: Array[String]
+	if model:
+		for instance: MeshInstance3D in _hidden_parts:
+			paths.append(str(model.root.get_path_to(instance)))
+	return paths
+
+
+func restore_hidden_parts(paths: Variant) -> void:
+	if not model or not paths is Array:
+		return
+	_hidden_parts.clear()
+	for path: Variant in paths:
+		if path is String:
+			var instance := model.root.get_node_or_null(NodePath(path)) as MeshInstance3D
+			if _mesh_layers.has(instance):
+				_hidden_parts[instance] = true
+	_apply_model_display()
+
+
+func model_gizmo_tool(tool: int) -> void:
+	_model_gizmo.mode = tool
+	_model_gizmo.cancel_drag()
+	_model_gizmo.queue_redraw()
+
+
 func isolation_state() -> Dictionary:
 	if not _isolated:
 		return {}
@@ -1025,7 +1141,7 @@ func _apply_model_display() -> void:
 	if quads:
 		_prepare_quads()
 	for instance in model.meshes:
-		var visible_part := not _isolated or instance == _isolated
+		var visible_part := not _hidden_parts.has(instance) and (not _isolated or instance == _isolated)
 		var surface := _isolated_surface if instance == _isolated else -1
 		var original_layers := _mesh_layers[instance]
 		instance.layers = original_layers if visible_part and surface == -1 and not attributes else 0
@@ -1258,6 +1374,8 @@ func screenshot(path: String) -> Error:
 	capture.transparent_bg = viewport_3d.transparent_bg
 	capture.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	viewport_3d.add_child(capture)
+	if _background_on and _background == 0:
+		capture.add_child(_make_studio_backdrop())
 	var capture_camera := Camera3D.new()
 	capture_camera.projection = camera.projection
 	capture_camera.fov = camera.fov
