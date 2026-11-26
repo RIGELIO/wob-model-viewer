@@ -48,6 +48,45 @@ class LoadingArtwork extends TextureRect:
 		material = orbit
 
 
+class TimelineRuler extends Control:
+	var duration := 0.0:
+		set(value):
+			duration = value
+			queue_redraw()
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+		custom_minimum_size.y = 22.0
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if duration <= 0.0 or size.x < 12.0:
+			return
+		var width := size.x - 6.0
+		var mark_count := clampi(floori(width / 88.0), 2, 12)
+		var rough_interval := duration / mark_count
+		var unit := pow(10.0, floorf(log(rough_interval) / log(10.0)))
+		var interval := unit
+		for multiple: float in [1.0, 2.0, 5.0, 10.0]:
+			interval = unit * multiple
+			if interval >= rough_interval:
+				break
+		var minor := interval / 4.0
+		var marks := floori(duration / minor)
+		var font := get_theme_default_font()
+		var tick_color := Color("#71695e")
+		for index in range(marks + 1):
+			var seconds := index * minor
+			var x := 3.0 + seconds / duration * width
+			var major := index % 4 == 0
+			draw_line(Vector2(x, 0.0), Vector2(x, 7.0 if major else 3.0), tick_color)
+			if major and width - x > 58.0:
+				draw_string(font, Vector2(x, 20.0), String.num(seconds, 2), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("#b8b1a6"))
+		draw_line(Vector2(size.x - 3.0, 0.0), Vector2(size.x - 3.0, 7.0), tick_color)
+		draw_string(font, Vector2(0.0, 20.0), String.num(duration, 2) + " s",
+			HORIZONTAL_ALIGNMENT_RIGHT, width, 11, Color("#b8b1a6"))
+
+
 class ViewerPanel extends RefCounted:
 	var body: Control
 	var slot: Container
@@ -88,6 +127,13 @@ var _in_place: CheckBox
 var _speed: SpinBox
 var _timeline: HSlider
 var _time: Label
+var _ruler: TimelineRuler
+var _transport_clip: OptionButton
+var _transport_play: Button
+var _transport_previous: Button
+var _transport_next: Button
+var _transport_speed: SpinBox
+var _transport_loop: Button
 var _open_dialog: FileDialog
 var _hdri_dialog: FileDialog
 var _textures_dialog: FileDialog
@@ -357,15 +403,21 @@ func _refresh_animation_menu() -> void:
 		focus_inspector.bind(_animation_controls), not _loading)
 
 
+func _animation_frame_step(clip: Animation) -> float:
+	return clip.step if clip.step > 0.0 else 1.0 / 30.0
+
+
 func _step_preview_frame(direction: int) -> void:
 	var player: AnimationPlayer = stage.animation_player
 	if not player:
 		return
-	var clip := player.get_animation(stage.current_clip)
-	var step := clip.step if clip.step > 0.0 else 1.0 / 30.0
+	var step := _animation_frame_step(player.get_animation(stage.current_clip))
+	var position := player.current_animation_position / step
+	var frame := floori(position + 0.000001) + 1 if direction > 0 else ceili(position - 0.000001) - 1
 	player.pause()
-	var frame := roundi(player.current_animation_position / step) + direction
 	stage.seek(clampf(frame * step, 0.0, player.current_animation_length))
+	_sync_play_buttons(false)
+	_sync_timeline_readout(player.current_animation_position)
 
 
 func _file_action(id: int) -> void:
@@ -902,20 +954,76 @@ func _make_timeline(parent: VBoxContainer) -> void:
 	_in_place.tooltip_text = "Potlačí vodorovný posun kořene animace."
 	_speed = make_animation_speed_control(_set_animation_speed)
 	controls.add_child(_speed)
-	var row := HBoxContainer.new()
-	parent.add_child(row)
-	_heading(row, "Animace", 23, GOLD)
+	_make_transport(parent)
+	_refresh_clips()
+
+
+func _make_transport(parent: VBoxContainer) -> void:
+	var dock := PanelContainer.new()
+	dock.add_theme_stylebox_override("panel", _box(PANEL, GOLD.darkened(0.64), 8, 10))
+	parent.add_child(dock)
+	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 3)
+	dock.add_child(layout)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 8)
+	row.add_theme_constant_override("v_separation", 6)
+	layout.add_child(row)
+
+	var clip_group := HBoxContainer.new()
+	clip_group.size_flags_horizontal = SIZE_EXPAND_FILL
+	row.add_child(clip_group)
+	_label(clip_group, "Klip", 13, MUTED).vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_transport_clip = OptionButton.new()
+	_transport_clip.custom_minimum_size.x = 110
+	_transport_clip.size_flags_horizontal = SIZE_EXPAND_FILL
+	_transport_clip.fit_to_longest_item = false
+	_transport_clip.item_selected.connect(_choose_clip)
+	clip_group.add_child(_transport_clip)
+
+	var transport := HBoxContainer.new()
+	row.add_child(transport)
+	_transport_previous = _button(transport, "|◀", _step_preview_frame.bind(-1), "Předchozí snímek")
+	_transport_play = _button(transport, "▶", _toggle_play, "Přehrát", true)
+	_transport_next = _button(transport, "▶|", _step_preview_frame.bind(1), "Následující snímek")
+	for control: Button in [_transport_previous, _transport_play, _transport_next]:
+		control.custom_minimum_size = Vector2(40, 32)
+
+	_time = _label(row, "", 14, WHITE)
+	_time.custom_minimum_size.x = 116
+	_time.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_time.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_transport_speed = make_animation_speed_control(_set_animation_speed)
+	row.add_child(_transport_speed)
+	_transport_loop = Button.new()
+	_transport_loop.text = "↻"
+	_transport_loop.tooltip_text = "Smyčka"
+	_transport_loop.toggle_mode = true
+	_transport_loop.custom_minimum_size = Vector2(40, 32)
+	_transport_loop.set_pressed_no_signal(_loop.button_pressed)
+	_transport_loop.toggled.connect(func(value: bool): _loop.button_pressed = value)
+	_loop.toggled.connect(_transport_loop.set_pressed_no_signal)
+	row.add_child(_transport_loop)
+
 	_timeline = HSlider.new()
-	_timeline.size_flags_horizontal = SIZE_EXPAND_FILL
 	_timeline.step = 0.001
+	_timeline.custom_minimum_size.y = 22.0
+	_timeline.add_theme_stylebox_override("slider", _box(Color("#303138"), BORDER, 3, 2))
+	_timeline.add_theme_stylebox_override("grabber_area", _box(GOLD.darkened(0.43), Color.TRANSPARENT, 3, 2))
+	_timeline.add_theme_stylebox_override("grabber_area_highlight", _box(GOLD.darkened(0.26), Color.TRANSPARENT, 3, 2))
+	var playhead := Image.create_empty(5, 18, false, Image.FORMAT_RGBA8)
+	playhead.fill(GOLD)
+	var thumb := ImageTexture.create_from_image(playhead)
+	_timeline.add_theme_icon_override("grabber", thumb)
+	_timeline.add_theme_icon_override("grabber_highlight", thumb)
 	_timeline.value_changed.connect(func(value: float):
 		stage.seek(value)
-		_time.text = "%.2f s" % value
+		_sync_timeline_readout(value)
 	)
-	row.add_child(_timeline)
-	_time = _label(row, "0.00 s", 13, MUTED)
-	_time.custom_minimum_size.x = 66
-	_refresh_clips()
+	layout.add_child(_timeline)
+
+	_ruler = TimelineRuler.new()
+	layout.add_child(_ruler)
 
 
 func _make_inspector(parent: VBoxContainer) -> PanelContainer:
@@ -1912,23 +2020,30 @@ func _refresh_model_info(announce := true) -> void:
 
 func _refresh_clips() -> void:
 	_movie.clear()
+	_transport_clip.clear()
 	_movie.tooltip_text = ""
+	_transport_clip.tooltip_text = ""
 	var available := not stage.clips.is_empty()
 	_movie.disabled = not available
-	_play.disabled = not available
-	_loop.disabled = not available
-	_in_place.disabled = not available
+	_transport_clip.disabled = not available
+	for control: BaseButton in [_play, _loop, _in_place, _transport_play, _transport_previous,
+			_transport_next, _transport_loop]:
+		control.disabled = not available
 	_speed.editable = available
+	_transport_speed.editable = available
 	_timeline.editable = available
-	_play.text = "Přehrát"
-	_time.text = "0.00 s"
+	_sync_play_buttons(false)
 	_timeline.set_value_no_signal(0.0)
 	if not available:
+		_timeline.max_value = 0.0
+		_ruler.duration = 0.0
 		_movie.add_item("Bez animací")
+		_transport_clip.add_item("Bez animací")
+		_sync_timeline_readout(0.0)
 		return
 	for clip in stage.clips:
 		_movie.add_item(str(clip.name))
-	_movie.select(0)
+		_transport_clip.add_item(str(clip.name))
 	_select_clip(0)
 
 
@@ -1942,18 +2057,36 @@ func _choose_clip(index: int) -> void:
 
 func _select_clip(index: int, keep_playing := false) -> void:
 	_timeline.max_value = stage.select_clip(index, keep_playing)
-	_movie.tooltip_text = _movie.get_item_text(index)
+	_ruler.duration = _timeline.max_value
+	_movie.select(index)
+	_transport_clip.select(index)
+	var clip_name := _movie.get_item_text(index)
+	_movie.tooltip_text = clip_name
+	_transport_clip.tooltip_text = clip_name
 	_timeline.set_value_no_signal(0.0)
-	_time.text = "0.00 s"
-	_play.text = "Pozastavit" if keep_playing else "Přehrát"
+	_sync_timeline_readout(0.0)
+	_sync_play_buttons(keep_playing)
 
 
 func _toggle_play() -> void:
-	_play.text = "Pozastavit" if stage.toggle_play() else "Přehrát"
+	_sync_play_buttons(stage.toggle_play())
+
+
+func _sync_play_buttons(playing: bool) -> void:
+	var action := "Pozastavit" if playing else "Přehrát"
+	_play.text = action
+	_transport_play.text = "Ⅱ" if playing else "▶"
+	_transport_play.tooltip_text = tr(action) + " · " + tr("Mezerník")
+
+
+func _sync_timeline_readout(seconds: float) -> void:
+	_time.text = "%.2f / %.2f s" % [seconds, _timeline.max_value]
 
 
 func _set_animation_speed(value: Variant) -> void:
-	_speed.set_value_no_signal(stage.animation_speed(value))
+	var speed := stage.animation_speed(value)
+	_speed.set_value_no_signal(speed)
+	_transport_speed.set_value_no_signal(speed)
 
 
 func _process(_delta: float) -> void:
@@ -1964,9 +2097,10 @@ func _process(_delta: float) -> void:
 	if not stage.animation_player:
 		return
 	var active := stage.animation_player.is_playing()
-	_play.text = "Pozastavit" if active else "Přehrát"
+	_sync_play_buttons(active)
+	_transport_loop.set_pressed_no_signal(_loop.button_pressed)
 	_timeline.set_value_no_signal(stage.animation_player.current_animation_position)
-	_time.text = "%.2f s" % _timeline.value
+	_sync_timeline_readout(_timeline.value)
 
 
 func _set_azimuth(value: float) -> void:

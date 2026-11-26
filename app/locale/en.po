@@ -723,3 +723,9 @@ msgstr "Next Frame"
 
 msgid "Otevřít inspektor"
 msgstr "Show Inspector"
+
+msgid "Klip"
+msgstr "Clip"
+
+msgid "Mezerník"
+msgstr "Space"
