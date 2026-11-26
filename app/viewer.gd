@@ -1,5 +1,6 @@
 extends Control
 
+const Tutorial = preload("res://tutorial.gd")
 const AnimationTools = preload("res://tools/animation_tools.gd")
 const FbxMaterials = preload("res://tools/fbx_materials.gd")
 const Stage = preload("res://stage.gd")
@@ -20,7 +21,7 @@ const HDRI_NAMES := ["Lilienstein", "Kloppenheim 06 · Pure Sky", "Moonlit Golf"
 const LOG_LIMIT := 200
 const SETTINGS := "user://viewer.cfg"
 const PANEL_CLOSE_DELAY_MSEC := 420
-enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, FRAME, QUIT }
+enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, QUIT }
 enum PanelMode { PINNED, AUTO_HIDE, HIDDEN }
 
 class LoadingArtwork extends TextureRect:
@@ -97,6 +98,15 @@ var _about: AcceptDialog
 var _help: AcceptDialog
 var _menu_file: MenuButton
 var _menu_help: MenuButton
+var _menu_view: MenuButton
+var _menu_animation: MenuButton
+var _view_commands: Array[Callable]
+var _animation_commands: Array[Callable]
+var _tutorial: Tutorial
+var _inspector_scroll: ScrollContainer
+var _inspector_list: VBoxContainer
+var _animation_controls: HFlowContainer
+var _model_section: Control
 var _toolbar_panel: ViewerPanel
 var _inspector_panel: ViewerPanel
 var _floating_toolbar_slot: HBoxContainer
@@ -230,6 +240,8 @@ func _ready() -> void:
 	_help = AcceptDialog.new()
 	_help.exclusive = true
 	add_child(_help)
+	_tutorial = Tutorial.new()
+	add_child(_tutorial)
 	_make_log_dialog()
 	_refresh_menu()
 	_refresh_dialogs()
@@ -245,6 +257,16 @@ func _make_menu(row: HBoxContainer) -> void:
 	_menu_file.text = "Soubor"
 	_menu_file.get_popup().id_pressed.connect(_file_action)
 	row.add_child(_menu_file)
+	_menu_view = MenuButton.new()
+	_menu_view.text = "Pohled"
+	_menu_view.about_to_popup.connect(_refresh_view_menu)
+	_menu_view.get_popup().id_pressed.connect(func(id: int): _view_commands[id].call())
+	row.add_child(_menu_view)
+	_menu_animation = MenuButton.new()
+	_menu_animation.text = "Animace"
+	_menu_animation.about_to_popup.connect(_refresh_animation_menu)
+	_menu_animation.get_popup().id_pressed.connect(func(id: int): _animation_commands[id].call())
+	row.add_child(_menu_animation)
 	_menu_help = MenuButton.new()
 	_menu_help.text = "Nápověda"
 	_menu_help.get_popup().id_pressed.connect(func(id: int):
@@ -252,6 +274,7 @@ func _make_menu(row: HBoxContainer) -> void:
 			0: _show_help()
 			1: _show_about()
 			2: _show_log()
+			3: _tutorial.open_guide()
 	)
 	row.add_child(_menu_help)
 
@@ -266,17 +289,83 @@ func _refresh_menu() -> void:
 	menu.add_item(tr("Uložit jako…"), FileAction.SAVE_AS, KEY_MASK_CTRL | KEY_MASK_SHIFT | KEY_S)
 	menu.add_item(tr("Uložit 4K PNG"), FileAction.CAPTURE, KEY_MASK_CTRL | KEY_E)
 	menu.add_separator()
-	menu.add_item(tr("Zarámovat"), FileAction.FRAME, KEY_F)
-	menu.add_separator()
 	menu.add_item(tr("Konec"), FileAction.QUIT, KEY_MASK_CTRL | KEY_Q)
-	for id in [FileAction.RELOAD, FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE, FileAction.FRAME]:
+	for id in [FileAction.RELOAD, FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE]:
 		menu.set_item_disabled(menu.get_item_index(id), _path.is_empty())
 	var help := _menu_help.get_popup()
 	help.clear()
+	help.add_item(tr("Průvodce krok za krokem"), 3)
 	help.add_item(tr("Ovládání"), 0, KEY_F1)
 	help.add_item(tr("Protokol"), 2, KEY_MASK_CTRL | KEY_L)
 	help.add_separator()
 	help.add_item(tr("O programu"), 1)
+
+
+static func _menu_command(menu: PopupMenu, commands: Array[Callable], label: String,
+		action: Callable, enabled: bool, shortcut := KEY_NONE, check := -1) -> void:
+	var id := commands.size()
+	commands.append(action)
+	if check < 0:
+		menu.add_item(label, id, shortcut)
+	else:
+		menu.add_check_item(label, id, shortcut)
+		menu.set_item_checked(menu.item_count - 1, check == 1)
+	menu.set_item_disabled(menu.item_count - 1, not enabled)
+
+
+func _refresh_view_menu() -> void:
+	var menu := _menu_view.get_popup()
+	menu.clear()
+	_view_commands.clear()
+	var ready := stage.model != null and not _loading
+	_menu_command(menu, _view_commands, tr("Zarámovat"), stage.frame, ready, KEY_F)
+	_menu_command(menu, _view_commands, tr("Zepředu"), stage.frame.bind(Vector2.ZERO), ready, KEY_2)
+	_menu_command(menu, _view_commands, tr("Z boku"), stage.frame.bind(Vector2(PI / 2.0, 0.0)), ready, KEY_3)
+	_menu_command(menu, _view_commands, tr("Shora"), stage.frame.bind(Vector2(0.0, 1.555)), ready, KEY_4)
+	menu.add_separator()
+	_menu_command(menu, _view_commands, tr("Předchozí LOD"), _step_lod.bind(-1),
+		ready and _lod_picker.selected > 0, KEY_PAGEUP)
+	_menu_command(menu, _view_commands, tr("Další LOD"), _step_lod.bind(1),
+		ready and _lod_picker.selected >= 0 and _lod_picker.selected + 1 < _lod_entries.size(), KEY_PAGEDOWN)
+	for option in ["grid", "floor", "skeleton", "model_axes", "ortho"]:
+		var control: CheckBox = _options[option]
+		_menu_command(menu, _view_commands, tr(control.text), _toggle_option.bind(option),
+			not _loading, KEY_NONE, int(control.button_pressed))
+	menu.add_separator()
+	_menu_command(menu, _view_commands, tr("Otevřít inspektor"),
+		focus_inspector.bind(_inspector_list), not _loading)
+	_menu_command(menu, _view_commands, tr(_fullscreen.text), _toggle_fullscreen, true, KEY_F11)
+
+
+func _refresh_animation_menu() -> void:
+	var menu := _menu_animation.get_popup()
+	menu.clear()
+	_animation_commands.clear()
+	var player: AnimationPlayer = stage.animation_player
+	var ready := player != null and not _loading
+	var playback := "Pozastavit" if player and player.is_playing() else "Přehrát"
+	_menu_command(menu, _animation_commands, tr(playback), _toggle_play, ready, KEY_SPACE)
+	_menu_command(menu, _animation_commands, tr("Předchozí snímek"), _step_preview_frame.bind(-1), ready)
+	_menu_command(menu, _animation_commands, tr("Následující snímek"), _step_preview_frame.bind(1), ready)
+	menu.add_separator()
+	_menu_command(menu, _animation_commands, tr("Smyčka"), _toggle_option.bind("animation_loop"),
+		ready, KEY_NONE, int(_loop.button_pressed))
+	_menu_command(menu, _animation_commands, tr("Na místě"), _toggle_option.bind("animation_in_place"),
+		ready, KEY_NONE, int(_in_place.button_pressed))
+	menu.add_separator()
+	_menu_command(menu, _animation_commands, tr("Přehrávání animace"),
+		focus_inspector.bind(_animation_controls), not _loading)
+
+
+func _step_preview_frame(direction: int) -> void:
+	var player: AnimationPlayer = stage.animation_player
+	if not player:
+		return
+	var clip := player.get_animation(stage.current_clip)
+	var step := clip.step if clip.step > 0.0 else 1.0 / 30.0
+	player.pause()
+	var frame := roundi(player.current_animation_position / step) + direction
+	stage.seek(clampf(frame * step, 0.0, player.current_animation_length))
 
 
 func _file_action(id: int) -> void:
@@ -286,7 +375,6 @@ func _file_action(id: int) -> void:
 		FileAction.SAVE: _save_view()
 		FileAction.SAVE_AS: _show_view_save()
 		FileAction.CAPTURE: _show_capture()
-		FileAction.FRAME: stage.frame()
 		FileAction.QUIT: _request_quit()
 
 
@@ -637,11 +725,9 @@ func _make_viewport(parent: VBoxContainer) -> void:
 	_vehicle_picker = OptionButton.new()
 	_vehicle_picker.item_selected.connect(_select_vehicle_state)
 	_vehicle_picker.hide()
-	toolbar.add_child(_vehicle_picker)
 	_lod_picker = OptionButton.new()
 	_lod_picker.item_selected.connect(_select_lod)
 	_lod_picker.hide()
-	toolbar.add_child(_lod_picker)
 	_wire = CheckButton.new()
 	_wire.text = "Wireframe"
 	_wire.toggled.connect(func(value: bool): _choose_display(Stage.WIREFRAME_MODE if value else 0))
@@ -802,8 +888,8 @@ static func make_animation_speed_control(changed: Callable, initial := Stage.ANI
 
 
 func _make_timeline(parent: VBoxContainer) -> void:
-	var controls := HBoxContainer.new()
-	parent.add_child(controls)
+	var controls := HFlowContainer.new()
+	_animation_controls = controls
 	_movie = OptionButton.new()
 	_movie.custom_minimum_size.x = 76
 	_movie.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -850,6 +936,16 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	list.size_flags_horizontal = SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 8)
 	scroll.add_child(list)
+	_inspector_scroll = scroll
+	_inspector_list = list
+	var model := _section(list, "Model a LOD")
+	var model_options := HFlowContainer.new()
+	model.add_child(model_options)
+	model_options.add_child(_vehicle_picker)
+	model_options.add_child(_lod_picker)
+	_model_section = model.get_parent() as Control
+	_model_section.hide()
+	_section(list, "Přehrávání animace").add_child(_animation_controls)
 	_make_parts(_section(list, "Díly a materiály", true, false))
 	var lighting := _section(list, "Osvětlení")
 	_hdri_picker = OptionButton.new()
@@ -1009,6 +1105,21 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 
 func _refresh_floor_height() -> void:
 	_floor_height_row.visible = _options["floor"].button_pressed or _options["grid"].button_pressed
+
+
+func add_inspector_tool_group(title: String, controls: Container) -> VBoxContainer:
+	var group := VBoxContainer.new()
+	_inspector_list.add_child(group)
+	_inspector_list.move_child(group, 0)
+	_section(group, title).add_child(controls)
+	group.hide()
+	return group
+
+
+func focus_inspector(control: Control) -> void:
+	if _inspector_panel.mode != PanelMode.PINNED:
+		_set_panel_mode(_inspector_panel, PanelMode.PINNED, false)
+	_inspector_scroll.ensure_control_visible.call_deferred(control)
 
 
 func _section(parent: VBoxContainer, title: String, foldable := false, expanded := true) -> VBoxContainer:
@@ -1595,6 +1706,7 @@ func _refresh_lod_options() -> void:
 	var comparable := _lod_entries.size() > 1
 	_lod_picker.visible = comparable
 	_lod_table.visible = comparable
+	_model_section.visible = comparable or _vehicle_picker.visible
 	if not comparable:
 		return
 	for title in ["LOD", "Vrcholů", "Troj.", "Soubor"]:

@@ -14,6 +14,10 @@ Setup displays the installation terms and MIT license. Updates and uninstall pro
 
 To update on Windows, download and run the newer setup. It detects the registered installation, shows its version and updates the existing folder with your settings intact. Running the same version again reinstalls it in place. On Linux, install the newer DEB through the package manager to upgrade the installed package.
 
+## Learn the viewer
+
+Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Tools** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools.
+
 ## Animation tools
 
 Viewer 1.5 is free and runs offline without an account or activation. Use **Tools → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.

@@ -37,6 +37,8 @@ var _clip_player: AnimationPlayer
 var _clip := &""
 var _busy := false
 var _toolbar: HFlowContainer
+var _motion_group: VBoxContainer
+var _rig_group: VBoxContainer
 var _selection: Label
 var _preview: CheckButton
 var _range: AcceptDialog
@@ -84,7 +86,7 @@ func _make_controls() -> void:
 	_menu.text = "Nástroje"
 	var header: Control = viewer._menu_help.get_parent()
 	header.add_child(_menu)
-	header.move_child(_menu, viewer._menu_help.get_index() + 1)
+	header.move_child(_menu, viewer._menu_help.get_index())
 	_menu.about_to_popup.connect(_refresh_menu)
 	_menu.get_popup().id_pressed.connect(_dispatch)
 
@@ -95,12 +97,7 @@ func _make_controls() -> void:
 	viewport_area.add_child(_editor)
 	_editor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_toolbar = HFlowContainer.new()
-	_toolbar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	viewport_area.add_child(_toolbar)
-	_toolbar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_toolbar.offset_top = 49
-	_toolbar.offset_left = 8
-	_toolbar.offset_right = -8
+	_motion_group = viewer.add_inspector_tool_group("Editor pohybu", _toolbar)
 	_button(_toolbar, "−1 snímek", func(): _editor.step(-1))
 	_button(_toolbar, "+1 snímek", func(): _editor.step(1))
 	var tools := OptionButton.new()
@@ -121,7 +118,7 @@ func _make_controls() -> void:
 	_toolbar.add_child(_preview)
 	_selection = Label.new()
 	_toolbar.add_child(_selection)
-	_toolbar.hide()
+	_motion_group.hide()
 
 	_range = _dialog("Rozsah animace")
 	var ranges := VBoxContainer.new()
@@ -216,7 +213,7 @@ func _sync_model() -> void:
 	if _model != viewer.stage.model:
 		_model = viewer.stage.model
 		_set_rig_mode(false)
-		_toolbar.hide()
+		_motion_group.hide()
 		_editor.set_editing(false)
 		_clip_player = null
 		_rig_editor.set_model(viewer._path if _model else "")
@@ -272,7 +269,7 @@ func _process(_delta: float) -> void:
 	_sync_model()
 	if _rig_motion_slider.visible and _rig_editor.motion_playing:
 		_update_rig_motion_time()
-	if _toolbar.visible:
+	if _motion_group.visible:
 		if _editor.selected.size() == 1 and _rig:
 			_selection.text = _rig.get_bone_name(_editor.selected[0])
 		else:
@@ -284,8 +281,10 @@ func _toggle_editor() -> void:
 		_show_message("Editor pohybu", tr("Tato animace neobsahuje kostru, jejíž klouby lze upravit."))
 		return
 	_set_rig_mode(false)
-	_toolbar.visible = not _toolbar.visible
-	_editor.set_editing(_toolbar.visible)
+	_motion_group.visible = not _motion_group.visible
+	_editor.set_editing(_motion_group.visible)
+	if _motion_group.visible:
+		viewer.focus_inspector(_motion_group)
 
 
 func _make_rig_controls(viewport_area: Control) -> void:
@@ -296,13 +295,7 @@ func _make_rig_controls(viewport_area: Control) -> void:
 	_rig_editor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_rig_tools = HFlowContainer.new()
-	_rig_tools.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	viewport_area.add_child(_rig_tools)
-	_rig_tools.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_rig_tools.offset_top = 49
-	_rig_tools.offset_left = 8
-	_rig_tools.offset_right = -8
-	_rig_tools.hide()
+	_rig_group = viewer.add_inspector_tool_group("Návrh kostry", _rig_tools)
 	var templates := MenuButton.new()
 	templates.text = "Šablona kostry"
 	templates.get_popup().about_to_popup.connect(func():
@@ -369,6 +362,8 @@ func _make_rig_controls(viewport_area: Control) -> void:
 	_rig_editor.preview_changed.connect(_refresh_rig_preview)
 	_make_weight_controls()
 	_rig_selection = Label.new()
+	_rig_selection.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rig_selection.custom_minimum_size.x = 200
 	_rig_selection.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rig_tools.add_child(_rig_selection)
 	_rig_editor.selection_changed.connect(_refresh_rig_selection)
@@ -507,13 +502,15 @@ func _refresh_weight_selection() -> void:
 
 func _set_rig_mode(enabled: bool) -> void:
 	if enabled:
-		_toolbar.hide()
+		_motion_group.hide()
 		_editor.set_editing(false)
 	else:
 		_rig_editor.stop_skin_preview()
 	_rig_editor.visible = enabled
-	_rig_tools.visible = enabled
+	_rig_group.visible = enabled
 	_refresh_rig_selection()
+	if enabled:
+		viewer.focus_inspector(_rig_group)
 
 
 func _toggle_rig_preview() -> void:

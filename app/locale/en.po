@@ -654,3 +654,72 @@ msgstr "Hide"
 
 msgid "Lištu a inspektor můžeš připnout, skrýt nebo nastavit automatické skrývání. Skryté panely obnovíš z jejich okrajových nabídek."
 msgstr "Pin, hide or auto-hide the toolbar and inspector. Use their edge menus to restore hidden panels."
+
+msgid "Otevření prvního modelu"
+msgstr "Opening your first model"
+
+msgid "Přetáhni GLB, glTF nebo FBX do okna, případně zvol Soubor → Otevřít. Přiložené textury a soubory BIN nech ve složkách, které model očekává.\n\nPo načtení najdeš vpravo počet vrcholů, trojúhelníků a rozměry. Pokud má model více LOD, přepínej je v části Model a LOD."
+msgstr "Drop a GLB, glTF or FBX file into the window, or use File → Open. Keep any separate textures and BIN files in the locations expected by the model.\n\nAfter loading, the inspector shows the vertex and triangle counts and the model dimensions. If the model has multiple levels of detail, use Model & LOD to switch between them."
+
+msgid "Kamera a zobrazení"
+msgstr "Camera and display"
+
+msgid "Levé tlačítko otáčí kamerou kolem modelu, pravé nebo prostřední posouvá pohled a kolečko přibližuje. V nabídce Pohled vyber Zarámovat, Zepředu, Z boku nebo Shora.\n\nVpravo v části Zobrazení zapni mřížku, podlahu, kostru nebo osy modelu. Přepni na Wireframe, vertex barvy nebo UV šachovnici a prohlédni si geometrii. Skrytý panel obnovíš tlačítkem u okraje."
+msgstr "Left-drag to orbit, right- or middle-drag to pan, and scroll to zoom. Use the View menu to frame the model or switch to the front, side or top view.\n\nIn the right-hand View section, toggle the grid, floor, skeleton or model axes. Select Wireframe, Vertex Colors or a UV Checker to inspect the mesh. Open a hidden panel from its edge button."
+
+msgid "Materiály a světlo"
+msgstr "Materials and lighting"
+
+msgid "Vpravo v části Osvětlení vyber panorama HDRI nebo načti vlastní. Nastav světlo a odrazy samostatně a vyzkoušej denní, noční nebo cyklickou oblohu.\n\nV části Díly a materiály vyber síť či povrch a zapni izolaci. Pokud se materiál nenačetl, klikni na upozornění ve stavovém řádku. Zobrazí se protokol s podrobnostmi."
+msgstr "In Lighting on the right, select an HDRI panorama or load your own. Adjust direct light and reflections separately, and try the day, night or day–night cycle.\n\nIn Parts & Materials, select a mesh or surface and enable isolation. If a material is missing, click the status-bar warning for details in the log."
+
+msgid "Přehrávání a rozbor pohybu"
+msgstr "Playback and motion analysis"
+
+msgid "Vyber klip vpravo v části Přehrávání animace. Přehrávej, krokuj nebo přepínej smyčku v horní nabídce Animace. Rychlost uprav vpravo, čas zvol na spodní časové ose.\n\nPro animaci s kostrou otevři Nástroje → Analyzovat pohyb. Kliknutím na nález přejdeš na jeho čas. Rozsah a vzorkování nastav v Nástroje → Rozsah animace."
+msgstr "Choose a clip in Animation Playback on the right. Use the top Animation menu to play, step or toggle looping. Adjust speed on the right and use the bottom timeline to seek.\n\nFor a clip with an animated skeleton, choose Tools → Analyze Motion. Click a finding to jump to its time. Set the interval and sample rate in Tools → Animation Range."
+
+msgid "Úpravy pohybu a nová kostra"
+msgstr "Editing motion and creating a skeleton"
+
+msgid "Pro animovanou kostru otevři Nástroje → Editor pohybu. Klikni na kost v pohledu a použij ovládání v pravém panelu k úpravě rotace snímku, přichycení končetiny nebo kreslení značky.\n\nPro model bez kostry zvol Nástroje → Navrhnout novou kostru. Vpravo vyber šablonu nebo Přidat kloub. Kliknutím ho umísti a tažením dolaď."
+msgstr "For an animated skeleton, choose Tools → Motion Editor. Select a joint in the viewport, then use the inspector to edit a frame’s rotation, pin a limb or draw an annotation.\n\nFor an unrigged model, choose Tools → Draft a New Skeleton. Pick a template or choose Add Joint in the inspector. Click to place the joint and drag it to adjust its position."
+
+msgid "Uložení práce a export"
+msgstr "Saving and exporting"
+
+msgid "Soubor → Uložit jako uloží relaci pohledu do souboru .wobview. Z nabídky Soubor vytvoř i snímek 4K.\n\nV nabídce Nástroje můžeš uložit report s úpravami nebo vyexportovat GIF. Před GIFem nastav časový výřez, FPS a rozlišení v nabídce Rozsah animace. Návrh kostry se ukládá v pravém panelu jako .wobrig nebo exportuje do nového GLB."
+msgstr "Choose File → Save As to save a .wobview session. Use the File menu to capture a 4K screenshot.\n\nIn Tools, save a report with edits or export a GIF. Choose the animation interval, frame rate and resolution in Animation Range before exporting a GIF. Save a skeleton draft as .wobrig or export it to a new GLB from the right panel."
+
+msgid "Průvodce krok za krokem"
+msgstr "Step-by-step Guide"
+
+msgid "Předchozí krok"
+msgstr "Previous Step"
+
+msgid "Další krok"
+msgstr "Next Step"
+
+msgid "Pohled"
+msgstr "View"
+
+msgid "Přehrávání animace"
+msgstr "Animation Playback"
+
+msgid "Model a LOD"
+msgstr "Model & LOD"
+
+msgid "Předchozí LOD"
+msgstr "Previous LOD"
+
+msgid "Další LOD"
+msgstr "Next LOD"
+
+msgid "Předchozí snímek"
+msgstr "Previous Frame"
+
+msgid "Následující snímek"
+msgstr "Next Frame"
+
+msgid "Otevřít inspektor"
+msgstr "Show Inspector"

@@ -14,6 +14,10 @@ Instalátor před instalací zobrazí podmínky a licenci MIT. Při aktualizaci 
 
 Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná registrovanou instalaci, ukáže nalezenou verzi a aktualizuje stávající složku se zachováním nastavení. Spuštění stejné verze ji přeinstaluje do stejného umístění. V Linuxu aktualizuje stávající instalaci novější balíček DEB přes správce balíčků.
 
+## První kroky
+
+V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky **Pohled**, **Animace** a **Nástroje** zpřístupňují ovládání. Nastavení přehrávání, materiálů, osvětlení, zobrazení a editace najdeš vpravo v inspektoru.
+
 ## Nástroje animace
 
 Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Nástroje → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
