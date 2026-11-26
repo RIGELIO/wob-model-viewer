@@ -13,7 +13,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
-VERSION = "1.4.6"
+VERSION = "1.5.0"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
 VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {
@@ -99,8 +99,10 @@ def prepare(args, stage):
     for name in ("project.godot", "viewer.tscn", "viewer.gd", "stage.gd", "materials.gd",
                  "glb_data.gd", "view_file.gd", "orientation_gizmo.gd", "lod_catalog.gd", "topology_overlay.gd",
                  "vehicle_manifest.gd", "game_materials.gd", "attribute_preview.gdshader", "celestial_sky.gdshader",
-                 "wireframe_mesh.gd", "wireframe_preview.gdshader", "texture_search.gd", "model_gizmo.gd"):
+                 "wireframe_mesh.gd", "wireframe_preview.gdshader", "texture_search.gd", "model_gizmo.gd",
+                 "loading_orbit.gdshader", "tutorial.gd"):
         shutil.copy2(HERE / name, stage / name)
+    shutil.copytree(HERE / "tools", stage / "tools", ignore=shutil.ignore_patterns("*.go", "*.uid", "*.import"))
     shutil.copytree(HERE / "locale", stage / "locale")
     shutil.copytree(HERE / "art", stage / "art", ignore=shutil.ignore_patterns("ui-concept.*"))
     if args.resources:
@@ -194,6 +196,7 @@ def import_project(godot, stage, logs):
 
 def export(args, stage):
     import_project(args.godot, stage, args.logs)
+    go_root = Path(subprocess.check_output([args.go, "env", "GOROOT"], text=True).strip())
     for name, (platform, template_name, executable) in TEMPLATES.items():
         target = args.out / name
         target.mkdir()
@@ -205,6 +208,12 @@ def export(args, stage):
         run([args.godot, "--headless", "--path", stage, "--export-release", name, binary],
             args.logs / f"export-{name.lower()}.log")
         binary.chmod(0o755)
+        gif_encoder = target / ("wob-gif.exe" if name == "Windows" else "wob-gif")
+        env = dict(os.environ, GOOS=name.lower(), GOARCH="amd64", CGO_ENABLED="0")
+        subprocess.run([args.go, "build", "-trimpath", "-ldflags=-s -w", "-o", str(gif_encoder),
+                        str(HERE / "tools" / "gif.go")], env=env, check=True)
+        gif_encoder.chmod(0o755)
+        shutil.copy2(go_root / "LICENSE", target / "Go-LICENSE.txt")
         for guide in (HERE / "docs").glob("README.*.md"):
             shutil.copy2(guide, target)
         shutil.copy2(HERE / "art" / "icon.png", target)
@@ -224,7 +233,7 @@ def export(args, stage):
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=5) as package:
             for file in sorted(target.iterdir()):
                 item = zipfile.ZipInfo.from_file(file, f"WoB Model Viewer/{file.name}")
-                if name == "Linux" and (file == binary or file.name == "register-file-types.sh"):
+                if name == "Linux" and (file in (binary, gif_encoder) or file.name == "register-file-types.sh"):
                     item.create_system = 3
                     item.external_attr = 0o100755 << 16
                 package.writestr(item, file.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=5)
@@ -239,6 +248,7 @@ def main():
     for path in ("godot", "templates", "logs"):
         parser.add_argument("--" + path, type=lambda value: Path(value).resolve())
     parser.add_argument("--stage-only", action="store_true")
+    parser.add_argument("--go", default="go", help="Go compiler for the offline GIF encoder")
     args = parser.parse_args()
     if not args.resources and any(getattr(args, key) is None for key in ("repo", "assets_checkout", "atlases", "hdri")):
         parser.error("Pass --resources or all of --repo, --assets-checkout, --atlases and --hdri")

@@ -3,7 +3,7 @@ config_version=5
 [application]
 
 config/name="WoB Model Viewer"
-config/version="1.4.6"
+config/version="1.5.0"
 run/main_scene="res://viewer.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://art/icon.png"
@@ -24,7 +24,7 @@ window/subwindows/embed_subwindows=true
 [internationalization]
 
 locale/fallback="cs"
-locale/translations=PackedStringArray("res://locale/en.po")
+locale/translations=PackedStringArray("res://locale/en.po", "res://tools/en.po")
 
 [rendering]
 

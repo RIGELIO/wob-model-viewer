@@ -68,7 +68,83 @@ var _used_game_slots: Dictionary[String, bool]
 var _document: GLTFDocument
 var _state: GLTFState
 var _images: Dictionary[String, Image]
+var load_timings: Dictionary[String, int]
+var texture_cache: TextureCache
+var _keep_immutable_tracks := false
 
+
+class TextureCache extends RefCounted:
+	const LIMIT := 256 * 1024 * 1024
+
+	var _entries: Dictionary[String, Array]
+	var _used := 0
+
+	func clear() -> void:
+		_entries.clear()
+		_used = 0
+
+	func read(path: String) -> Image:
+		return read_all(PackedStringArray([path])).get(path)
+
+
+	func read_all(paths: PackedStringArray) -> Dictionary[String, Image]:
+		var images: Dictionary[String, Image]
+		var pending: Dictionary[String, int]
+		for path: String in paths:
+			if path.is_empty() or images.has(path) or pending.has(path):
+				continue
+			var stamp := FileAccess.get_modified_time(path)
+			if stamp == 0:
+				continue
+			if _entries.has(path):
+				var cached: Array = _entries[path]
+				_entries.erase(path)
+				if cached[0] == stamp:
+					_entries[path] = cached
+					images[path] = cached[1]
+					continue
+				_used -= cached[2]
+			pending[path] = stamp
+
+		# Bound concurrent decoding and keep the cache on the calling thread.
+		var filenames := pending.keys()
+		for offset in range(0, filenames.size(), 3):
+			var workers: Dictionary[String, Thread]
+			for index in range(offset, mini(offset + 3, filenames.size())):
+				var path: String = filenames[index]
+				var worker := Thread.new()
+				if worker.start(_decode_texture.bind(path)) == OK:
+					workers[path] = worker
+				else:
+					images[path] = _decode_texture(path)
+					_remember(path, pending[path], images[path])
+			for path: String in workers:
+				images[path] = workers[path].wait_to_finish() as Image
+				_remember(path, pending[path], images[path])
+		return images
+
+
+	func _remember(path: String, stamp: int, image: Image) -> void:
+		if not image:
+			return
+		var bytes := image.get_data_size()
+		if bytes > LIMIT:
+			return
+		while _used + bytes > LIMIT:
+			var oldest: String = _entries.keys()[0]
+			_used -= _entries[oldest][2]
+			_entries.erase(oldest)
+		_entries[path] = [stamp, image, bytes]
+		_used += bytes
+
+
+	static func _decode_texture(path: String) -> Image:
+		var image := Image.new()
+		if image.load(path) != OK:
+			return null
+		if not image.has_mipmaps():
+			image.generate_mipmaps()
+		return image
 
 func import_model(path: String, manifest: RefCounted = null) -> String:
 	var error := prepare_model(path, manifest)
@@ -79,7 +155,10 @@ func import_model(path: String, manifest: RefCounted = null) -> String:
 func prepare_model(path: String, manifest: RefCounted = null) -> String:
 	_model_path = path
 	_texture_search = TextureSearch.new(path, texture_directory)
+	var started := Time.get_ticks_msec()
 	source = GlbData.new(path)
+	load_timings["read"] = Time.get_ticks_msec() - started
+	started = Time.get_ticks_msec()
 	if not source.error.is_empty():
 		return source.error
 	var original: Dictionary = source.json
@@ -152,6 +231,9 @@ func prepare_model(path: String, manifest: RefCounted = null) -> String:
 					rewritten["meshes"][mesh_index]["primitives"][surface]["attributes"]["COLOR_0"] = attrs[semantic]
 					remapped = true
 
+	_keep_immutable_tracks = _has_zero_scale(nodes)
+	load_timings["lookup"] = Time.get_ticks_msec() - started
+	started = Time.get_ticks_msec()
 	var source_nodes := SourceNodes.new()
 	_document = GLTFDocument.new()
 	_state = GLTFState.new()
@@ -163,14 +245,29 @@ func prepare_model(path: String, manifest: RefCounted = null) -> String:
 	GLTFDocument.unregister_gltf_document_extension(source_nodes)
 	if result != OK:
 		return tr("Godot model nenačetl (%s).") % error_string(result)
+	load_timings["gltf"] = Time.get_ticks_msec() - started
+	started = Time.get_ticks_msec()
 	if _guide_catalog or _short_catalog:
 		_prepare_catalog_companions()
+	load_timings["companion"] = Time.get_ticks_msec() - started
+	started = Time.get_ticks_msec()
 	_prepare_external_images()
+	load_timings["textures"] = Time.get_ticks_msec() - started
 	return ""
 
 
+static func _has_zero_scale(nodes: Array) -> bool:
+	for node: Dictionary in nodes:
+		var scale: Variant = node.get("scale")
+		if scale is Array and scale.size() == 3 \
+				and (float(scale[0]) == 0.0 or float(scale[1]) == 0.0 or float(scale[2]) == 0.0):
+			return true
+	return false
+
+
 func finish_model() -> String:
-	root = _document.generate_scene(_state)
+	# Immutable-track comparison decomposes node rotations, which fails for zero-scale rest poses.
+	root = _document.generate_scene(_state, 30.0, false, not _keep_immutable_tracks)
 	_document = null
 	_state = null
 	if root == null:
@@ -206,9 +303,12 @@ func _prepare_external_images() -> void:
 			paths.append(_texture_search.find("vlasy_atlas.png"))
 	if _game:
 		paths.append_array(_game.texture_files(slots))
-	for path in paths:
+	if texture_cache:
+		_images = texture_cache.read_all(paths)
+		return
+	for path: String in paths:
 		if not path.is_empty() and not _images.has(path):
-			_images[path] = _decode_texture(path)
+			_images[path] = TextureCache._decode_texture(path)
 
 
 func _restore_missing_images(json: Dictionary) -> bool:
@@ -250,7 +350,16 @@ func _prepare_catalog_companions() -> void:
 		return
 	var document := GLTFDocument.new()
 	var state := GLTFState.new()
-	if document.append_from_file(head_path, state, IMPORT_FLAGS) != OK:
+	var companion := GlbData.new(head_path)
+	if not companion.error.is_empty():
+		return
+	var material_source := companion.json
+	# Only these resources are needed to transfer the original head materials.
+	for key in material_source.keys():
+		if key not in ["asset", "materials", "textures", "images", "samplers",
+				"bufferViews", "buffers", "extensionsUsed", "extensionsRequired", "extensions"]:
+			material_source.erase(key)
+	if document.append_from_buffer(companion.with_json(material_source), head_path, state, IMPORT_FLAGS) != OK:
 		return
 	var materials := state.get_materials()
 	var expected := ["Head_Skin", "Eye_L", "Eye_R", "Teeth", "Cornea_L", "Cornea_R"]
@@ -643,7 +752,11 @@ func _file_texture(path: String) -> Texture2D:
 		return null
 	if _resources.has(path):
 		return _resources[path] as Texture2D
-	var image: Image = _images[path] if _images.has(path) else _decode_texture(path)
+	var image: Image
+	if _images.has(path):
+		image = _images[path]
+	else:
+		image = texture_cache.read(path) if texture_cache else TextureCache._decode_texture(path)
 	if not image:
 		return null
 	var texture := ImageTexture.create_from_image(image)
@@ -656,14 +769,3 @@ func _record_texture_folder(path: String) -> void:
 	var folder := path.get_base_dir()
 	if not folder in texture_folders:
 		texture_folders.append(folder)
-
-
-static func _decode_texture(path: String) -> Image:
-	if not FileAccess.file_exists(path):
-		return null
-	var image := Image.new()
-	if image.load(path) != OK:
-		return null
-	if not image.has_mipmaps():
-		image.generate_mipmaps()
-	return image

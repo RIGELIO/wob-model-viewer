@@ -23,7 +23,7 @@ static func discover(path: String) -> Array[Dictionary]:
 		var level := match_result.get_string(2).to_int()
 		var variant := match_result.get_string(3)
 		var candidate_path := path if candidate == name else folder.path_join(candidate)
-		var entry := _read_stats(candidate_path)
+		var entry := {"bytes": -1, "triangles": -1, "vertices": -1}
 		entry["path"] = candidate_path
 		entry["label"] = "LOD%d%s" % [level, variant]
 		entry["level"] = level
@@ -34,7 +34,7 @@ static func discover(path: String) -> Array[Dictionary]:
 	return entries
 
 
-static func _read_stats(path: String) -> Dictionary:
+static func read_stats(path: String) -> Dictionary:
 	var result := {"bytes": -1, "triangles": -1, "vertices": -1}
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -66,8 +66,8 @@ static func _read_stats(path: String) -> Dictionary:
 static func from_manifest(levels: Array) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
 	for level: Dictionary in levels:
-		var entry := _read_stats(level.path)
-		entry.merge(level)
+		var entry: Dictionary = level.duplicate()
+		entry.merge({"bytes": -1, "triangles": -1, "vertices": -1})
 		entry["label"] = "LOD%d" % level.level
 		entries.append(entry)
 	return entries

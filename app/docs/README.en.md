@@ -1,18 +1,30 @@
 # WoB Model Viewer
 
-WoB Model Viewer is an offline desktop viewer for GLB and glTF models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
+WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
 ## Download and run
 
 Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_VERSION_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
 
-Windows Setup and the Linux DEB register **.glb**, **.gltf** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
+Windows Setup and the Linux DEB register **.glb**, **.gltf**, **.fbx** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
 The Windows installer and executable are unsigned. If SmartScreen prompts on first use, verify the download against `SHA256SUMS.txt` on the release page. A signed release can display a verified publisher. SmartScreen also considers the reputation of the downloaded file. [Microsoft documentation](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
 Setup displays the installation terms and MIT license. Updates and uninstall prompt you to close the viewer. Uninstall removes the program, shortcuts, registration and known settings and cache files. Your saved models, views and screenshots stay in their existing folders.
 
 To update on Windows, download and run the newer setup. It detects the registered installation, shows its version and updates the existing folder with your settings intact. Running the same version again reinstalls it in place. On Linux, install the newer DEB through the package manager to upgrade the installed package.
+
+## Learn the viewer
+
+Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Tools** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools.
+
+## Animation tools
+
+Viewer 1.5 is free and runs offline without an account or activation. Use **Tools → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
+
+Use **Tools → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
+
+Use **Tools → Animation Range** to set the interval, frame rate and output size before choosing **Export animation GIF**. Keep the included GIF encoder beside the portable executable.
 
 ## Vehicle manifests
 
@@ -24,7 +36,7 @@ Keep the local `_materialy-z-hry` folder, including `index.json` and `assets/`, 
 
 ## Inspect a model
 
-1. Drop a `.glb` or `.gltf` anywhere in the window or press **Ctrl+O**. The viewer shows the filename and a spinner during import. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Use **EN / CS** to switch languages, **F1** for help and **F11** for full screen.
+1. Drop a `.glb`, `.gltf` or `.fbx` anywhere in the window or press **Ctrl+O**. The viewer shows the filename and a spinner during import. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Use **EN / CS** to switch languages, **F1** for help and **F11** for full screen.
 2. Drag with the **left mouse button** to orbit. Drag with the right or middle button to pan and scroll to zoom. **F** frames the model. Click a face on the view cube to align the camera, or drag the cube to orbit. Enable **Auto-rotate** to orbit continuously. The **Screen-space pan** toggle switches between view-aligned and ground-plane movement.
 3. Under **Lighting**, choose a built-in Poly Haven panorama or load a 2:1 HDR or EXR file. **HDRI** shows the panorama as photographed. **Day · Sun** and **Night · Moon** add a visible light source aligned with the direct light. Adjust its azimuth and elevation to move it, or use **Aim at source** to bring it into view. Ambient HDRI, direct light and HDRI reflections have separate controls.
 4. **View** provides background colors and the HDRI panorama. Turn off **Show background** for transparent PNG exports. Toggle the grid, shadow-catching floor, skeleton overlay and orthographic projection independently. Inspect shaded, wireframe, unlit, normal-buffer, overdraw or **Points** views. **Point size** controls the size of vertex dots in **Points** mode. **Geometry** shows mesh statistics, and the timeline plays and scrubs embedded clips.
@@ -36,7 +48,7 @@ The viewer starts in a maximized window. Animations repeat after you press **Pla
 
 Switching clips during playback starts the new clip immediately. If playback is paused, the newly selected clip stays paused.
 
-Choose **0.25× to 2×** speed next to the timeline. **In place** suppresses horizontal travel in clips with recognized root motion while preserving height and limb movement. Use it to inspect walk and run cycles.
+Choose **0× to 2× in 0.01× steps** speed next to the timeline. **In place** suppresses horizontal travel in clips with recognized root motion while preserving height and limb movement. Use it to inspect walk and run cycles.
 
 In **Lighting**, select **Day and night cycle**. Scrub the time of day or enable **Play cycle**. **Cycle duration** controls how many seconds a complete 24-hour day takes. The time and settings are saved in `.wobview`.
 
