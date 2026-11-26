@@ -1560,7 +1560,8 @@ func add_inspector_tool_group(title: String, controls: Container) -> VBoxContain
 
 func focus_inspector(control: Control) -> void:
 	if control == _material_section or control == _lighting_section:
-		_inspector_tabs[int(control == _lighting_section)].set_pressed_no_signal(true)
+		for index in _inspector_tabs.size():
+			_inspector_tabs[index].set_pressed_no_signal(index == int(control == _lighting_section))
 		control.show()
 	if _inspector_panel.mode != PanelMode.PINNED:
 		_set_panel_mode(_inspector_panel, PanelMode.PINNED, false)
