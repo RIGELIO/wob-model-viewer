@@ -1,7 +1,9 @@
 extends Control
 
 const NORMALS := [Vector3.BACK, Vector3.RIGHT, Vector3.FORWARD, Vector3.LEFT, Vector3.UP, Vector3.DOWN]
-const LABELS := ["Předek", "Pravá", "Zadek", "Levá", "Vršek", "Spodek"]
+const LABELS := ["Front", "Right", "Back", "Left", "Top", "Bottom"]
+const FACE_SHADES := ["#706b66", "#8c8680", "#706b66", "#8c8680", "#beb8b1", "#635c54"]
+const EDGE := Color("#b59b71")
 const CORNERS := [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
 
 var stage: SubViewportContainer
@@ -46,19 +48,32 @@ func _draw() -> void:
 		for corner: Vector2 in CORNERS:
 			polygon.append(_project(inverse * (normal + right * corner.x + up * corner.y)))
 		_polygons[index] = polygon
-		var fill := Color("#746b5e").lerp(Color("#b6a99a"), facing)
-		if index == 4:
-			fill = Color("#c2b6a6")
-		draw_colored_polygon(polygon, Color("#a77c4c") if index == _hover else fill)
+		var shade := Color(FACE_SHADES[index])
+		if index == _hover:
+			shade = shade.lerp(Color("#d3a868"), 0.53)
+		draw_polygon(polygon, PackedColorArray([shade.darkened(0.05), shade.darkened(0.02),
+			shade.lightened(0.05), shade.lightened(0.02)]))
 		var border := polygon.duplicate()
 		border.append(polygon[0])
-		draw_polyline(border, Color("#d1ae7e") if index == _hover else Color("#c2a574"), 1.2, true)
-		if facing > 0.26:
-			var font := get_theme_default_font()
-			var label := tr(LABELS[index])
-			var extent := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
-			draw_string(font, _project(inverse * normal) + Vector2(-extent.x * 0.5, 4.0), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#211d1b"))
+		draw_polyline(border, EDGE.lightened(0.22) if index == _hover else EDGE, 1.05, true)
+		_draw_face_label(index, polygon, facing)
+
+
+func _draw_face_label(index: int, polygon: PackedVector2Array, facing: float) -> void:
+	if facing < 0.22:
+		return
+	var x_axis := (polygon[1] - polygon[0]) * 0.5
+	var y_axis := (polygon[0] - polygon[3]) * 0.5
+	var half_extent := minf(size.x, size.y) * 0.235
+	var font := get_theme_default_font()
+	var label: String = LABELS[index]
+	var width := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	var fit := minf(1.0, half_extent * 1.67 / maxf(width, 1.0))
+	var center := (polygon[0] + polygon[2]) * 0.5
+	draw_set_transform_matrix(Transform2D(x_axis / half_extent * fit, y_axis / half_extent, center))
+	draw_string(font, Vector2(-width / 2.0, 3.8), label,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#1f1b18"))
+	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
 func _project(local: Vector3) -> Vector2:
@@ -75,7 +90,7 @@ func _pick(position: Vector2) -> int:
 
 func _get_tooltip(at_position: Vector2) -> String:
 	var index := _pick(at_position)
-	return tr(LABELS[index]) if index >= 0 else tr("Tažením otočíš pohled")
+	return LABELS[index] if index >= 0 else tr("Tažením otočíš pohled")
 
 
 func _gui_input(event: InputEvent) -> void:

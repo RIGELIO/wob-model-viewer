@@ -648,7 +648,7 @@ func _update_camera() -> void:
 
 func orientation_display_basis() -> Basis:
 	if not model and is_equal_approx(_yaw, STUDIO_VIEW.x) and is_equal_approx(_pitch, STUDIO_VIEW.y):
-		return Basis(Vector3.UP, 0.57) * Basis(Vector3.RIGHT, -0.37)
+		return Basis(Vector3.UP, 0.77) * Basis(Vector3.RIGHT, -0.43)
 	return camera.global_basis
 
 
