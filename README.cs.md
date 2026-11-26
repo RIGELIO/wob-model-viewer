@@ -38,7 +38,7 @@ Před volbou **Export animace GIF** nastav interval, FPS a rozlišení v nabídc
 
 ## Manifesty vozů
 
-Otevři `vuz_*_manifest.json` nebo jeden z GLB souborů z téže složky. Prohlížeč přiřadí produkční shader vozu, mapy albeda, normál a ORM a u dlaždicových modelů zachová význam `UV2` a `COLOR_0`. Stav vozu a úroveň detailů lze přepínat vedle sebe v nástrojové liště. `*_atlas.json` popisuje rozložení UV atlasu.
+Otevři `vuz_*_manifest.json` nebo jeden z GLB souborů z téže složky. Prohlížeč přiřadí produkční shader vozu, mapy albeda, normál a ORM a u dlaždicových modelů zachová význam `UV2` a `COLOR_0`. Stav vozu a úroveň detailů lze přepínat vpravo v části **Model a LOD**. `*_atlas.json` popisuje rozložení UV atlasu.
 
 ## Místní herní materiály
 
@@ -74,7 +74,7 @@ Indikátor se zobrazí také při přepínání panoramat a oblohy, přípravě 
 
 U modelu pojmenovaného například `postava_lod0.glb` prohlížeč vyhledá související soubory ve stejné složce, včetně variant jako `postava_lod1_helma.glb`. Seznam LOD ukazuje počty trojúhelníků a vrcholů ze zdrojové scény GLB a velikost každého souboru. Při přepnutí úrovně zůstane kamera na stejném místě.
 
-**Wireframe** zobrazuje hrany trojúhelníků. V části **Zobrazení** se na stejném místě zobrazuje **Tloušťka čar** pro wireframe nebo **Velikost bodů** v režimu Body. Obě hodnoty se ukládají odděleně do relace. Režim **Quady (odhad)** v edici Pro odhaduje čtyřúhelníky spojením sousedních trojúhelníků a skrytím odhadnutých úhlopříček. Odhadované čtyřúhelníky se mohou od původní topologie lišit.
+**Wireframe** zobrazuje hrany trojúhelníků. V části **Zobrazení** se na stejném místě zobrazuje **Tloušťka čar** pro wireframe nebo **Velikost bodů** v režimu Body. Obě hodnoty se ukládají odděleně do relace. Režim **Quady (odhad)** odhaduje čtyřúhelníky spojením sousedních trojúhelníků a skrytím odhadnutých úhlopříček. Odhadované čtyřúhelníky se mohou od původní topologie lišit.
 
 Barvu podlahy změníš vzorníkem u přepínače **Podlaha**. **Posun podlahy** pohybuje podlahou a mřížkou vůči výšce modelu v metrech, takže můžeš zkontrolovat třeba kontakt při pádu. Barva i posun se ukládají do relace `.wobview`.
 

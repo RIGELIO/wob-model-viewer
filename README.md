@@ -38,7 +38,7 @@ Use **Model → Animation Range** to set the interval, frame rate and output siz
 
 ## Vehicle manifests
 
-Open a `vuz_*_manifest.json` or one of the adjacent GLBs. The viewer applies the original wagon shader and resolves the manifest's albedo, normal and ORM maps. Tiled models retain their `UV2` and `COLOR_0` semantics. The viewport toolbar lets you select the vehicle state and level of detail. The `*_atlas.json` file describes the UV atlas.
+Open a `vuz_*_manifest.json` or one of the adjacent GLBs. The viewer applies the original wagon shader and resolves the manifest's albedo, normal and ORM maps. Tiled models retain their `UV2` and `COLOR_0` semantics. Use **Model & LOD** in the right-hand inspector to select the vehicle state and level of detail. The `*_atlas.json` file describes the UV atlas.
 
 ## Local WoB materials
 
@@ -46,7 +46,7 @@ Keep the local `_materialy-z-hry` folder, including `index.json` and `assets/`, 
 
 ## Inspect a model
 
-1. Drop a `.glb`, `.gltf` or `.fbx` anywhere in the window or press **Ctrl+O**. The viewer shows the filename and a spinner during import. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Use **EN / CS** to switch languages, **F1** for help and **F11** for full screen.
+1. Drop a `.glb`, `.gltf` or `.fbx` anywhere in the window or press **Ctrl+O**. The viewer shows the filename and a spinner during import. Keep any separate `.bin` and textures referenced by a `.gltf` at their relative paths within the model folder. Switch languages from **Window**. Press **F1** for help and **F11** for full screen.
 2. Drag with the **left mouse button** to orbit. Drag with the right or middle button to pan and scroll to zoom. **F** frames the model. Click a face on the view cube to align the camera, or drag the cube to orbit. Enable **Auto-rotate** to orbit continuously. The **Screen-space pan** toggle switches between view-aligned and ground-plane movement.
 3. Under **Lighting**, choose a built-in Poly Haven panorama or load a 2:1 HDR or EXR file. **HDRI** shows the panorama as photographed. **Day · Sun** and **Night · Moon** add a visible light source aligned with the direct light. Adjust its azimuth and elevation to move it, or use **Aim at source** to bring it into view. Ambient HDRI, direct light and HDRI reflections have separate controls.
 4. **View** provides background colors and the HDRI panorama. Turn off **Show background** for transparent PNG exports. Toggle the grid, shadow-catching floor, skeleton overlay and orthographic projection independently. Inspect shaded, wireframe, unlit, normal-buffer, overdraw or **Points** views. **Point size** controls the size of vertex dots in **Points** mode. **Geometry** shows mesh statistics, and the timeline plays and scrubs embedded clips.
@@ -74,7 +74,7 @@ The viewer also shows progress feedback when switching panoramas or skies, prepa
 
 If a model is named like `character_lod0.glb`, the viewer finds matching files in the same folder, including variants such as `character_lod1_helma.glb`. The LOD list shows the triangle and vertex counts from the source GLB scene and the size of each file. Switch levels from the list to compare them while keeping the current camera.
 
-**Wireframe** shows triangle edges. In **View**, the same control position shows **Line width** in wireframe mode or **Point size** in Points mode. The session stores both values independently. **Inferred quads** in Pro estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
+**Wireframe** shows triangle edges. In **View**, the same control position shows **Line width** in wireframe mode or **Point size** in Points mode. The session stores both values independently. **Inferred quads** estimates quad boundaries by pairing adjacent triangles and hiding the inferred diagonals.
 
 Use the color swatch next to **Floor** to change its color. **Floor offset** moves the floor and grid in meters relative to the model's baseline, which helps inspect animated ground contact. The session saves both settings.
 
@@ -85,7 +85,7 @@ In **View**, turn on **Model axes** or press **M**. Drag an arrow to move the mo
 | Keys | Action |
 | --- | --- |
 | **1** or **F** · **2** · **3** · **4** | Frame · Front · Side · Top |
-| **W** · **Q** · **P** | Wireframe · Inferred quads (Pro) · Points |
+| **W** · **Q** · **P** | Wireframe · Inferred quads · Points |
 | **G** · **K** · **A** · **B** · **O** | Grid · Skeleton · Auto-rotate · Show background · Ortho |
 | **M** | Toggle model axes |
 | **Page Up** · **Page Down** | Previous LOD · Next LOD |
