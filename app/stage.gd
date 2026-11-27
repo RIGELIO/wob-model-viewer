@@ -71,6 +71,7 @@ var _show_source := true
 var _hdri_angle := 0.0
 var _direct_strength := 1.0
 var _animation_loop := Animation.LOOP_LINEAR
+var preview_range := Vector2(-1.0, -1.0)
 var _animation_speed := ANIMATION_SPEED_DEFAULT
 var _animation_in_place := false
 var _model_placement: Node3D
@@ -282,6 +283,7 @@ func _install_model(pending: Materials) -> void:
 		_mesh_layers[mesh] = mesh.layers
 	_inspect_model()
 	animation_player = null
+	preview_range = Vector2(-1.0, -1.0)
 	current_clip = &""
 	clips.clear()
 	_collect_clips(model.root)
@@ -334,6 +336,7 @@ func select_clip(index: int, keep_playing := false) -> float:
 		animation_player.mixer_applied.disconnect(_apply_in_place)
 		animation_player.stop()
 	_model_anchor.position = Vector3.ZERO
+	preview_range = Vector2(-1.0, -1.0)
 	animation_player = clips[index].player
 	current_clip = clips[index].name
 	var clip := animation_player.get_animation(current_clip)
@@ -444,15 +447,47 @@ func toggle_play() -> bool:
 	if animation_player.is_playing():
 		animation_player.pause()
 		return false
-	if animation_player.current_animation_position >= animation_player.current_animation_length - 0.0001:
-		animation_player.seek(0.0, true)
-	animation_player.play(current_clip)
+	resume_preview()
 	return true
 
 
+func set_preview_range(times: Vector2) -> void:
+	preview_range = Vector2(-1.0, -1.0)
+	if not animation_player:
+		return
+	var length := animation_player.get_animation(current_clip).length
+	if times.is_finite() and times.x >= 0.0 and times.y <= length + 0.00001 and times.y - times.x >= 0.001:
+		preview_range = times
+	if animation_player.is_playing() and preview_range.x >= 0.0:
+		var time := animation_player.current_animation_position
+		animation_player.set_section(preview_range.x, preview_range.y)
+		if time < preview_range.x or time >= preview_range.y:
+			seek(preview_range.x)
+	else:
+		animation_player.reset_section()
+
+
+func resume_preview() -> void:
+	var start := maxf(0.0, preview_range.x)
+	var finish := preview_range.y if preview_range.x >= 0.0 else animation_player.get_animation(current_clip).length
+	var time := animation_player.current_animation_position
+	if preview_range.x >= 0.0:
+		animation_player.play_section(current_clip, start, finish)
+	else:
+		animation_player.play(current_clip)
+	if time < start or time >= finish - 0.0001:
+		seek(start)
+
+
 func seek(time: float) -> void:
-	if animation_player:
-		animation_player.seek(time, true)
+	if not animation_player:
+		return
+	# Editing, motion analysis and GIF export sample the complete clip while paused.
+	if not animation_player.is_playing() and animation_player.has_section():
+		animation_player.reset_section()
+	elif animation_player.has_section():
+		time = clampf(time, animation_player.get_section_start_time(), animation_player.get_section_end_time())
+	animation_player.seek(time, true)
 
 
 func frame(direction := Vector2(0.63, 0.13)) -> void:

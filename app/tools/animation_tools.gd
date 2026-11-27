@@ -941,7 +941,7 @@ func run_gif(path: String, start: float, finish: float, fps: int, resolution: Ve
 	capture.queue_free()
 	stage.seek(restore_time)
 	if restore_play:
-		player.play(stage.current_clip)
+		stage.resume_preview()
 	stage.capture_in_progress = false
 	var success := false
 	if saved == count:
