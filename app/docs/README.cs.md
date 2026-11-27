@@ -77,7 +77,7 @@ V části **Zobrazení** zapni **Osy modelu** nebo stiskni **M**. Tažením šip
 | Klávesy | Akce |
 | --- | --- |
 | **1** nebo **F** · **2** · **3** · **4** | Zarámovat · Zepředu · Z boku · Shora |
-| **W** · **Q** · **P** | Wireframe · Odhad čtyřúhelníků (Pro) · Body |
+| **W** · **Q** · **P** | Wireframe · Odhad čtyřúhelníků · Body |
 | **G** · **K** · **A** · **B** · **O** | Mřížka · Kostra · Automatické otáčení · Zobrazení pozadí · Orto |
 | **M** | Zapnout nebo vypnout osy modelu |
 | **Page Up** · **Page Down** | Předchozí LOD · Další LOD |
