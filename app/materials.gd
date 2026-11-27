@@ -429,6 +429,11 @@ func has_color_alpha(instance: MeshInstance3D, surface: int, layer: String) -> b
 	return index >= 0 and index < accessors.size() and accessors[index].get("type") == "VEC4"
 
 
+func source_attributes(instance: MeshInstance3D, surface: int) -> PackedStringArray:
+	var attributes: Dictionary = _pairs.get(Vector2i(_node_index(instance), surface), {}).get("attributes", {})
+	return PackedStringArray(attributes.keys())
+
+
 # Import a geometry-only copy with the requested source attribute as COLOR_0.
 # The production mesh and its material remapping stay intact.
 func inspection_meshes(color_layer: String) -> Dictionary[MeshInstance3D, ArrayMesh]:

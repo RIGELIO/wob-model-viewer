@@ -2,6 +2,8 @@
 
 Offline desktopový prohlížeč GLB, glTF a FBX pro kontrolu geometrie, materiálů a animací. Podporuje původní shadery postav a sdílené atlasy Wars of Bohemia.
 
+[Podrobný tutoriál na GitHubu](https://github.com/RIGELIO/wob-model-viewer/blob/main/docs/tutorial.cs.md)
+
 ## Stažení a spuštění
 
 V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček otevři ve správci balíčků nebo použij `sudo apt install ./wob-model-viewer_VERZE_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Vše potřebné ke spuštění je v balíčku. Použij aktuální grafický ovladač.
@@ -19,6 +21,8 @@ Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná re
 V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky **Pohled**, **Animace** a **Model** zpřístupňují ovládání. Nastavení přehrávání, materiálů, osvětlení, zobrazení a editace najdeš vpravo v inspektoru. Vlevo je strom scény s viditelností sítí a výběrem materiálů, kostry a klipů. Časová osa dole obsahuje krok zpět, přehrávání, krok vpřed, rychlost a smyčku.
 
 ## Nástroje animace
+
+V záložce **ⓘ** vedle osvětlení najdeš údaje o výběru ve stromu scény. Kořen zobrazí soubor a celkové statistiky, vrstva vlastní geometrii a atributy. **Ctrl+T** otevře terminál prohlížeče. Zadej `help`, `info model` nebo třeba `cut 0.4 1.2` a `play`.
 
 Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Model → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
 

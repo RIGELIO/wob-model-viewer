@@ -2,6 +2,8 @@
 
 WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
+[Step-by-step tutorial on GitHub](https://github.com/RIGELIO/wob-model-viewer/blob/main/docs/tutorial.en.md)
+
 ## Download and run
 
 Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_VERSION_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
@@ -19,6 +21,8 @@ To update on Windows, download and run the newer setup. It detects the registere
 Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Model** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools. Use the Scene tree on the left to show or hide meshes and select materials, skeletons and clips. The bottom timeline has previous frame, play, next frame, speed and loop controls.
 
 ## Animation tools
+
+Open the **ⓘ** tab beside Lighting for the Scene tree selection. The root shows file details and totals. Individual layers show their own geometry and attributes. Press **Ctrl+T** to open the Viewer Terminal. Try `help`, `info model` or `cut 0.4 1.2` followed by `play`.
 
 Viewer 1.5 is free and runs offline without an account or activation. Use **Model → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
 

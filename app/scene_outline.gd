@@ -86,10 +86,15 @@ func _item(parent: TreeItem, title: String, kind: String, data: Variant = null) 
 
 
 func _select_item() -> void:
+	var data := selection()
+	if not data.is_empty():
+		item_chosen.emit(data.kind, data.get("data"))
+
+
+func selection() -> Dictionary:
 	var row := tree.get_selected()
 	var data: Variant = row.get_metadata(0) if row else null
-	if data is Dictionary:
-		item_chosen.emit(data.kind, data.get("data"))
+	return data if data is Dictionary else {}
 
 
 func _edit_item() -> void:

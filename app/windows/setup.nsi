@@ -7,7 +7,7 @@ SetCompressor /SOLID zlib
 !include "LogicLib.nsh"
 !define APP "WoB Model Viewer"
 !define EXE "WoB Model Viewer.exe"
-!define VERSION "1.5.1"
+!define VERSION "1.5.2"
 !define INSTALLER_SOURCE "${__FILEDIR__}"
 !define UNINSTALL "Software\Microsoft\Windows\CurrentVersion\Uninstall\RIGELIO.WoBModelViewer"
 !define CAP "Software\RIGELIO\WoBModelViewer\Capabilities"

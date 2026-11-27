@@ -11,6 +11,7 @@ const PATHS := {
 	"bone": '<path d="M9 14l5-5c-1-3 2-5 4-3 2 2 0 5-2 5l-5 5c0 2-3 4-5 2-2-2 0-5 3-4z"/>',
 	"clip": '<path d="M3 3h18v18H3zM7 3v18m10-18v18M3 8h4m10 0h4M3 16h4m10 0h4M7 12h10"/>',
 	"sun": '<circle cx="12" cy="12" r="4.1"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4M4.2 4.2 7 7m10 10 2.8 2.8M4.2 19.8 7 17M17 7l2.8-2.8"/>',
+	"info": '<circle cx="12" cy="12" r="9.5"/><path d="M11 11h1v6m-1 0h2"/><circle cx="12" cy="7.2" r=".7" fill="currentColor" stroke="none"/>',
 	"select": '<path fill="#110e0b" opacity=".48" stroke="none" d="M5.4 2.8v17.4l4.9-4.65 3.55 6.25 3.1-1.82-3.55-6.2 6.8-.48z"/><path fill="currentColor" stroke="none" d="M4.5 2.15v17.4l4.9-4.65 3.55 6.25 3.1-1.82-3.55-6.2 6.8-.48z"/>',
 	"move": '<path d="M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4m12-8 4 4-4 4"/>',
 	"rotate": '<path d="M12 3a9 9 0 11-6 2.5M12 1v6l5-4"/>',
