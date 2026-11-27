@@ -32,7 +32,7 @@ static func sample(stage: Control, skeleton: Skeleton3D, start: float, finish: f
 	stage.seek(original_time)
 	stage.animation_in_place(in_place)
 	if was_playing:
-		player.play(stage.current_clip)
+		stage.resume_preview()
 
 	var findings: Array[Dictionary] = []
 	var scale: float = maxf(stage.bounds.size.y, 0.1)

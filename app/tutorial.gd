@@ -15,7 +15,7 @@ const LESSONS := [
 	],
 	[
 		"Přehrávání a rozbor pohybu",
-		"Vyber klip vpravo v části Přehrávání animace. Přehrávej, krokuj nebo přepínej smyčku v horní nabídce Animace. Rychlost uprav vpravo, čas zvol na spodní časové ose.\n\nPro animaci s kostrou otevři Model → Analyzovat pohyb. Kliknutím na nález přejdeš na jeho čas. Rozsah a vzorkování nastav v Model → Rozsah animace.",
+		"Vyber klip vpravo v části Přehrávání animace. Přehrávej, krokuj nebo přepínej smyčku v horní nabídce Animace. Rychlost uprav vpravo, čas zvol na spodní časové ose.\n\nPro animaci s kostrou otevři Model → Analyzovat pohyb. Kliknutím na nález přejdeš na jeho čas. Pro smyčku jen v části klipu zapni Výřez a označ dvě hranice na pravítku pod posuvníkem. Rozsah exportu a vzorkování nastav v Model → Rozsah animace.",
 	],
 	[
 		"Úpravy pohybu a nová kostra",

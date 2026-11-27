@@ -131,6 +131,12 @@ class LightDirectionDial extends Control:
 
 
 class TimelineRuler extends Control:
+	signal cut_marked(seconds: float)
+	signal cut_dragged(times: Vector2)
+
+	var cut_marks := Vector2(-1.0, -1.0)
+	var _press_x := -1.0
+	var _drag_x := -1.0
 	var duration := 0.0:
 		set(value):
 			duration = value
@@ -141,10 +147,57 @@ class TimelineRuler extends Control:
 		custom_minimum_size.y = 36.0
 		resized.connect(queue_redraw)
 
+	func set_cut_selection(enabled: bool, marks: Vector2) -> void:
+		mouse_filter = MOUSE_FILTER_STOP if enabled else MOUSE_FILTER_IGNORE
+		mouse_default_cursor_shape = CURSOR_CROSS if enabled else CURSOR_ARROW
+		tooltip_text = "Označ výřez dvěma kliknutími nebo tažením po pravítku." if enabled else ""
+		cut_marks = marks
+		_press_x = -1.0
+		_drag_x = -1.0
+		queue_redraw()
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			var x: float = event.position.x
+			if event.pressed:
+				_press_x = x
+				_drag_x = x
+			elif _press_x >= 0.0:
+				var start := _time_at(_press_x)
+				var finish := _time_at(x)
+				var dragged := absf(x - _press_x) >= 4.0
+				_press_x = -1.0
+				_drag_x = -1.0
+				if dragged:
+					cut_dragged.emit(Vector2(minf(start, finish), maxf(start, finish)))
+				else:
+					cut_marked.emit(finish)
+			queue_redraw()
+			accept_event()
+		elif event is InputEventMouseMotion and _press_x >= 0.0:
+			_drag_x = event.position.x
+			queue_redraw()
+			accept_event()
+
+	func _time_at(x: float) -> float:
+		return clampf((x - 5.0) / maxf(size.x - 10.0, 1.0), 0.0, 1.0) * duration
+
 	func _draw() -> void:
 		if duration <= 0.0 or size.x < 12.0:
 			return
-		var width := size.x - 6.0
+		var width := size.x - 10.0
+		var marks_to_draw := cut_marks
+		if _press_x >= 0.0 and absf(_drag_x - _press_x) >= 4.0:
+			marks_to_draw = Vector2(_time_at(minf(_press_x, _drag_x)), _time_at(maxf(_press_x, _drag_x)))
+		if marks_to_draw.y >= 0.0:
+			var left := 5.0 + marks_to_draw.x / duration * width
+			var right := 5.0 + marks_to_draw.y / duration * width
+			draw_rect(Rect2(left, 0.0, right - left, 19.0), Color(0.82, 0.60, 0.31, 0.27))
+		for mark in [marks_to_draw.x, marks_to_draw.y]:
+			if mark >= 0.0:
+				var handle := 5.0 + float(mark) / duration * width
+				draw_line(Vector2(handle, 0.0), Vector2(handle, 19.0), GOLD, 2.0)
+				draw_line(Vector2(handle - 3.0, 1.0), Vector2(handle + 3.0, 1.0), GOLD, 2.0)
 		var mark_count := clampi(floori(width / 190.0), 2, 6)
 		var rough_interval := duration / mark_count
 		var unit := pow(10.0, floorf(log(rough_interval) / log(10.0)))
@@ -159,12 +212,12 @@ class TimelineRuler extends Control:
 		var tick_color := Color("#c6baac")
 		for index in range(marks + 1):
 			var seconds := index * minor
-			var x := 3.0 + seconds / duration * width
+			var x := 5.0 + seconds / duration * width
 			var major := index % 4 == 0
 			draw_line(Vector2(x, 0.0), Vector2(x, 18.0 if major else 9.0), tick_color)
 			if major and width - x > 58.0:
 				draw_string(font, Vector2(x, 30.0), String.num(seconds, 2) + " s", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, WHITE)
-		draw_line(Vector2(size.x - 3.0, 0.0), Vector2(size.x - 3.0, 7.0), tick_color)
+		draw_line(Vector2(size.x - 5.0, 0.0), Vector2(size.x - 5.0, 7.0), tick_color)
 		draw_string(font, Vector2(0.0, 30.0), String.num(duration, 2) + " s",
 			HORIZONTAL_ALIGNMENT_RIGHT, width, 15, WHITE)
 
@@ -214,6 +267,9 @@ var _transport_previous: Button
 var _transport_next: Button
 var _transport_speed: SpinBox
 var _transport_loop: Button
+var _cut_button: Button
+var _cut_hint: Label
+var _cut_mark := -1.0
 var _open_dialog: FileDialog
 var _hdri_dialog: FileDialog
 var _textures_dialog: FileDialog
@@ -529,6 +585,10 @@ func _refresh_animation_menu() -> void:
 		ready, KEY_NONE, int(_loop.button_pressed))
 	_menu_command(menu, _animation_commands, tr("Na místě"), _toggle_option.bind("animation_in_place"),
 		ready, KEY_NONE, int(_in_place.button_pressed))
+	menu.add_separator()
+	_menu_command(menu, _animation_commands, tr("Výřez"), _toggle_cut,
+		ready, KEY_NONE, int(_cut_button.button_pressed))
+	_menu_command(menu, _animation_commands, tr("Označit čas přehrávací hlavou"), _mark_cut_at_playhead, ready)
 	menu.add_separator()
 	_menu_command(menu, _animation_commands, tr("Přehrávání animace"),
 		focus_inspector.bind(_animation_controls), not _loading)
@@ -1246,12 +1306,26 @@ func _make_transport(parent: VBoxContainer) -> void:
 	_timeline.add_theme_icon_override("grabber_highlight", thumb)
 	_timeline.value_changed.connect(func(value: float):
 		stage.seek(value)
-		_sync_timeline_readout(value)
+		if stage.animation_player:
+			_sync_timeline_readout(stage.animation_player.current_animation_position)
 	)
 	timeline_controls.add_child(_timeline)
 
 	_ruler = TimelineRuler.new()
+	_ruler.cut_marked.connect(_mark_cut)
+	_ruler.cut_dragged.connect(_apply_cut)
 	timeline_controls.add_child(_ruler)
+	var cut_controls := HBoxContainer.new()
+	timeline_controls.add_child(cut_controls)
+	_cut_button = Button.new()
+	_cut_button.text = "Výřez"
+	_cut_button.toggle_mode = true
+	_cut_button.tooltip_text = "Označ výřez dvěma kliknutími nebo tažením po pravítku."
+	_cut_button.toggled.connect(_set_cut_enabled)
+	cut_controls.add_child(_cut_button)
+	_cut_hint = _label(cut_controls, "", 13, MUTED)
+	_cut_hint.size_flags_horizontal = SIZE_EXPAND_FILL
+	_cut_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	dock.resized.connect(func():
 		var compact := dock.size.x < 930.0
 		_transport_clip.custom_minimum_size.x = 125.0 if compact else 247.0
@@ -2095,6 +2169,7 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 	var clip := str(stage.current_clip)
 	var seconds := _timeline.value
 	var playing := stage.animation_player != null and stage.animation_player.is_playing()
+	var cut := stage.preview_range
 	var manifest: RefCounted
 	if stage.model.vehicle:
 		manifest = VehicleManifest.read(stage.model.vehicle.path)
@@ -2112,8 +2187,10 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 	stage.restore_hidden_parts(hidden)
 	_editor_materials.restore(previews, _path)
 	_outline.rebuild(stage, _path, _editor_materials.targets)
-	if _restore_clip(clip, seconds) and playing:
-		_toggle_play()
+	if _restore_clip(clip, seconds):
+		_restore_cut([cut.x, cut.y])
+		if playing:
+			_toggle_play()
 	var notes := stage.model.notes.size()
 	if notes:
 		_set_status(tr("Model znovu načten · upozornění (%d) v diagnostice.") % notes, true)
@@ -2263,6 +2340,7 @@ func _save_view_to(path: String) -> void:
 		"model_transform": stage.model_transform_state(),
 		"clip": str(stage.current_clip),
 		"time": _timeline.value,
+		"animation_cut": [stage.preview_range.x, stage.preview_range.y],
 		"animation_speed": _speed.value,
 	}
 	var status := ViewFile.write(path, state)
@@ -2327,7 +2405,8 @@ func _open_view(path: String) -> bool:
 	if state.get("camera") is Dictionary:
 		stage.restore_camera(state["camera"])
 	_set_animation_speed(state.get("animation_speed", Stage.ANIMATION_SPEED_DEFAULT))
-	_restore_clip(str(state.get("clip", "")), state.get("time"))
+	if _restore_clip(str(state.get("clip", "")), state.get("time")):
+		_restore_cut(state.get("animation_cut"))
 	var mode: Variant = state.get("sky_mode", 0)
 	_select_sky(clampi(int(mode), 0, _sky_picker.item_count - 1) if mode is float or mode is int else 0)
 	_reset_hdri()
@@ -2406,6 +2485,8 @@ func _refresh_clips() -> void:
 	_speed.editable = available
 	_transport_speed.editable = available
 	_timeline.editable = available
+	_cut_button.disabled = not available
+	_set_cut_enabled(false)
 	_sync_play_buttons(false)
 	_timeline.set_value_no_signal(0.0)
 	if not available:
@@ -2434,6 +2515,7 @@ func _choose_clip(index: int) -> void:
 func _select_clip(index: int, keep_playing := false) -> void:
 	_timeline.max_value = stage.select_clip(index, keep_playing)
 	_ruler.duration = _timeline.max_value
+	_set_cut_enabled(false)
 	_movie.select(index)
 	_transport_clip.select(index)
 	var clip_name := _movie.get_item_text(index)
@@ -2442,6 +2524,68 @@ func _select_clip(index: int, keep_playing := false) -> void:
 	_timeline.set_value_no_signal(0.0)
 	_sync_timeline_readout(0.0)
 	_sync_play_buttons(keep_playing)
+
+
+func _toggle_cut() -> void:
+	_cut_button.button_pressed = not _cut_button.button_pressed
+
+
+func _set_cut_enabled(enabled: bool) -> void:
+	_cut_button.set_pressed_no_signal(enabled)
+	_cut_mark = -1.0
+	stage.set_preview_range(Vector2(-1.0, -1.0))
+	_refresh_cut()
+
+
+func _mark_cut_at_playhead() -> void:
+	if not _cut_button.button_pressed:
+		_set_cut_enabled(true)
+	_mark_cut(_timeline.value)
+
+
+func _mark_cut(seconds: float) -> void:
+	if _cut_mark < 0.0:
+		_cut_mark = seconds
+		_refresh_cut()
+		return
+	_apply_cut(Vector2(minf(_cut_mark, seconds), maxf(_cut_mark, seconds)))
+
+
+func _apply_cut(times: Vector2, enable_loop := true) -> void:
+	if stage.animation_player == null or not times.is_finite():
+		return
+	var duration := stage.animation_player.get_animation(stage.current_clip).length
+	times = times.clamp(Vector2.ZERO, Vector2.ONE * duration)
+	if times.y - times.x < 0.001:
+		return
+	_cut_button.set_pressed_no_signal(true)
+	_cut_mark = -1.0
+	if enable_loop:
+		_loop.button_pressed = true
+	stage.set_preview_range(times)
+	_refresh_cut()
+
+
+func _refresh_cut() -> void:
+	var enabled := _cut_button.button_pressed
+	var times := stage.preview_range
+	if _cut_mark >= 0.0:
+		times = Vector2(_cut_mark, -1.0)
+	_ruler.set_cut_selection(enabled, times)
+	if not enabled:
+		_cut_hint.text = ""
+	elif _cut_mark >= 0.0:
+		_cut_hint.text = tr("Značka na %.2f s · označ druhou hranici") % _cut_mark
+	elif times.x >= 0.0:
+		_cut_hint.text = tr("%.2f–%.2f s · výřez") % [times.x, times.y]
+	else:
+		_cut_hint.text = tr("Označ výřez dvěma kliknutími nebo tažením po pravítku.")
+
+
+func _restore_cut(data: Variant) -> void:
+	if data is Array and data.size() == 2 and (data[0] is int or data[0] is float) \
+			and (data[1] is int or data[1] is float):
+		_apply_cut(Vector2(float(data[0]), float(data[1])), false)
 
 
 func _toggle_play() -> void:
@@ -2619,6 +2763,7 @@ func _change_locale(index: int) -> void:
 	_refresh_dialogs()
 	_refresh_panel_handle(_toolbar_panel)
 	_refresh_panel_handle(_inspector_panel)
+	_refresh_cut()
 	if stage.model:
 		var row := _parts.get_selected()
 		var selection: Variant = row.get_metadata(0) if row else null

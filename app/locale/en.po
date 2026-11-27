@@ -676,8 +676,8 @@ msgstr "In Lighting on the right, select an HDRI panorama or load your own. Adju
 msgid "Přehrávání a rozbor pohybu"
 msgstr "Playback and motion analysis"
 
-msgid "Vyber klip vpravo v části Přehrávání animace. Přehrávej, krokuj nebo přepínej smyčku v horní nabídce Animace. Rychlost uprav vpravo, čas zvol na spodní časové ose.\n\nPro animaci s kostrou otevři Model → Analyzovat pohyb. Kliknutím na nález přejdeš na jeho čas. Rozsah a vzorkování nastav v Model → Rozsah animace."
-msgstr "Choose a clip in Animation Playback on the right. Use the top Animation menu to play, step or toggle looping. Adjust speed on the right and use the bottom timeline to seek.\n\nFor a clip with an animated skeleton, choose Model → Analyze Motion. Click a finding to jump to its time. Set the interval and sample rate in Model → Animation Range."
+msgid "Vyber klip vpravo v části Přehrávání animace. Přehrávej, krokuj nebo přepínej smyčku v horní nabídce Animace. Rychlost uprav vpravo, čas zvol na spodní časové ose.\n\nPro animaci s kostrou otevři Model → Analyzovat pohyb. Kliknutím na nález přejdeš na jeho čas. Pro smyčku jen v části klipu zapni Výřez a označ dvě hranice na pravítku pod posuvníkem. Rozsah exportu a vzorkování nastav v Model → Rozsah animace."
+msgstr "Choose a clip in Animation Playback on the right. Use the top Animation menu to play, step or toggle looping. Adjust speed on the right and use the bottom timeline to seek.\n\nFor a clip with an animated skeleton, choose Model → Analyze Motion. Click a finding to jump to its time. Set the interval and sample rate in Model → Animation Range. To loop a section, turn on Cut and mark both boundaries on the ruler below the slider."
 
 msgid "Úpravy pohybu a nová kostra"
 msgstr "Editing motion and creating a skeleton"
@@ -849,3 +849,27 @@ msgstr "Sample a color from the viewer"
 
 msgid "Bez modelu"
 msgstr "No model"
+
+msgid "Výřez"
+msgstr "Cut"
+
+msgid "Označ výřez dvěma kliknutími nebo tažením po pravítku."
+msgstr "Mark the cut with two clicks or drag across the time ruler."
+
+msgid "Označit čas přehrávací hlavou"
+msgstr "Mark Time at Playhead"
+
+msgid "Značka na %.2f s · označ druhou hranici"
+msgstr "Mark at %.2f s · select the other boundary"
+
+msgid "%.2f–%.2f s · výřez"
+msgstr "%.2f–%.2f s · cut"
+
+msgid "Díly a materiály"
+msgstr "Parts & Materials"
+
+msgid "Levé tlačítko orbit · Pravé nebo prostřední posun · Kolečko zoom"
+msgstr "Left drag to orbit · Right or middle drag to pan · Scroll to zoom"
+
+msgid "Vykreslení podle importovaných materiálů FBX."
+msgstr "Rendered with the imported FBX materials."
