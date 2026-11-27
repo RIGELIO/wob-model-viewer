@@ -1,6 +1,6 @@
 # WoB Model Viewer
 
-[English guide](README.md) · [Wars of Bohemia](https://warsofbohemia.com/)
+[English guide](README.md) · [Podrobný tutoriál](docs/tutorial.cs.md) · [Wars of Bohemia](https://warsofbohemia.com/)
 
 Offline desktopový prohlížeč GLB, glTF a FBX pro kontrolu geometrie, materiálů a animací. Podporuje původní shadery postav a sdílené atlasy Wars of Bohemia.
 
@@ -14,7 +14,7 @@ Offline desktopový prohlížeč GLB, glTF a FBX pro kontrolu geometrie, materi�
 
 ## Stažení a spuštění
 
-V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček otevři ve správci balíčků nebo použij `sudo apt install ./wob-model-viewer_1.5.1_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Vše potřebné ke spuštění je v balíčku. Použij aktuální grafický ovladač.
+V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček otevři ve správci balíčků nebo použij `sudo apt install ./wob-model-viewer_1.5.2_amd64.deb`. Vyber přenosný ZIP pro svůj systém. Po rozbalení spusť **WoB Model Viewer.exe** ve Windows nebo **wob-model-viewer** v Linuxu. Pokud linuxový rozbalovací nástroj odebral oprávnění ke spuštění, obnov je příkazem `chmod +x wob-model-viewer wob-gif`. Vše potřebné ke spuštění je v balíčku. Použij aktuální grafický ovladač.
 
 Instalátor Windows a balíček DEB v Linuxu automaticky zaregistrují **.glb**, **.gltf**, **.fbx** a **.wobview**. Pro otevírání dvojklikem zvol **WoB Model Viewer** ve výchozích aplikacích systému nebo přes **Otevřít v programu**. Instalátor Windows nastaví Viewer pro dosud neregistrované pohledy `.wobview` a na poslední stránce nabídne otevření nastavení výchozích aplikací. U přenosné verze spusť ve Windows **Register-FileTypes.cmd** nebo v Linuxu `sh register-file-types.sh`. Linuxový skript používá `shared-mime-info` a `desktop-file-utils`. Po přemístění přenosné aplikace registraci zopakuj.
 
@@ -25,6 +25,8 @@ Instalátor před instalací zobrazí podmínky a licenci MIT. Při aktualizaci 
 Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná registrovanou instalaci, ukáže nalezenou verzi a aktualizuje stávající složku se zachováním nastavení. Spuštění stejné verze ji přeinstaluje do stejného umístění. V Linuxu aktualizuje stávající instalaci novější balíček DEB přes správce balíčků.
 
 ## První kroky
+
+Od verze 1.5.2 zobrazí záložka **ⓘ** vedle osvětlení údaje o výběru ve stromu scény. **Ctrl+T** otevře terminál prohlížeče. Seznam příkazů vrátí `help`. [Tutoriál](docs/tutorial.cs.md) pokrývá terminál v aplikaci i dávkové úlohy.
 
 V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky **Pohled**, **Animace** a **Model** zpřístupňují ovládání. Nastavení přehrávání, materiálů, osvětlení, zobrazení a editace najdeš vpravo v inspektoru. Vlevo je strom scény s viditelností sítí a výběrem materiálů, kostry a klipů. Časová osa dole obsahuje krok zpět, přehrávání, krok vpřed, rychlost a smyčku.
 

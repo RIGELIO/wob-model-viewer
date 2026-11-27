@@ -13,7 +13,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
 VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {
@@ -100,7 +100,8 @@ def prepare(args, stage):
                  "glb_data.gd", "view_file.gd", "orientation_gizmo.gd", "lod_catalog.gd", "topology_overlay.gd",
                  "vehicle_manifest.gd", "game_materials.gd", "attribute_preview.gdshader", "celestial_sky.gdshader",
                  "wireframe_mesh.gd", "wireframe_preview.gdshader", "texture_search.gd", "model_gizmo.gd",
-                 "loading_orbit.gdshader", "tutorial.gd", "scene_outline.gd", "material_inspector.gd", "ui_glyphs.gd"):
+                 "loading_orbit.gdshader", "tutorial.gd", "scene_outline.gd", "material_inspector.gd", "ui_glyphs.gd",
+                 "object_info.gd", "viewer_terminal.gd"):
         shutil.copy2(HERE / name, stage / name)
     shutil.copytree(HERE / "tools", stage / "tools", ignore=shutil.ignore_patterns("*.go", "*.uid", "*.import"))
     shutil.copytree(HERE / "locale", stage / "locale")

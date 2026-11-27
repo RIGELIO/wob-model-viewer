@@ -1,6 +1,6 @@
 # WoB Model Viewer
 
-[Český návod](README.cs.md) · [Wars of Bohemia](https://warsofbohemia.com/)
+[Český návod](README.cs.md) · [Step-by-step tutorial](docs/tutorial.en.md) · [Wars of Bohemia](https://warsofbohemia.com/)
 
 WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
@@ -14,7 +14,7 @@ WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It h
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.5.1_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.5.2_amd64.deb`. Choose the portable ZIP matching your operating system. Extract it and run **WoB Model Viewer.exe** on Windows or **wob-model-viewer** on Linux. Use `chmod +x wob-model-viewer wob-gif` if your Linux extractor removed executable permissions. The runtime is bundled. Use an up-to-date graphics driver.
 
 Windows Setup and the Linux DEB register **.glb**, **.gltf**, **.fbx** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
@@ -25,6 +25,8 @@ Setup displays the installation terms and MIT license. Updates and uninstall pro
 To update on Windows, download and run the newer setup. It detects the registered installation, shows its version and updates the existing folder with your settings intact. Running the same version again reinstalls it in place. On Linux, install the newer DEB through the package manager to upgrade the installed package.
 
 ## Learn the viewer
+
+Since 1.5.2, **ⓘ** beside Lighting reports the current Scene tree selection. Use **Ctrl+T** to open the Viewer Terminal and type `help` for commands. The [tutorial](docs/tutorial.en.md) covers both the in-app terminal and batch jobs.
 
 Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, **Animation** and **Model** menus open the relevant controls. The inspector on the right contains playback settings, materials, lighting, display and active editing tools. Use the Scene tree on the left to show or hide meshes and select materials, skeletons and clips. The bottom timeline has previous frame, play, next frame, speed and loop controls.
 

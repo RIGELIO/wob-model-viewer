@@ -873,3 +873,192 @@ msgstr "Left drag to orbit · Right or middle drag to pan · Scroll to zoom"
 
 msgid "Vykreslení podle importovaných materiálů FBX."
 msgstr "Rendered with the imported FBX materials."
+
+msgid "Informace o objektu"
+msgstr "Object information"
+
+msgid "Zkopírovat údaje"
+msgstr "Copy details"
+
+msgid "Obnovit údaje"
+msgstr "Refresh details"
+
+msgid "Otevři model a vyber objekt nebo vrstvu ve stromu scény."
+msgstr "Open a model and select the object or a layer in the Scene tree."
+
+msgid "Název"
+msgstr "Name"
+
+msgid "Uzel"
+msgstr "Node"
+
+msgid "Cesta"
+msgstr "Path"
+
+msgid "Formát"
+msgstr "Format"
+
+msgid "Velikost souboru"
+msgstr "File size"
+
+msgid "Změněno (UTC)"
+msgstr "Modified (UTC)"
+
+msgid "Rozměry importu"
+msgstr "Imported dimensions"
+
+msgid "Střed importu"
+msgstr "Imported center"
+
+msgid "Atributy vrcholů (souhrn)"
+msgstr "Vertex attributes (summary)"
+
+msgid "Viditelné vrstvy"
+msgstr "Visible layers"
+
+msgid "Izolace"
+msgstr "Isolation"
+
+msgid "Úroveň detailu"
+msgstr "Level of detail"
+
+msgid "Verze glTF"
+msgstr "glTF version"
+
+msgid "Exportér"
+msgstr "Exporter"
+
+msgid "Uzly glTF"
+msgstr "glTF nodes"
+
+msgid "Obrázky glTF"
+msgstr "glTF images"
+
+msgid "Scény glTF"
+msgstr "glTF scenes"
+
+msgid "Rozšíření glTF"
+msgstr "glTF extensions"
+
+msgid "Doplňková metadata glTF"
+msgstr "glTF custom metadata"
+
+msgid "Lokální rozměry"
+msgstr "Local dimensions"
+
+msgid "Pozice uzlu"
+msgstr "Node position"
+
+msgid "Rotace uzlu (°)"
+msgstr "Node rotation (°)"
+
+msgid "Měřítko uzlu"
+msgstr "Node scale"
+
+msgid "Index uzlu glTF"
+msgstr "glTF node index"
+
+msgid "Vazby na kosti"
+msgstr "Skin bindings"
+
+msgid "Morph targety"
+msgstr "Morph targets"
+
+msgid "Povrch"
+msgstr "Surface"
+
+msgid "Indexů"
+msgstr "Indices"
+
+msgid "Trojúhelníky"
+msgstr "Triangles"
+
+msgid "Primitiva"
+msgstr "Primitive type"
+
+msgid "Atributy vrcholů"
+msgstr "Vertex attributes"
+
+msgid "Typ materiálu"
+msgstr "Material type"
+
+msgid "Výšková mapa"
+msgstr "Height map"
+
+msgid "Kostí"
+msgstr "Bones"
+
+msgid "Délka"
+msgstr "Duration"
+
+msgid "Stopy animace"
+msgstr "Animation tracks"
+
+msgid "%d klíčů"
+msgstr "%d keys"
+
+msgid "Sítí"
+msgstr "Meshes"
+
+msgid "Povrchů"
+msgstr "Surfaces"
+
+msgid "Čáry"
+msgstr "Lines"
+
+msgid "Pás čar"
+msgstr "Line strip"
+
+msgid "Pás trojúhelníků"
+msgstr "Triangle strip"
+
+msgid "Emise"
+msgstr "Emission"
+
+msgid "Zapnuto"
+msgstr "On"
+
+msgid "Vypnuto"
+msgstr "Off"
+
+msgid "Terminál prohlížeče"
+msgstr "Viewer Terminal"
+
+msgid "Záložka ⓘ ukazuje údaje výběru ve stromu scény. Ctrl+T otevře terminál. Příkaz help vypíše ovládání."
+msgstr "The ⓘ tab shows details for the Scene tree selection. Ctrl+T opens the terminal. Run help to list commands."
+
+msgid "Napiš help a stiskni Enter"
+msgstr "Type help and press Enter"
+
+msgid "Spustit příkaz"
+msgstr "Run command"
+
+msgid "Příkazy Vieweru. Napiš help pro seznam."
+msgstr "Viewer commands. Type help for a list."
+
+msgid "Zkontroluj uvozovky v příkazu."
+msgstr "Check the quotation marks in your command."
+
+msgid "Počkej na dokončení probíhající operace."
+msgstr "Wait for the current operation to finish."
+
+msgid "Soubor nebyl nalezen."
+msgstr "File not found."
+
+msgid "Podporované vstupy jsou GLB, glTF, FBX, WOBVIEW a manifest vozu."
+msgstr "Supported inputs are GLB, glTF, FBX, WOBVIEW and vehicle manifests."
+
+msgid "Nejdříve otevři model příkazem open \"cesta k souboru\"."
+msgstr "Open a model first with open \"file path\"."
+
+msgid "Zadej cestu k souboru .png."
+msgstr "Enter a path to a .png file."
+
+msgid "Neplatný příkaz nebo argument. Příkaz help zobrazí dostupné použití."
+msgstr "Invalid command or argument. Run help for usage."
+
+msgid "Klip nebyl nalezen. Použij clips."
+msgstr "Clip not found. Run clips."
+
+msgid "Neplatný argument animace. Zkontroluj délku klipu nebo příkaz help."
+msgstr "Invalid animation argument. Check the clip duration or run help."

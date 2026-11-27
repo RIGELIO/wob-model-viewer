@@ -3,6 +3,8 @@ extends Control
 const UiGlyphs = preload("res://ui_glyphs.gd")
 const SceneOutline = preload("res://scene_outline.gd")
 const MaterialInspector = preload("res://material_inspector.gd")
+const ObjectInfo = preload("res://object_info.gd")
+const ViewerTerminal = preload("res://viewer_terminal.gd")
 const Tutorial = preload("res://tutorial.gd")
 const AnimationTools = preload("res://tools/animation_tools.gd")
 const FbxMaterials = preload("res://tools/fbx_materials.gd")
@@ -290,6 +292,10 @@ var _editor_materials: MaterialInspector
 var _material_section: VBoxContainer
 var _lighting_section: VBoxContainer
 var _inspector_tabs: Array[Button]
+var _info_panel: VBoxContainer
+var _info_text: TextEdit
+var _info_report := ObjectInfo.new()
+var _terminal: ViewerTerminal
 var _light_dial: LightDirectionDial
 var _light_azimuth: SpinBox
 var _light_elevation: SpinBox
@@ -401,6 +407,9 @@ func _ready() -> void:
 	edge.add_child(inspector_edge)
 	_make_panels(header, header_slot, inspector, inspector_edge, inspector_slot)
 	_outline.rebuild(stage, "", [])
+	_terminal = ViewerTerminal.new()
+	add_child(_terminal)
+	_terminal.viewer = self
 	var status_row := HBoxContainer.new()
 	status_row.add_theme_constant_override("separation", 8)
 	layout.add_child(status_row)
@@ -496,6 +505,8 @@ func _refresh_window_menu() -> void:
 	_menu_command(menu, _window_commands, tr("Automaticky skrývat lištu"),
 		_set_panel_mode.bind(_toolbar_panel, PanelMode.AUTO_HIDE), true, KEY_NONE,
 		int(_toolbar_panel.mode == PanelMode.AUTO_HIDE))
+	_menu_command(menu, _window_commands, tr("Terminál prohlížeče"), _terminal.open, not _loading,
+		KEY_MASK_CTRL | KEY_T)
 	menu.add_separator()
 	_menu_command(menu, _window_commands, tr("English"), _change_locale.bind(0), true,
 		KEY_NONE, int(TranslationServer.get_locale() == "en"))
@@ -639,6 +650,9 @@ func _show_help() -> void:
 	)
 	_help.dialog_text += "\n\n" + tr(
 		"Lištu a inspektor můžeš připnout, skrýt nebo nastavit automatické skrývání. Skryté panely obnovíš z jejich okrajových nabídek."
+	)
+	_help.dialog_text += "\n\n" + tr(
+		"Záložka ⓘ ukazuje údaje výběru ve stromu scény. Ctrl+T otevře terminál. Příkaz help vypíše ovládání."
 	)
 	_help.popup_centered()
 
@@ -1036,10 +1050,14 @@ func _make_scene_panel(parent: Container) -> void:
 	_outline.visibility_changed_for_mesh.connect(func(mesh: MeshInstance3D, state: bool):
 		if stage:
 			stage.set_part_visible(mesh, state)
+			_refresh_object_info()
 	)
 
 
 func _scene_item_selected(kind: String, data: Variant) -> void:
+	if _info_panel.visible:
+		_refresh_object_info()
+		return
 	match kind:
 		"mesh":
 			for index in _editor_materials.targets.size():
@@ -1348,12 +1366,18 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	column.add_child(tabs)
 	var group := ButtonGroup.new()
 	var active := UiGlyphs.active_tab()
-	for index in 2:
+	for index in 3:
 		var tab := Button.new()
-		tab.text = ["Materiál", "Osvětlení"][index]
-		tab.icon = UiGlyphs.texture(["layers", "sun"][index], GOLD, 23)
-		tab.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		tab.size_flags_horizontal = SIZE_EXPAND_FILL
+		tab.text = ["Materiál", "Osvětlení", ""][index]
+		tab.icon = UiGlyphs.texture(["layers", "sun", "info"][index], GOLD, 23)
+		if index == 2:
+			tab.custom_minimum_size.x = 52.0
+			tab.tooltip_text = tr("Informace o objektu")
+			tab.accessibility_name = tr("Informace o objektu")
+			tab.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		else:
+			tab.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			tab.size_flags_horizontal = SIZE_EXPAND_FILL
 		tab.size_flags_stretch_ratio = 0.76 if index == 0 else 1.0
 		tab.toggle_mode = true
 		tab.button_group = group
@@ -1364,10 +1388,24 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 		tab.add_theme_stylebox_override("pressed", active)
 		tab.add_theme_stylebox_override("hover_pressed", active)
 		tab.add_theme_color_override("font_pressed_color", Color("#eed398"))
-		tab.pressed.connect(func(): focus_inspector(_material_section if index == 0 else _lighting_section))
+		tab.pressed.connect(func(): _select_inspector_tab(index))
 		_inspector_tabs.append(tab)
 		tabs.add_child(tab)
 	_inspector_tabs[0].set_pressed_no_signal(true)
+	_info_panel = VBoxContainer.new()
+	_info_panel.size_flags_vertical = SIZE_EXPAND_FILL
+	column.add_child(_info_panel)
+	var info_actions := HBoxContainer.new()
+	_info_panel.add_child(info_actions)
+	_button(info_actions, "Zkopírovat údaje", func(): DisplayServer.clipboard_set(_info_text.text))
+	_button(info_actions, "Obnovit údaje", _refresh_object_info)
+	_info_text = TextEdit.new()
+	_info_text.editable = false
+	_info_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	_info_text.size_flags_vertical = SIZE_EXPAND_FILL
+	_info_text.add_theme_font_size_override("font_size", 14)
+	_info_panel.add_child(_info_text)
+	_info_panel.hide()
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = SIZE_EXPAND_FILL
@@ -1633,6 +1671,10 @@ func add_inspector_tool_group(title: String, controls: Container) -> VBoxContain
 
 
 func focus_inspector(control: Control) -> void:
+	if _info_panel.visible:
+		_info_panel.hide()
+		_inspector_scroll.show()
+		_inspector_tabs[0].set_pressed_no_signal(true)
 	if control == _material_section or control == _lighting_section:
 		for index in _inspector_tabs.size():
 			_inspector_tabs[index].set_pressed_no_signal(index == int(control == _lighting_section))
@@ -1640,6 +1682,22 @@ func focus_inspector(control: Control) -> void:
 	if _inspector_panel.mode != PanelMode.PINNED:
 		_set_panel_mode(_inspector_panel, PanelMode.PINNED, false)
 	_inspector_scroll.ensure_control_visible.call_deferred(control)
+
+
+func _select_inspector_tab(index: int) -> void:
+	if index == 2:
+		_inspector_scroll.hide()
+		_info_panel.show()
+		_refresh_object_info()
+		return
+	focus_inspector(_material_section if index == 0 else _lighting_section)
+
+
+func _refresh_object_info() -> void:
+	if not _info_panel.visible:
+		return
+	var data := _outline.selection()
+	_info_text.text = _info_report.report(self, data.get("kind", "model"), data.get("data"))
 
 
 func _section(parent: VBoxContainer, title: String, foldable := false, expanded := true, glyph := "") -> VBoxContainer:
@@ -1701,7 +1759,7 @@ func _toggle(parent: Container, id: String, title: String, initial: bool, action
 
 func _choose_display(index: int) -> void:
 	if stage.model and (index == Stage.WIREFRAME_MODE or index >= Stage.POINTS_MODE):
-		_with_loading(tr(_display.get_item_text(index)), _set_display.bind(index))
+		await _with_loading(tr(_display.get_item_text(index)), _set_display.bind(index))
 	else:
 		_set_display(index)
 
@@ -1764,6 +1822,7 @@ func _refresh_parts() -> void:
 		row.collapsed = true
 	_editor_materials.set_slots(slots)
 	_outline.rebuild(stage, _path, slots)
+	_refresh_object_info()
 	_refresh_part_actions()
 
 
@@ -2187,6 +2246,7 @@ func _reload_model(selected_texture_directory: Variant = null) -> void:
 	stage.restore_hidden_parts(hidden)
 	_editor_materials.restore(previews, _path)
 	_outline.rebuild(stage, _path, _editor_materials.targets)
+	_refresh_object_info()
 	if _restore_clip(clip, seconds):
 		_restore_cut([cut.x, cut.y])
 		if playing:
@@ -2363,6 +2423,7 @@ func _open_view(path: String) -> bool:
 	stage.restore_hidden_parts(state.get("hidden_parts", []))
 	_editor_materials.restore(state.get("material_previews", []), path)
 	_outline.rebuild(stage, _path, _editor_materials.targets)
+	_refresh_object_info()
 	_view_path = path
 	var options: Variant = state.get("options", {})
 	if not options is Dictionary or not options.get("model_axes") is bool:
@@ -2443,6 +2504,7 @@ func _refresh_geometry() -> void:
 	if _display.selected == 6:
 		var topology := stage.quad_statistics()
 		_geometry.text += "\n" + (tr("Odvozené quady %d · zbývající troj. %d") % [topology.x, topology.y])
+	_refresh_object_info()
 
 
 func _refresh_model_info(announce := true) -> void:
@@ -2764,6 +2826,9 @@ func _change_locale(index: int) -> void:
 	_refresh_panel_handle(_toolbar_panel)
 	_refresh_panel_handle(_inspector_panel)
 	_refresh_cut()
+	_inspector_tabs[2].tooltip_text = tr("Informace o objektu")
+	_inspector_tabs[2].accessibility_name = tr("Informace o objektu")
+	_refresh_object_info()
 	if stage.model:
 		var row := _parts.get_selected()
 		var selection: Variant = row.get_metadata(0) if row else null
@@ -2823,6 +2888,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 					_save_view()
 			KEY_E: _show_capture()
 			KEY_L: _show_log()
+			KEY_T: _terminal.open()
 			KEY_Q: _request_quit()
 			_: return
 	elif stage.model and not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed:
