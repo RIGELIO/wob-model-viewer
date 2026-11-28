@@ -781,6 +781,12 @@ msgstr "Production Shader"
 msgid "Základní barva"
 msgstr "Base Color"
 
+msgid "Plná barva"
+msgstr "Solid color"
+
+msgid "V náhledu použije barvu bez míchání s albedem a vertex barvami."
+msgstr "Preview the color without mixing it with albedo or vertex colors."
+
 msgid "Drsnost"
 msgstr "Roughness"
 

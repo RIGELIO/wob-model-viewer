@@ -54,6 +54,8 @@ Vpravo nahoře otevři **ⓘ** vedle osvětlení. Označení ve stromu scény ur
 3. V záložce **Materiál** vyber slot. U editovatelných materiálů lze v náhledu upravit barvu, drsnost, kovovost a normálovou mapu. Změnu náhledu můžeš uložit do relace. Produkční materiály a zdrojové vertex barvy zůstávají v původním souboru.
 4. Pro srovnání LOD dej exporty se společným základem názvu, například `postava_lod0.glb` a `postava_lod1.glb`, do stejné složky. V **Model a LOD** porovnej počty a velikosti. **Page Up** a **Page Down** mění LOD při zachování pohledu.
 
+U texturovaného materiálu první změna základní barvy zapne **Plnou barvu**, aby byl odstín vidět i na tmavém albedu. Vypnutím přepínače se vrátí původní albedo a vertex barvy pro tónovaný náhled. Samostatná záložka **Osvětlení** obsahuje světla, HDRI a nastavení oblohy.
+
 ## Osvětlení, uložení a snímky
 
 1. V **Osvětlení** vyber vestavěnou předvolbu nebo vlastní panoramatický HDR či EXR v poměru 2:1. Samostatné přepínače ovládají HDRI, přímé světlo a odrazy.
@@ -109,6 +111,14 @@ $LASTEXITCODE
 Pro CSV použij `--format=csv`. Pro jediný model můžeš zadat například `"--export-info=Q:\Hotove-modely\chalupa.glb"`. Viewer prochází zadanou složku bez podsložek a zpracuje GLB, glTF a FBX. Pokud cílová složka chybí, vytvoří ji. Vznikne jeden soubor na model, například `chalupa.glb.json`. Přípona modelu zůstává v názvu, aby se stejně pojmenované GLB a FBX nepřepsaly.
 
 Existující výstupy Viewer ponechá, pokud výslovně nepřidáš `--overwrite`. Po chybě jednoho modelu pokračuje dalšími. Poslední řádek začíná `WOB_VIEWER_INFO_RESULT` a obsahuje souhrn JSON s výsledkem každého souboru. Návratový kód `0` znamená kompletní export, `1` neúplný export a `2` chybu zadání nebo cílové složky.
+
+Pro jeden společný přehled ze složky a všech podsložek použij `--recursive` a `--summary-csv`.
+
+```powershell
+& $viewer --headless -- "--export-info=Q:\Hotove-modely" --recursive "--summary-csv=D:\Exporty\prehled.csv"
+```
+
+Přehled má jeden řádek na soubor a sloupce `path`, `triangles` a `status`. U chyby načtení je počet prázdný a stav `load_failed`. Pro samostatné reporty vedle souhrnu přidej `--output-dir`. Reporty se pak ukládají ve stejné struktuře podsložek jako modely. Při rekurzi se vynechávají odkazy na adresáře.
 
 ```sh
 ./wob-model-viewer --headless -- "--export-info=/home/user/modely" "--output-dir=/home/user/export" --format=csv

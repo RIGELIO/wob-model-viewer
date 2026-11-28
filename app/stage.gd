@@ -1104,6 +1104,12 @@ func isolate(instance: MeshInstance3D, surface := -1) -> void:
 	_apply_model_display()
 
 
+func refresh_surface_preview(instance: MeshInstance3D, surface: int) -> void:
+	# An isolated surface renders through a separate mesh with its own material binding.
+	if instance == _isolated and surface == _isolated_surface:
+		_apply_model_display()
+
+
 func is_part_visible(instance: MeshInstance3D) -> bool:
 	return not _hidden_parts.has(instance)
 

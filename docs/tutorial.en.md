@@ -54,6 +54,8 @@ Use **Copy details** to put the report on the clipboard. **Refresh details** rea
 3. In **Material**, select a slot. Editable materials support changes to base color, roughness, metallic and the normal map in the preview. A session can save those changes. The source file retains its original materials and vertex colors.
 4. To compare LODs, keep similarly named exports such as `character_lod0.glb` and `character_lod1.glb` in the same folder. **Model & LOD** shows counts and sizes. **Page Up** and **Page Down** switch LOD while retaining the camera.
 
+Changing a textured material's base color first enables **Solid color**, so the new color is visible over dark albedo. Turn it off to use the original albedo and vertex colors with the tint. The separate **Lighting** tab contains lights, HDRI and sky controls.
+
 ## Set up lighting and save a view
 
 1. Under **Lighting**, choose a built-in preset or load a 2:1 HDR or EXR panorama. Use separate switches for HDRI, direct light and reflections.
@@ -109,6 +111,14 @@ $LASTEXITCODE
 Use `--format=csv` for CSV. For a single file, pass an argument like `"--export-info=D:\Models\cabin.glb"`. The viewer processes GLB, glTF and FBX files in the supplied folder. It creates the output directory when needed and writes one report per model, for example `cabin.glb.json`. It keeps the model extension in the name so a GLB and an FBX with the same stem have distinct outputs. The scan covers the selected folder's immediate children.
 
 Existing reports are kept unless you add `--overwrite`. The batch continues after a model fails. The last line begins with `WOB_VIEWER_INFO_RESULT` and contains a JSON summary with one result per file. Exit code `0` means all reports were written, `1` means an incomplete export, and `2` means invalid input or an unavailable output directory.
+
+Use `--recursive` and `--summary-csv` for one combined inventory of a folder and its subfolders.
+
+```powershell
+& $viewer --headless -- "--export-info=D:\Models" --recursive "--summary-csv=D:\Exports\inventory.csv"
+```
+
+The inventory has one row per model and the columns `path`, `triangles` and `status`. When loading fails, the triangle count is blank and the status is `load_failed`. Add `--output-dir` for individual reports alongside the inventory. Their output folders mirror the input tree. Recursive scans skip directory links.
 
 ```sh
 ./wob-model-viewer --headless -- "--export-info=/home/user/models" "--output-dir=/home/user/export" --format=csv
