@@ -148,7 +148,7 @@ func execute(line: String) -> String:
 			return tr("Soubor nebyl nalezen.")
 		var extension := path.get_extension().to_lower()
 		if not extension in viewer._model_extensions() and not extension in ["wobview", "json"]:
-			return tr("Podporované vstupy jsou GLB, glTF, FBX, OBJ, STL, WOBVIEW a manifest vozu.")
+			return tr("Podporované vstupy jsou GLB, glTF, FBX, OBJ, STL, 3MF, WOBVIEW a manifest vozu.")
 		await viewer._open_path(path)
 		return viewer._status.text
 	if not stage.model:

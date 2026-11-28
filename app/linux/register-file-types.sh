@@ -39,4 +39,4 @@ install -m644 "$source_dir/icon.png" "$data/icons/hicolor/256x256/apps/$portable
 } > "$data/applications/$portable_id.desktop"
 update-mime-database "$data/mime"
 update-desktop-database "$data/applications"
-echo "WoB Model Viewer is available in Open With for GLB, glTF, FBX, OBJ, STL and WOBVIEW."
+echo "WoB Model Viewer is available in Open With for GLB, glTF, FBX, OBJ, STL, 3MF and WOBVIEW."

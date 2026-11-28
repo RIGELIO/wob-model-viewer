@@ -2244,7 +2244,7 @@ func _files_dropped(files: PackedStringArray) -> void:
 
 
 func _model_extensions() -> PackedStringArray:
-	return PackedStringArray(["glb", "gltf", "fbx", "obj", "stl"])
+	return PackedStringArray(["glb", "gltf", "fbx", "obj", "stl", "3mf"])
 
 
 func _picker_model_extensions() -> PackedStringArray:
@@ -2252,13 +2252,13 @@ func _picker_model_extensions() -> PackedStringArray:
 
 
 func _unsupported_drop_message() -> String:
-	return "Otevři GLB, glTF, FBX, OBJ, STL, WOBVIEW, manifest vozu, HDR nebo EXR."
+	return "Otevři GLB, glTF, FBX, OBJ, STL, 3MF, WOBVIEW, manifest vozu, HDR nebo EXR."
 
 
 func _model_importer(path: String) -> Stage.Materials:
 	match path.get_extension().to_lower():
 		"fbx": return FbxMaterials.new()
-		"obj", "stl": return PrintMaterials.new()
+		"obj", "stl", "3mf": return PrintMaterials.new()
 	return Stage.Materials.new()
 
 
@@ -2272,7 +2272,7 @@ func _original_materials_description() -> String:
 	if stage.model is FbxMaterials:
 		return tr("Vykreslení podle importovaných materiálů FBX.")
 	if stage.model is PrintMaterials:
-		return tr("Vykreslení podle importovaných materiálů OBJ/STL.")
+		return tr("Vykreslení podle importovaného modelu OBJ, STL nebo 3MF.")
 	return tr("Vykreslení podle materiálů GLB.")
 
 

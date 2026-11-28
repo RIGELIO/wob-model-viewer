@@ -38,7 +38,7 @@ static func run(viewer: Control, args: PackedStringArray) -> int:
 	var unreadable: PackedStringArray
 	_models(input, viewer._model_extensions(), options.has(RECURSIVE), paths, unreadable)
 	if paths.is_empty():
-		return _invalid("No GLB, glTF, FBX, OBJ or STL input files were found.")
+		return _invalid("No GLB, glTF, FBX, OBJ, STL or 3MF input files were found.")
 	var root := input if DirAccess.dir_exists_absolute(input) else input.get_base_dir()
 	var targets := PackedStringArray()
 	if not output.is_empty():
