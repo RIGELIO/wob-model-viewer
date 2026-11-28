@@ -55,22 +55,24 @@ func write(viewer: Control, selection: Dictionary, path: String, overwrite: bool
 	var extension := path.get_extension().to_lower()
 	if not extension in ["json", "csv"]:
 		return ERR_INVALID_PARAMETER
-	if not overwrite and (FileAccess.file_exists(path) or DirAccess.dir_exists_absolute(path)):
-		return ERR_ALREADY_EXISTS
 	var kind: String = selection.get("kind", "model")
 	var details := _inspect(viewer, kind, selection.get("data"))
 	var snapshot := {"schema_version": 1, "scope": kind, "source_path": viewer._path, "details": details.values}
+	return _write_atomic(path, overwrite, _store_report.bind(snapshot, extension))
+
+
+func write_inventory(path: String, rows: Array[Dictionary], overwrite: bool) -> Error:
+	return _write_atomic(path, overwrite, _store_inventory.bind(rows))
+
+
+func _write_atomic(path: String, overwrite: bool, store: Callable) -> Error:
+	if not overwrite and (FileAccess.file_exists(path) or DirAccess.dir_exists_absolute(path)):
+		return ERR_ALREADY_EXISTS
 	var temporary := path + ".tmp-" + Crypto.new().generate_random_bytes(12).hex_encode()
 	var file := FileAccess.open(temporary, FileAccess.WRITE)
 	if not file:
 		return FileAccess.get_open_error()
-	var written: bool
-	if extension == "json":
-		written = file.store_string(JSON.stringify(snapshot, "\t", true, true) + "\n")
-	else:
-		# A UTF-8 marker lets spreadsheet applications preserve non-ASCII text.
-		written = file.store_buffer(PackedByteArray([0xEF, 0xBB, 0xBF])) \
-			and file.store_csv_line(PackedStringArray(["field", "value"])) and _csv(file, "", snapshot)
+	var written: bool = store.call(file)
 	file.flush()
 	var error := file.get_error()
 	file.close()
@@ -81,6 +83,27 @@ func write(viewer: Control, selection: Dictionary, path: String, overwrite: bool
 	if error != OK:
 		DirAccess.remove_absolute(temporary)
 	return error
+
+
+func _store_report(file: FileAccess, snapshot: Dictionary, extension: String) -> bool:
+	if extension == "json":
+		return file.store_string(JSON.stringify(snapshot, "\t", true, true) + "\n")
+	return _csv_header(file, ["field", "value"]) and _csv(file, "", snapshot)
+
+
+func _store_inventory(file: FileAccess, rows: Array[Dictionary]) -> bool:
+	if not _csv_header(file, ["path", "triangles", "status"]):
+		return false
+	for row in rows:
+		var triangles := str(row.triangles) if row.has("triangles") else ""
+		if not file.store_csv_line(PackedStringArray([row.source, triangles, row.code])):
+			return false
+	return true
+
+
+func _csv_header(file: FileAccess, columns: PackedStringArray) -> bool:
+	# A UTF-8 marker lets spreadsheet applications preserve non-ASCII text.
+	return file.store_buffer(PackedByteArray([0xEF, 0xBB, 0xBF])) and file.store_csv_line(columns)
 
 
 func _csv(file: FileAccess, pointer: String, value: Variant) -> bool:

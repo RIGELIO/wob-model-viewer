@@ -291,6 +291,8 @@ var _outline: SceneOutline
 var _editor_materials: MaterialInspector
 var _material_section: VBoxContainer
 var _lighting_section: VBoxContainer
+var _material_page: VBoxContainer
+var _lighting_page: VBoxContainer
 var _inspector_tabs: Array[Button]
 var _info_panel: VBoxContainer
 var _info_text: TextEdit
@@ -1428,17 +1430,25 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	scroll.add_child(list)
 	_inspector_scroll = scroll
 	_inspector_list = list
-	_material_section = _section(list, "Materiál", true, true)
+	_material_page = VBoxContainer.new()
+	_material_page.add_theme_constant_override("separation", 8)
+	list.add_child(_material_page)
+	_lighting_page = VBoxContainer.new()
+	_lighting_page.add_theme_constant_override("separation", 8)
+	list.add_child(_lighting_page)
+	_lighting_page.hide()
+	_material_section = _section(_material_page, "Materiál", true, true)
 	_editor_materials = MaterialInspector.new()
+	_editor_materials.surface_preview_changed.connect(stage.refresh_surface_preview)
 	_material_section.add_child(_editor_materials)
-	var model := _section(list, "Model a LOD")
+	var model := _section(_material_page, "Model a LOD")
 	var model_options := HFlowContainer.new()
 	model.add_child(model_options)
 	model_options.add_child(_vehicle_picker)
 	model_options.add_child(_lod_picker)
 	_model_section = model.get_parent() as Control
 	_model_section.hide()
-	var lighting := _section(list, "Osvětlení", false, true, "sun")
+	var lighting := _section(_lighting_page, "Osvětlení", false, true, "sun")
 	_lighting_section = lighting
 	var preset := HBoxContainer.new()
 	lighting.add_child(preset)
@@ -1455,7 +1465,7 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_primary_light(lighting, "fill", "Výplňové světlo", 3.0, 0.30, stage.fill_intensity)
 	_primary_light(lighting, "rim", "Obrysové světlo", 3.0, 0.15, stage.rim_intensity)
 	_make_light_direction(lighting)
-	lighting = _section(list, "Rozšířené osvětlení", true, false)
+	lighting = _section(_lighting_page, "Rozšířené osvětlení", true, false)
 	_hdri_name = _label(lighting, "", 13, MUTED)
 	_hdri_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_hdri_name.hide()
@@ -1489,10 +1499,10 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_slider(lighting, "azimuth", "Azimut světla", -180.0, 180.0, 1.0, _azimuth, _set_azimuth, "°")
 	_slider(lighting, "elevation", "Výška světla", -5.0, 90.0, 1.0, _elevation, _set_elevation, "°")
 
-	_section(list, "Přehrávání animace").add_child(_animation_controls)
-	_parts_section = _section(list, "Díly a materiály", true, false)
+	_section(_material_page, "Přehrávání animace").add_child(_animation_controls)
+	_parts_section = _section(_material_page, "Díly a materiály", true, false)
 	_make_parts(_parts_section)
-	var viewing := _section(list, "Zobrazení", true)
+	var viewing := _section(_material_page, "Zobrazení", true)
 	var background := HBoxContainer.new()
 	viewing.add_child(background)
 	_background_option = OptionButton.new()
@@ -1592,7 +1602,7 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_point_size_row.hide()
 	_wireframe_width_row.hide()
 
-	var geometry := _section(list, "Geometrie")
+	var geometry := _section(_material_page, "Geometrie")
 	_geometry = _label(geometry, "—", 14, MUTED)
 	_geometry.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lod_table = GridContainer.new()
@@ -1601,7 +1611,7 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_lod_table.add_theme_constant_override("v_separation", 4)
 	geometry.add_child(_lod_table)
 	_lod_table.hide()
-	var materials := _section(list, "Materiály a diagnostika")
+	var materials := _section(_material_page, "Materiály a diagnostika")
 	_textures_button = _button(materials, "Načíst textury…", _choose_texture_directory)
 	_textures_button.disabled = true
 	_diagnostics = _label(materials, "—", 13, MUTED)
@@ -1675,34 +1685,35 @@ func _make_direction_number(parent: VBoxContainer, title: String, low: float, hi
 
 func add_inspector_tool_group(title: String, controls: Container) -> VBoxContainer:
 	var group := VBoxContainer.new()
-	_inspector_list.add_child(group)
-	_inspector_list.move_child(group, 0)
+	_material_page.add_child(group)
+	_material_page.move_child(group, 0)
 	_section(group, title).add_child(controls)
 	group.hide()
 	return group
 
 
 func focus_inspector(control: Control) -> void:
-	if _info_panel.visible:
-		_info_panel.hide()
-		_inspector_scroll.show()
-		_inspector_tabs[0].set_pressed_no_signal(true)
-	if control == _material_section or control == _lighting_section:
-		for index in _inspector_tabs.size():
-			_inspector_tabs[index].set_pressed_no_signal(index == int(control == _lighting_section))
-		control.show()
+	var lights := _lighting_page.is_ancestor_of(control)
+	if control == _inspector_list:
+		lights = _inspector_tabs[1].button_pressed
 	if _inspector_panel.mode != PanelMode.PINNED:
 		_set_panel_mode(_inspector_panel, PanelMode.PINNED, false)
+	_select_inspector_tab(int(lights))
+	if control == _material_section:
+		control.show()
 	_inspector_scroll.ensure_control_visible.call_deferred(control)
 
 
 func _select_inspector_tab(index: int) -> void:
+	_inspector_tabs[index].set_pressed_no_signal(true)
+	_info_panel.visible = index == 2
+	_inspector_scroll.visible = index != 2
 	if index == 2:
-		_inspector_scroll.hide()
-		_info_panel.show()
 		_refresh_object_info()
 		return
-	focus_inspector(_material_section if index == 0 else _lighting_section)
+	_material_page.visible = index == 0
+	_lighting_page.visible = index == 1
+	_inspector_scroll.scroll_vertical = 0
 
 
 func _refresh_object_info() -> void:
@@ -1782,8 +1793,8 @@ func _section(parent: VBoxContainer, title: String, foldable := false, expanded 
 	content.visible = expanded
 	content.add_theme_constant_override("separation", 6)
 	layout.add_child(content)
-	heading.pressed.connect(func():
-		content.visible = not content.visible
+	heading.pressed.connect(func(): content.visible = not content.visible)
+	content.visibility_changed.connect(func():
 		heading.icon = UiGlyphs.texture("chevron_down" if content.visible else "chevron_right", GOLD, 14)
 	)
 	return content

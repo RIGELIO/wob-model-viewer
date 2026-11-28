@@ -3,12 +3,15 @@ extends VBoxContainer
 const UiGlyphs = preload("res://ui_glyphs.gd")
 const ViewFile = preload("res://view_file.gd")
 
+signal surface_preview_changed(instance: MeshInstance3D, surface: int)
+
 var targets: Array[Dictionary]
 var _picker: OptionButton
 var _name: Label
 var _type: Label
 var _color: ColorPickerButton
 var _sampler: Button
+var _solid_color: CheckBox
 var _roughness: SpinBox
 var _metallic: SpinBox
 var _normal: Button
@@ -89,6 +92,11 @@ func _ready() -> void:
 	)
 	color_row.add_child(_sampler)
 	_row("Základní barva", color_row)
+	_solid_color = CheckBox.new()
+	_solid_color.text = "Plná barva"
+	_solid_color.tooltip_text = "V náhledu použije barvu bez míchání s albedem a vertex barvami."
+	_solid_color.toggled.connect(_set_solid_color)
+	add_child(_solid_color)
 	get_window().focus_exited.connect(_cancel_sample)
 	_roughness = _number("Drsnost")
 	_roughness.value_changed.connect(func(value: float):
@@ -171,6 +179,8 @@ func _show_selected(_index: int) -> void:
 	_color.disabled = not pbr
 	_sampler.disabled = not pbr
 	_color.color = pbr.albedo_color if pbr else Color("#6b645b")
+	_solid_color.disabled = not pbr
+	_solid_color.set_pressed_no_signal(slot.get("solid_color", false))
 	_roughness.editable = pbr != null
 	_metallic.editable = pbr != null
 	_roughness.set_value_no_signal(pbr.roughness if pbr else 0.0)
@@ -205,20 +215,48 @@ func _input(event: InputEvent) -> void:
 func _apply_color(color: Color) -> void:
 	var material := _editable()
 	if material:
+		var slot := _target()
 		material.albedo_color = color
+		var original: BaseMaterial3D = slot.source_material
+		if not slot.has("solid_color") and (original.albedo_texture or original.vertex_color_use_as_albedo):
+			_apply_color_mode(slot, true)
+			_solid_color.set_pressed_no_signal(true)
 		_update_preview(material)
+
+
+func _set_solid_color(enabled: bool) -> void:
+	var material := _editable()
+	if material:
+		_apply_color_mode(_target(), enabled)
+		_update_preview(material)
+
+
+func _apply_color_mode(slot: Dictionary, enabled: bool) -> void:
+	var preview: BaseMaterial3D = slot.preview_material
+	var original: BaseMaterial3D = slot.source_material
+	slot["solid_color"] = enabled
+	preview.albedo_texture = null if enabled else original.albedo_texture
+	preview.vertex_color_use_as_albedo = not enabled and original.vertex_color_use_as_albedo
 
 
 func _editable() -> BaseMaterial3D:
 	var slot := _target()
 	if slot.is_empty() or not is_instance_valid(slot.instance):
 		return null
-	var material := slot.instance.get_active_material(slot.surface) as BaseMaterial3D
-	if not material:
-		return null
 	if not slot.has("preview_material"):
+		var instance: MeshInstance3D = slot.instance
+		var material := instance.get_active_material(slot.surface) as BaseMaterial3D
+		if not material:
+			return null
+		slot.source_material = material
 		slot.preview_material = material.duplicate()
-		slot.instance.set_surface_override_material(slot.surface, slot.preview_material)
+		if instance.material_override:
+			# Keep the effective material on every other surface when enabling slot edits.
+			for surface in instance.mesh.get_surface_count():
+				instance.set_surface_override_material(surface, instance.material_override)
+			instance.material_override = null
+		instance.set_surface_override_material(slot.surface, slot.preview_material)
+		surface_preview_changed.emit(instance, slot.surface)
 	return slot.preview_material
 
 
@@ -246,6 +284,7 @@ func snapshot(view_path: String) -> Array[Dictionary]:
 				"node": slot.node,
 				"surface": slot.surface,
 				"color": material.albedo_color.to_html(),
+				"solid_color": slot.get("solid_color", false),
 				"roughness": material.roughness,
 				"metallic": material.metallic,
 				"normal": ViewFile.pack_path(view_path, slot.get("normal_path", "")),
@@ -275,6 +314,8 @@ func restore(records: Variant, view_path: String) -> void:
 		var color: Variant = record.get("color")
 		if color is String and Color.html_is_valid(color):
 			material.albedo_color = Color.html(color)
+		if record.get("solid_color") is bool:
+			_apply_color_mode(slot, record.solid_color)
 		for key in ["roughness", "metallic"]:
 			var value: Variant = record.get(key)
 			if (value is float or value is int) and is_finite(float(value)):
