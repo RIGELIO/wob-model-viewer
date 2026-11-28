@@ -13,7 +13,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
-VERSION = "1.5.6"
+VERSION = "1.5.7"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
 VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {

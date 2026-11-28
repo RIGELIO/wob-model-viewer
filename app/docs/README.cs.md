@@ -14,7 +14,7 @@ Instalátor a EXE pro Windows jsou bez digitálního podpisu. Pokud Windows zobr
 
 Instalátor před instalací zobrazí podmínky a licenci MIT. Při aktualizaci a odinstalaci vyzve k zavření otevřených oken prohlížeče. Odinstalátor odstraní program, jeho zástupce, registraci a známé soubory nastavení a mezipaměti. Uložené modely, relace a snímky zůstanou na svých místech.
 
-Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná registrovanou instalaci, ukáže nalezenou verzi a aktualizuje stávající složku se zachováním nastavení. Spuštění stejné verze ji přeinstaluje do stejného umístění. V Linuxu aktualizuje stávající instalaci novější balíček DEB přes správce balíčků.
+Pro aktualizaci ve Windows stáhni a spusť novější instalátor. Rozpozná registrovanou instalaci, ukáže nalezenou verzi a aktualizuje stávající složku se zachováním nastavení. Spuštění stejné verze ji přeinstaluje do stejného umístění. Přenosná kopie v jiné složce se aktualizuje samostatně rozbalením nového ZIPu. V Linuxu aktualizuje stávající instalaci novější balíček DEB přes správce balíčků.
 
 ## První kroky
 
