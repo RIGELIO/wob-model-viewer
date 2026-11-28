@@ -10,12 +10,13 @@
 6. [Přehrávání a kontrola animace](#přehrávání-a-kontrola-animace)
 7. [Terminál v aplikaci](#terminál-v-aplikaci)
 8. [Příkazová řádka a automatizace](#příkazová-řádka-a-automatizace)
+9. [Export pro 3D tisk](#export-pro-3d-tisk)
 
 ## Spuštění a otevření modelu
 
 1. Ve Windows rozbal ZIP s názvem `windows-portable` a spusť **WoB Model Viewer.exe**. Alternativou je **Windows Setup**.
 2. V Linuxu rozbal ZIP s názvem `linux-portable` a spusť `./wob-model-viewer`. Pokud rozbalovací nástroj nepřenese oprávnění, nejprve použij `chmod +x wob-model-viewer wob-gif`. Na Debianu a Ubuntu můžeš použít také balíček DEB.
-3. Přetáhni model do okna nebo použij **Soubor → Otevřít** či **Ctrl+O**. Viewer otevře GLB, glTF, FBX, relace `.wobview` a manifesty vozů Wars of Bohemia. U glTF ponech odkazované soubory `.bin` a textury na relativních cestách z exportu.
+3. Přetáhni model do okna nebo použij **Soubor → Otevřít** či **Ctrl+O**. Viewer otevře GLB, glTF, FBX, OBJ, STL, relace `.wobview` a manifesty vozů Wars of Bohemia. U glTF ponech odkazované soubory `.bin` a textury na relativních cestách z exportu.
 4. Jazyk přepni v nabídce **Okno**. **Nápověda → Průvodce krok za krokem** otevře interaktivní průvodce přímo v aplikaci. **F1** otevře ovládání a **Ctrl+L** protokol.
 
 Když je po otevření povrch bílý, projdi **Materiály a diagnostika**. Viewer zkouší názvy textur u modelu a nejvýše dvě úrovně nad ním. Chybějící mapy můžeš doplnit přes **Načíst textury…**. Herní textury a shadery lze přiřadit také z místní kolekce `_materialy-z-hry` s indexem a složkou `assets`.
@@ -108,7 +109,7 @@ $viewer = (Resolve-Path ".\WoB Model Viewer.console.exe").Path
 $LASTEXITCODE
 ```
 
-Pro CSV použij `--format=csv`. Pro jediný model můžeš zadat například `"--export-info=Q:\Hotove-modely\chalupa.glb"`. Viewer prochází zadanou složku bez podsložek a zpracuje GLB, glTF a FBX. Pokud cílová složka chybí, vytvoří ji. Vznikne jeden soubor na model, například `chalupa.glb.json`. Přípona modelu zůstává v názvu, aby se stejně pojmenované GLB a FBX nepřepsaly.
+Pro CSV použij `--format=csv`. Pro jediný model můžeš zadat například `"--export-info=Q:\Hotove-modely\chalupa.glb"`. Viewer prochází zadanou složku bez podsložek a zpracuje GLB, glTF, FBX, OBJ a STL. Pokud cílová složka chybí, vytvoří ji. Vznikne jeden soubor na model, například `chalupa.glb.json`. Přípona modelu zůstává v názvu, aby se stejně pojmenované GLB a FBX nepřepsaly.
 
 Existující výstupy Viewer ponechá, pokud výslovně nepřidáš `--overwrite`. Po chybě jednoho modelu pokračuje dalšími. Poslední řádek začíná `WOB_VIEWER_INFO_RESULT` a obsahuje souhrn JSON s výsledkem každého souboru. Návratový kód `0` znamená kompletní export, `1` neúplný export a `2` chybu zadání nebo cílové složky.
 
@@ -158,3 +159,12 @@ Pro dávkovou analýzu ulož úlohu jako `analyza.json` vedle modelu. Relativní
 ```
 
 Ve Windows použij `& ".\WoB Model Viewer.exe" --headless -- --viewer-job=analyza.json`. Ve skriptu můžeš číst `vysledek.json` v obou systémech. Pro GIF použij `"type": "gif"` a doplň `"output": "vyrez.gif", "width": 640, "height": 360`. GIF vyžaduje grafické prostředí, takže jej spusť bez `--headless`. Analýza podporuje 5–60 FPS a nejvýše 900 vzorků. GIF podporuje 5–30 FPS, nejvýše 240 snímků a rozlišení do 1280 × 720.
+
+## Export pro 3D tisk
+
+1. Otevři model. Pro konkrétní pózu vyber klip a posuň se na požadovaný čas. Při otevření exportu se přehrávání pozastaví.
+2. Vyber **Soubor → Exportovat pro 3D tisk…** a zvol **Aktuální snímek animace** nebo **Základní pózu**. Export používá viditelné díly a respektuje izolaci.
+3. Nastav měřítko a vyber **STL**, **3MF** nebo **OBJ**. Při 100 % odpovídá jeden metr ve Vieweru 1000 mm ve výstupu. Geometrie má osu Z nahoru a její nejnižší bod leží na Z = 0.
+4. Otevři soubor ve sliceru a zkontroluj rozměry, orientaci a případné otevřené hrany. Export ukládá geometrii jedné pózy. Materiály, animace a povrchy generované až shaderem se do tiskové sítě nezapisují.
+
+Viewer otevře také binární i textové STL a Wavefront OBJ. Textury z jednoduchého MTL ulož na původních relativních cestách. U STL předpokládá milimetry. Běžné OBJ otevírá v osách modelu a s jednotkou 1 m, vlastní tiskové OBJ rozpozná pomocí hlavičky a při otevření převádí zpět z milimetrů.

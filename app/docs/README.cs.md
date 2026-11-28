@@ -8,7 +8,7 @@ Offline desktopový prohlížeč GLB, glTF a FBX pro kontrolu geometrie, materi�
 
 V [nejnovějším vydání](https://github.com/RIGELIO/wob-model-viewer/releases/latest) najdeš instalační EXE pro **Windows x86-64** a balíček `.deb` pro **Debian a Ubuntu x86-64**. Balíček otevři ve správci balíčků nebo použij `sudo apt install ./wob-model-viewer_VERZE_amd64.deb`. Pro obě platformy je k dispozici přenosný ZIP. Rozbal ho a spusť **WoB Model Viewer.exe** nebo **wob-model-viewer**. Pokud rozbalovací nástroj odebral příznak spuštění, obnov ho příkazem `chmod +x wob-model-viewer`. Vše potřebné ke spuštění je v balíčku. Použij aktuální grafický ovladač.
 
-Instalátor Windows a balíček DEB v Linuxu automaticky zaregistrují **.glb**, **.gltf**, **.fbx** a **.wobview**. Pro otevírání dvojklikem zvol **WoB Model Viewer** ve výchozích aplikacích systému nebo přes **Otevřít v programu**. Instalátor Windows nastaví Viewer pro dosud neregistrované pohledy `.wobview` a na poslední stránce nabídne otevření nastavení výchozích aplikací. U přenosné verze spusť ve Windows **Register-FileTypes.cmd** nebo v Linuxu `sh register-file-types.sh`. Linuxový skript používá `shared-mime-info` a `desktop-file-utils`. Po přemístění přenosné aplikace registraci zopakuj.
+Instalátor Windows a balíček DEB v Linuxu automaticky zaregistrují **.glb**, **.gltf**, **.fbx**, **.obj**, **.stl** a **.wobview**. Pro otevírání dvojklikem zvol **WoB Model Viewer** ve výchozích aplikacích systému nebo přes **Otevřít v programu**. Instalátor Windows nastaví Viewer pro dosud neregistrované pohledy `.wobview` a na poslední stránce nabídne otevření nastavení výchozích aplikací. U přenosné verze spusť ve Windows **Register-FileTypes.cmd** nebo v Linuxu `sh register-file-types.sh`. Linuxový skript používá `shared-mime-info` a `desktop-file-utils`. Po přemístění přenosné aplikace registraci zopakuj.
 
 Instalátor a EXE pro Windows jsou bez digitálního podpisu. Pokud Windows zobrazí výstrahu SmartScreen, ověř stažený soubor proti `SHA256SUMS.txt` na stránce vydání. Podpis umožní Windows zobrazit ověřeného vydavatele. SmartScreen při prvních staženích zohledňuje i reputaci nového souboru. [Dokumentace Microsoftu](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
@@ -29,6 +29,8 @@ Záložka **ⓘ** nabízí **Export JSON** a **Export CSV** pro aktuální výb�
 Pro bezokenní export celé složky z PowerShellu spusť `& ".\WoB Model Viewer.console.exe" --headless -- "--export-info=Q:\Hotove-modely" "--output-dir=D:\Exporty\WoB" --format=json`. Pro Linux použij `./wob-model-viewer` se stejnými přepínači a linuxovými cestami.
 
 Parametr `--recursive` zahrne podsložky. Pro jeden přehled s cestami a počty trojúhelníků přidej `"--summary-csv=D:\Exporty\prehled.csv"`. Samostatné reporty se vytvářejí při zadání `--output-dir`.
+
+**Soubor → Exportovat pro 3D tisk…** uloží viditelnou geometrii ze základní pózy nebo aktuálního snímku animace do STL, 3MF či OBJ. Výstup používá milimetry a osu Z nahoru. Viewer načítá také OBJ a binární i textové STL.
 
 Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Model → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
 

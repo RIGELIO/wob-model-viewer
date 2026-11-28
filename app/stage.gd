@@ -4,6 +4,7 @@ const Materials = preload("res://materials.gd")
 const TopologyOverlay = preload("res://topology_overlay.gd")
 const WireframeMesh = preload("res://wireframe_mesh.gd")
 const ModelGizmo = preload("res://model_gizmo.gd")
+const PrintMesh = preload("res://tools/print_mesh.gd")
 const BUILTIN_HDRI := "res://production/lighting/lilienstein_2k.hdr"
 const HDRI_PRESETS := [BUILTIN_HDRI, "res://art/lighting/kloppenheim_06_puresky_2k.hdr",
 	"res://art/lighting/moonlit_golf_2k.hdr"]
@@ -61,6 +62,7 @@ var animation_player: AnimationPlayer
 var current_clip: StringName
 var geometry := Vector4i.ZERO
 var bounds := AABB()
+var print_rest_state: Dictionary
 var capture_in_progress := false
 
 var _sky_material: PanoramaSkyMaterial
@@ -279,6 +281,7 @@ func _install_model(pending: Materials) -> void:
 	_bone_lines.clear_surfaces()
 	model = pending
 	_model_anchor.add_child(model.root)
+	print_rest_state = PrintMesh.rest_state(self)
 	for mesh in model.meshes:
 		_mesh_layers[mesh] = mesh.layers
 	_inspect_model()

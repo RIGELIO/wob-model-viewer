@@ -10,12 +10,13 @@
 6. [Play and review animation](#play-and-review-animation)
 7. [Use the in-app terminal](#use-the-in-app-terminal)
 8. [Automate from a system terminal](#automate-from-a-system-terminal)
+9. [Export for 3D printing](#export-for-3d-printing)
 
 ## Run the viewer
 
 1. On Windows, extract the ZIP marked `windows-portable` and run **WoB Model Viewer.exe**. To install the viewer, run **Windows Setup**.
 2. On Linux, extract the ZIP marked `linux-portable` and run `./wob-model-viewer`. If your extractor drops executable permissions, run `chmod +x wob-model-viewer wob-gif` first. On Debian or Ubuntu you can also install the DEB package.
-3. Drop a model into the window or press **Ctrl+O**. The viewer accepts GLB, glTF, FBX, `.wobview` sessions and Wars of Bohemia vehicle manifests. Keep external `.bin` files and textures referenced by glTF at their exported relative paths.
+3. Drop a model into the window or press **Ctrl+O**. The viewer accepts GLB, glTF, FBX, OBJ, STL, `.wobview` sessions and Wars of Bohemia vehicle manifests. Keep external `.bin` files and textures referenced by glTF at their exported relative paths.
 4. Switch the interface language from **Window**. **Help → Step-by-step Guide** opens the interactive tutorial. **F1** shows input controls and **Ctrl+L** opens the log.
 
 If a surface appears white, check **Materials & diagnostics**. The viewer searches for textures beside the model and up to two levels above it. Use **Load textures…** to choose a folder manually. To use local game materials, keep the `_materialy-z-hry` collection together with its index and `assets` directory.
@@ -108,7 +109,7 @@ $viewer = (Resolve-Path ".\WoB Model Viewer.console.exe").Path
 $LASTEXITCODE
 ```
 
-Use `--format=csv` for CSV. For a single file, pass an argument like `"--export-info=D:\Models\cabin.glb"`. The viewer processes GLB, glTF and FBX files in the supplied folder. It creates the output directory when needed and writes one report per model, for example `cabin.glb.json`. It keeps the model extension in the name so a GLB and an FBX with the same stem have distinct outputs. The scan covers the selected folder's immediate children.
+Use `--format=csv` for CSV. For a single file, pass an argument like `"--export-info=D:\Models\cabin.glb"`. The viewer processes GLB, glTF, FBX, OBJ and STL files in the supplied folder. It creates the output directory when needed and writes one report per model, for example `cabin.glb.json`. It keeps the model extension in the name so a GLB and an FBX with the same stem have distinct outputs. The scan covers the selected folder's immediate children.
 
 Existing reports are kept unless you add `--overwrite`. The batch continues after a model fails. The last line begins with `WOB_VIEWER_INFO_RESULT` and contains a JSON summary with one result per file. Exit code `0` means all reports were written, `1` means an incomplete export, and `2` means invalid input or an unavailable output directory.
 
@@ -158,3 +159,12 @@ Save a batch analysis job as `analyze.json` beside the model. Relative paths res
 ```
 
 On Windows use `& ".\WoB Model Viewer.exe" --headless -- --viewer-job=analyze.json`. Read `result.json` from your script on either platform. For GIF export, use `"type": "gif"` with `"output": "cut.gif", "width": 640, "height": 360`. Run GIF jobs with a graphical display and omit `--headless`. Analysis supports 5–60 FPS and up to 900 samples. GIF export supports 5–30 FPS, up to 240 frames and dimensions up to 1280 × 720.
+
+## Export for 3D printing
+
+1. Open the model. To print a pose, choose an animation clip and scrub to the desired time. Opening the export stops playback at that frame.
+2. Choose **File → Export for 3D printing…** and select **Current animation frame** or **Rest pose**. The export uses visible parts and respects isolation.
+3. Set the scale and choose **STL**, **3MF** or **OBJ**. With scale at 100%, one meter in the viewer becomes 1000 millimeters in the file. Z points up and the lowest point is placed at Z = 0.
+4. Open the file in your slicer to check dimensions, orientation and open edges. The file contains the mesh for one pose. Materials, animation tracks and shader-generated surfaces are outside the exported geometry.
+
+The viewer can also open binary and ASCII STL and Wavefront OBJ. Keep textures referenced by a basic MTL file at their original relative paths. STL uses millimeters. Ordinary OBJ uses the source axes and one unit per meter. The viewer recognizes its own print OBJ header and converts those files back from millimeters.

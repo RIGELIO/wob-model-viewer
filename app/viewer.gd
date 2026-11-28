@@ -8,6 +8,8 @@ const ViewerTerminal = preload("res://viewer_terminal.gd")
 const Tutorial = preload("res://tutorial.gd")
 const AnimationTools = preload("res://tools/animation_tools.gd")
 const FbxMaterials = preload("res://tools/fbx_materials.gd")
+const PrintMaterials = preload("res://tools/print_materials.gd")
+const PrintMesh = preload("res://tools/print_mesh.gd")
 const Stage = preload("res://stage.gd")
 const ViewFile = preload("res://view_file.gd")
 const OrientationGizmo = preload("res://orientation_gizmo.gd")
@@ -26,7 +28,7 @@ const HDRI_NAMES := ["Lilienstein", "Kloppenheim 06 · Pure Sky", "Moonlit Golf"
 const LOG_LIMIT := 200
 const SETTINGS := "user://viewer.cfg"
 const PANEL_CLOSE_DELAY_MSEC := 420
-enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, QUIT }
+enum FileAction { OPEN, RELOAD, SAVE, SAVE_AS, CAPTURE, QUIT, PRINT }
 enum PanelMode { PINNED, AUTO_HIDE, HIDDEN }
 
 class LoadingArtwork extends TextureRect:
@@ -277,6 +279,11 @@ var _hdri_dialog: FileDialog
 var _textures_dialog: FileDialog
 var _textures_button: Button
 var _save_dialog: FileDialog
+var _print_options: ConfirmationDialog
+var _print_file: FileDialog
+var _print_pose: OptionButton
+var _print_format: OptionButton
+var _print_scale: SpinBox
 var _view_dialog: FileDialog
 var _about: AcceptDialog
 var _help: AcceptDialog
@@ -443,6 +450,7 @@ func _ready() -> void:
 	_textures_dialog.dir_selected.connect(_reload_model)
 	_save_dialog = _dialog("Uložit snímek 3840 × 2160", FileDialog.FILE_MODE_SAVE_FILE, "*.png ; Obraz PNG")
 	_save_dialog.file_selected.connect(_capture)
+	_make_print_options()
 	_view_dialog = _dialog("Uložit relaci jako", FileDialog.FILE_MODE_SAVE_FILE, "*.wobview")
 	_info_export_dialog = _dialog("Exportovat údaje o objektu", FileDialog.FILE_MODE_SAVE_FILE, "*.json,*.csv")
 	_info_export_dialog.file_selected.connect(_export_info_from_dialog)
@@ -540,9 +548,10 @@ func _refresh_menu() -> void:
 	menu.add_item(tr("Uložit"), FileAction.SAVE, KEY_MASK_CTRL | KEY_S)
 	menu.add_item(tr("Uložit jako…"), FileAction.SAVE_AS, KEY_MASK_CTRL | KEY_MASK_SHIFT | KEY_S)
 	menu.add_item(tr("Uložit 4K PNG"), FileAction.CAPTURE, KEY_MASK_CTRL | KEY_E)
+	menu.add_item(tr("Exportovat pro 3D tisk…"), FileAction.PRINT)
 	menu.add_separator()
 	menu.add_item(tr("Konec"), FileAction.QUIT, KEY_MASK_CTRL | KEY_Q)
-	for id in [FileAction.RELOAD, FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE]:
+	for id in [FileAction.RELOAD, FileAction.SAVE, FileAction.SAVE_AS, FileAction.CAPTURE, FileAction.PRINT]:
 		menu.set_item_disabled(menu.get_item_index(id), _path.is_empty())
 	var help := _menu_help.get_popup()
 	help.clear()
@@ -637,6 +646,7 @@ func _file_action(id: int) -> void:
 		FileAction.SAVE: _save_view()
 		FileAction.SAVE_AS: _show_view_save()
 		FileAction.CAPTURE: _show_capture()
+		FileAction.PRINT: _show_print_options()
 		FileAction.QUIT: _request_quit()
 
 
@@ -2133,6 +2143,92 @@ func _show_capture() -> void:
 	_save_dialog.popup_centered_ratio(0.64)
 
 
+func _make_print_options() -> void:
+	_print_options = ConfirmationDialog.new()
+	_print_options.exclusive = true
+	add_child(_print_options)
+	var options := VBoxContainer.new()
+	options.custom_minimum_size.x = 375
+	_print_options.add_child(options)
+	var details := _label(options, "Export viditelné geometrie v milimetrech, se zemí na Z = 0.", 14, MUTED)
+	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_print_pose = OptionButton.new()
+	_print_pose.add_item("Základní póza")
+	_print_pose.add_item("Aktuální snímek animace")
+	options.add_child(_print_pose)
+	_print_format = OptionButton.new()
+	for extension in PrintMesh.EXTENSIONS:
+		_print_format.add_item(extension.to_upper())
+	options.add_child(_print_format)
+	var scale := HBoxContainer.new()
+	options.add_child(scale)
+	_label(scale, "Měřítko", 14, MUTED).size_flags_horizontal = SIZE_EXPAND_FILL
+	_print_scale = SpinBox.new()
+	_print_scale.min_value = 0.01
+	_print_scale.max_value = 1000.0
+	_print_scale.step = 0.01
+	_print_scale.value = 100.0
+	_print_scale.suffix = "%"
+	scale.add_child(_print_scale)
+	_print_file = _dialog("Exportovat pro 3D tisk…", FileDialog.FILE_MODE_SAVE_FILE, "*.stl,*.3mf,*.obj")
+	_print_file.file_selected.connect(_write_print)
+	_print_options.confirmed.connect(_choose_print_file)
+
+
+func _show_print_options() -> void:
+	if not stage.model or _loading or stage.capture_in_progress:
+		return
+	if stage.animation_player and stage.animation_player.is_playing():
+		_toggle_play()
+	_print_options.title = tr("Exportovat pro 3D tisk…")
+	_print_options.ok_button_text = tr("Uložit jako…")
+	_print_options.cancel_button_text = tr("Storno")
+	_print_pose.select(int(stage.animation_player != null))
+	_print_options.popup_centered()
+
+
+func _choose_print_file() -> void:
+	if not stage.model:
+		return
+	var extension: String = PrintMesh.EXTENSIONS[_print_format.selected]
+	_print_file.title = tr("Exportovat pro 3D tisk…")
+	_print_file.filters = PackedStringArray(["*.%s ; %s" % [extension, extension.to_upper()]])
+	_print_file.current_dir = _path.get_base_dir()
+	_print_file.current_file = _path.get_file().get_basename() + "-print." + extension
+	_print_file.popup_centered_ratio(0.64)
+
+
+func _write_print(path: String) -> void:
+	if not stage.model:
+		return
+	var extension: String = PrintMesh.EXTENSIONS[_print_format.selected]
+	if not path.get_extension().to_lower() in PrintMesh.EXTENSIONS:
+		path += "." + extension
+		if FileAccess.file_exists(path):
+			_feedback("Soubor už existuje. Vyber jiný název.", true)
+			return
+	var source := _path.replace("\\", "/").simplify_path()
+	var target := path.replace("\\", "/").simplify_path()
+	if source == target or (OS.get_name() == "Windows" and source.nocasecmp_to(target) == 0):
+		_feedback("Pro tisk vyber jinou cestu než zdrojový model.", true)
+		return
+	await _with_loading(path.get_file(), func():
+		var geometry := PrintMesh.capture(stage, _print_pose.selected == 1, _print_scale.value)
+		var result: Variant = await _run_worker(PrintMesh.write.bind(geometry, path))
+		if not result is Dictionary or result.error != OK:
+			var error: Error = result.error if result is Dictionary else ERR_CANT_CREATE
+			_feedback(tr("Export pro 3D tisk se nezdařil (%s).") % error_string(error), true)
+			return
+		var message := tr("Export pro 3D tisk uložen · %d trojúhelníků · %s") % [result.triangles, path.get_file()]
+		var problems := int(result.problem_edges)
+		var details := PackedStringArray([path])
+		if problems > 0:
+			details.append(tr("Otevřené nebo nevalidní hrany: %d. Ověř model v programu pro přípravu tisku.") % problems)
+			message += " · " + (tr("Hrany ke kontrole: %d") % problems)
+		_feedback(message, problems > 0, details)
+	)
+
+
 func _files_dropped(files: PackedStringArray) -> void:
 	if _loading or stage.capture_in_progress:
 		return
@@ -2148,7 +2244,7 @@ func _files_dropped(files: PackedStringArray) -> void:
 
 
 func _model_extensions() -> PackedStringArray:
-	return PackedStringArray(["glb", "gltf", "fbx"])
+	return PackedStringArray(["glb", "gltf", "fbx", "obj", "stl"])
 
 
 func _picker_model_extensions() -> PackedStringArray:
@@ -2156,15 +2252,18 @@ func _picker_model_extensions() -> PackedStringArray:
 
 
 func _unsupported_drop_message() -> String:
-	return "Otevři GLB, glTF, FBX, WOBVIEW, manifest vozu, HDR nebo EXR."
+	return "Otevři GLB, glTF, FBX, OBJ, STL, WOBVIEW, manifest vozu, HDR nebo EXR."
 
 
 func _model_importer(path: String) -> Stage.Materials:
-	return FbxMaterials.new() if path.get_extension().to_lower() == "fbx" else Stage.Materials.new()
+	match path.get_extension().to_lower():
+		"fbx": return FbxMaterials.new()
+		"obj", "stl": return PrintMaterials.new()
+	return Stage.Materials.new()
 
 
 func _model_file_bytes() -> int:
-	if stage.model is FbxMaterials:
+	if stage.model is FbxMaterials or stage.model is PrintMaterials:
 		return stage.model.file_bytes
 	return stage.model.source.bytes.size()
 
@@ -2172,6 +2271,8 @@ func _model_file_bytes() -> int:
 func _original_materials_description() -> String:
 	if stage.model is FbxMaterials:
 		return tr("Vykreslení podle importovaných materiálů FBX.")
+	if stage.model is PrintMaterials:
+		return tr("Vykreslení podle importovaných materiálů OBJ/STL.")
 	return tr("Vykreslení podle materiálů GLB.")
 
 

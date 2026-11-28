@@ -1083,3 +1083,48 @@ msgstr "Clip not found. Run clips."
 
 msgid "Neplatný argument animace. Zkontroluj délku klipu nebo příkaz help."
 msgstr "Invalid animation argument. Check the clip duration or run help."
+
+msgid "Exportovat pro 3D tisk…"
+msgstr "Export for 3D printing…"
+
+msgid "Export viditelné geometrie v milimetrech, se zemí na Z = 0."
+msgstr "Export visible geometry in millimeters, with its base at Z = 0."
+
+msgid "Základní póza"
+msgstr "Rest pose"
+
+msgid "Aktuální snímek animace"
+msgstr "Current animation frame"
+
+msgid "Měřítko"
+msgstr "Scale"
+
+msgid "Storno"
+msgstr "Cancel"
+
+msgid "Export pro 3D tisk se nezdařil (%s)."
+msgstr "3D print export failed (%s)."
+
+msgid "Pro tisk vyber jinou cestu než zdrojový model."
+msgstr "Choose an export path different from the source model."
+
+msgid "Export pro 3D tisk uložen · %d trojúhelníků · %s"
+msgstr "3D print export saved · %d triangles · %s"
+
+msgid "Otevřené nebo nevalidní hrany: %d. Ověř model v programu pro přípravu tisku."
+msgstr "Open or non-manifold edges: %d. Check the model in your slicer."
+
+msgid "Hrany ke kontrole: %d"
+msgstr "Edges to check: %d"
+
+msgid "Soubor neobsahuje platné trojúhelníky OBJ nebo STL."
+msgstr "The file does not contain valid OBJ or STL triangles."
+
+msgid "Vykreslení podle importovaných materiálů OBJ/STL."
+msgstr "Displaying the imported OBJ/STL materials."
+
+msgid "Otevři GLB, glTF, FBX, OBJ, STL, WOBVIEW, manifest vozu, HDR nebo EXR."
+msgstr "Open GLB, glTF, FBX, OBJ, STL, WOBVIEW, a vehicle manifest, HDR or EXR."
+
+msgid "Podporované vstupy jsou GLB, glTF, FBX, OBJ, STL, WOBVIEW a manifest vozu."
+msgstr "Supported inputs are GLB, glTF, FBX, OBJ, STL, WOBVIEW and vehicle manifests."
