@@ -1,6 +1,6 @@
 # WoB Model Viewer
 
-WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
+WoB Model Viewer is an offline desktop viewer for GLB, glTF, FBX, OBJ and STL models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
 [Step-by-step tutorial on GitHub](https://github.com/RIGELIO/wob-model-viewer/blob/main/docs/tutorial.en.md)
 
@@ -8,7 +8,7 @@ WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It h
 
 Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_VERSION_amd64.deb`. Both platforms also have a portable ZIP. Extract it and run **WoB Model Viewer.exe** or **wob-model-viewer**. Use `chmod +x wob-model-viewer` if your Linux extractor removed the executable flag. The runtime is bundled. Use an up-to-date graphics driver.
 
-Windows Setup and the Linux DEB register **.glb**, **.gltf**, **.fbx** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
+Windows Setup and the Linux DEB register **.glb**, **.gltf**, **.fbx**, **.obj**, **.stl** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
 The Windows installer and executable are unsigned. If SmartScreen prompts on first use, verify the download against `SHA256SUMS.txt` on the release page. A signed release can display a verified publisher. SmartScreen also considers the reputation of the downloaded file. [Microsoft documentation](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 
@@ -29,6 +29,8 @@ The **ⓘ** tab has **Export JSON** and **Export CSV** buttons for the current s
 To export a whole folder from PowerShell without a window, run `& ".\WoB Model Viewer.console.exe" --headless -- "--export-info=D:\Models" "--output-dir=D:\Exports\WoB" --format=json`. On Linux, use `./wob-model-viewer` with the same options and Linux paths.
 
 Add `--recursive` to include subfolders. Use `"--summary-csv=D:\Exports\inventory.csv"` for a combined CSV of paths and triangle counts. Supply `--output-dir` when you also want individual reports.
+
+**File → Export for 3D printing…** saves visible geometry from the rest pose or current animation frame to STL, 3MF or OBJ. Files use millimeters and Z up. The viewer also opens OBJ and binary or ASCII STL.
 
 Viewer 1.5 is free and runs offline without an account or activation. Use **Model → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
 

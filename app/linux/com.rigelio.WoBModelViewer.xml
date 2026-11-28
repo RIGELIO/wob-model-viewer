@@ -13,6 +13,14 @@
     <comment>FBX model</comment>
     <glob pattern="*.fbx"/>
   </mime-type>
+  <mime-type type="model/obj">
+    <comment>Wavefront OBJ model</comment>
+    <glob pattern="*.obj"/>
+  </mime-type>
+  <mime-type type="model/stl">
+    <comment>STL model</comment>
+    <glob pattern="*.stl"/>
+  </mime-type>
   <mime-type type="application/x-wobview">
     <comment>WoB Model Viewer saved view</comment>
     <comment xml:lang="cs">Uložený pohled WoB Model Vieweru</comment>

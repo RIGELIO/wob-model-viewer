@@ -2,7 +2,7 @@
 
 [Český návod](README.cs.md) · [Step-by-step tutorial](docs/tutorial.en.md) · [Wars of Bohemia](https://warsofbohemia.com/)
 
-WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
+WoB Model Viewer is an offline desktop viewer for GLB, glTF, FBX, OBJ and STL models. It helps you inspect geometry, materials and animations, with support for original Wars of Bohemia character shaders and shared atlases.
 
 ![Empty studio with scene tree, clickable cube, inspector and animation timeline](screenshots/studio-workspace.png)
 
@@ -14,9 +14,9 @@ WoB Model Viewer is an offline desktop viewer for GLB, glTF and FBX models. It h
 
 ## Download and run
 
-Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.5.5_amd64.deb`. Choose the portable ZIP matching your operating system. Extract it and run **WoB Model Viewer.exe** on Windows or **wob-model-viewer** on Linux. Use `chmod +x wob-model-viewer wob-gif` if your Linux extractor removed executable permissions. The runtime is bundled. Use an up-to-date graphics driver.
+Get the [latest release](https://github.com/RIGELIO/wob-model-viewer/releases/latest) for x86-64. On Windows, run the setup EXE to install for your user. On Debian and Ubuntu, open the `.deb` in your package manager or run `sudo apt install ./wob-model-viewer_1.5.6_amd64.deb`. Choose the portable ZIP matching your operating system. Extract it and run **WoB Model Viewer.exe** on Windows or **wob-model-viewer** on Linux. Use `chmod +x wob-model-viewer wob-gif` if your Linux extractor removed executable permissions. The runtime is bundled. Use an up-to-date graphics driver.
 
-Windows Setup and the Linux DEB register **.glb**, **.gltf**, **.fbx** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
+Windows Setup and the Linux DEB register **.glb**, **.gltf**, **.fbx**, **.obj**, **.stl** and **.wobview** automatically. For double-click opening, choose **WoB Model Viewer** in the system’s default app settings or **Open With**. Windows Setup sets the initial handler for unregistered `.wobview` files and offers a link to **Default apps** on its final page. For the portable editions, run **Register-FileTypes.cmd** on Windows or `sh register-file-types.sh` on Linux. The Linux helper uses `shared-mime-info` and `desktop-file-utils`. Repeat portable registration when you move the executable.
 
 The Windows installer and executable are unsigned. If SmartScreen prompts on first use, verify the download against `SHA256SUMS.txt` on the release page. A signed release can display a verified publisher. SmartScreen also considers the reputation of the downloaded file. [Microsoft documentation](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 

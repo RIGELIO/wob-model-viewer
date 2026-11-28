@@ -146,8 +146,9 @@ func execute(line: String) -> String:
 		var path := _path(value)
 		if path.is_empty() or not FileAccess.file_exists(path):
 			return tr("Soubor nebyl nalezen.")
-		if not path.get_extension().to_lower() in ["glb", "gltf", "fbx", "wobview", "json"]:
-			return tr("Podporované vstupy jsou GLB, glTF, FBX, WOBVIEW a manifest vozu.")
+		var extension := path.get_extension().to_lower()
+		if not extension in viewer._model_extensions() and not extension in ["wobview", "json"]:
+			return tr("Podporované vstupy jsou GLB, glTF, FBX, OBJ, STL, WOBVIEW a manifest vozu.")
 		await viewer._open_path(path)
 		return viewer._status.text
 	if not stage.model:

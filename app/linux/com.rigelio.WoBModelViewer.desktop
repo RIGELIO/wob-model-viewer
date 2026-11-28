@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
 Name=WoB Model Viewer
-Comment=Inspect GLB, glTF, FBX and saved views
-Comment[cs]=Prohlížení GLB, glTF, FBX a uložených pohledů
+Comment=Inspect GLB, glTF, FBX, OBJ and STL models
+Comment[cs]=Prohlížení modelů GLB, glTF, FBX, OBJ a STL
 Exec=wob-model-viewer -- %f
 Icon=wob-model-viewer
 Terminal=false
 Categories=Graphics;3DGraphics;Viewer;
-MimeType=model/gltf-binary;model/gltf+json;application/x-wobview;application/vnd.autodesk.fbx;
+MimeType=model/gltf-binary;model/gltf+json;application/x-wobview;application/vnd.autodesk.fbx;model/obj;model/stl;
