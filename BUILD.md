@@ -11,6 +11,7 @@ Use the standard Godot 4.7.2 x86-64 editor and import `app/project.godot`. Press
 Use Python 3, Go, and Godot 4.7.2 with the standard export templates. Go builds the offline GIF encoder. Extract the export template archive and place these files in one directory. [Godot 4.7.2 standard export templates](https://godotengine.org/download/archive/4.7.2-stable/)
 
 - `windows_release_x86_64.exe`
+- `windows_release_x86_64_console.exe`
 - `linux_release.x86_64`
 - `LICENSE.txt` and `COPYRIGHT.txt` from the Godot 4.7.2 source release. [Godot 4.7.2 source](https://github.com/godotengine/godot/tree/4.7.2-stable)
 

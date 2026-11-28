@@ -26,6 +26,8 @@ V záložce **ⓘ** vedle osvětlení najdeš údaje o výběru ve stromu scény
 
 Záložka **ⓘ** nabízí **Export JSON** a **Export CSV** pro aktuální výběr. V terminálu použij `export info "objekt.json" model` pro celý objekt nebo `export info "vrstva.csv" selection` pro výběr ve stromu.
 
+Pro bezokenní export celé složky z PowerShellu spusť `& ".\WoB Model Viewer.console.exe" --headless -- "--export-info=Q:\Hotove-modely" "--output-dir=D:\Exporty\WoB" --format=json`. Pro Linux použij `./wob-model-viewer` se stejnými přepínači a linuxovými cestami.
+
 Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Model → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
 
 Pro model bez kostry zvol **Model → Navrhnout novou kostru**. Začni lidskou nebo zvířecí šablonou nebo klikni na **Přidat kloub** a umísti ho do pohledu. Tažením upravíš polohu kloubu. Návrh `.wobrig` můžeš znovu otevřít a kostru vyexportovat do samostatného GLB.

@@ -96,6 +96,26 @@ export info "D:\Modely\vrstva.csv" selection
 
 ## Příkazová řádka a automatizace
 
+### Dávkový export údajů bez okna
+
+Ve Windows spusť PowerShell ve složce Vieweru a použij přiložený soubor `WoB Model Viewer.console.exe`. Pokud máš Viewer nainstalovaný, najdeš jej vedle běžného EXE. Uveď cestu ke složce nebo ke konkrétnímu modelu.
+
+```powershell
+$viewer = (Resolve-Path ".\WoB Model Viewer.console.exe").Path
+& $viewer --headless -- "--export-info=Q:\Hotove-modely" "--output-dir=D:\Exporty\WoB" --format=json
+$LASTEXITCODE
+```
+
+Pro CSV použij `--format=csv`. Pro jediný model můžeš zadat například `"--export-info=Q:\Hotove-modely\chalupa.glb"`. Viewer prochází zadanou složku bez podsložek a zpracuje GLB, glTF a FBX. Pokud cílová složka chybí, vytvoří ji. Vznikne jeden soubor na model, například `chalupa.glb.json`. Přípona modelu zůstává v názvu, aby se stejně pojmenované GLB a FBX nepřepsaly.
+
+Existující výstupy Viewer ponechá, pokud výslovně nepřidáš `--overwrite`. Po chybě jednoho modelu pokračuje dalšími. Poslední řádek začíná `WOB_VIEWER_INFO_RESULT` a obsahuje souhrn JSON s výsledkem každého souboru. Návratový kód `0` znamená kompletní export, `1` neúplný export a `2` chybu zadání nebo cílové složky.
+
+```sh
+./wob-model-viewer --headless -- "--export-info=/home/user/modely" "--output-dir=/home/user/export" --format=csv
+```
+
+### Otevření modelu a snímky
+
 Pro jedno spuštění použij systémový terminál. Volba `--` odděluje parametry Vieweru. Snímek vyžaduje grafické prostředí. Po uložení se instance zavře s návratovým kódem.
 
 ```powershell

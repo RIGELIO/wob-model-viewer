@@ -13,7 +13,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_REV = "66a82f431a91acdde7492c3f2eddd9c9fb2390c5"
-VERSION = "1.5.3"
+VERSION = "1.5.4"
 SHADERS = ("kuze", "odev", "oko", "vlasy_karty", "vlasy_mikro_4k", "vousy_strniste_shell")
 VEHICLES = ("bojovy", "ranenych", "remeslny", "velitelsky", "zasobovaci")
 ATLASES = {
@@ -225,6 +225,7 @@ def export(args, stage):
         for file in ("LICENSE.txt", "COPYRIGHT.txt"):
             shutil.copy2(args.templates / file, target / f"Godot-{file}")
         if name == "Windows":
+            shutil.copy2(args.templates / "windows_release_x86_64_console.exe", target / "WoB Model Viewer.console.exe")
             for file in (HERE / "windows").glob("Register-FileTypes.*"):
                 shutil.copy2(file, target)
         else:
