@@ -16,7 +16,7 @@
 
 1. On Windows, extract the ZIP marked `windows-portable` and run **WoB Model Viewer.exe**. To install the viewer, run **Windows Setup**.
 2. On Linux, extract the ZIP marked `linux-portable` and run `./wob-model-viewer`. If your extractor drops executable permissions, run `chmod +x wob-model-viewer wob-gif` first. On Debian or Ubuntu you can also install the DEB package.
-3. Drop a model into the window or press **Ctrl+O**. The viewer accepts GLB, glTF, FBX, OBJ, STL, `.wobview` sessions and Wars of Bohemia vehicle manifests. Keep external `.bin` files and textures referenced by glTF at their exported relative paths.
+3. Drop a model into the window or press **Ctrl+O**. The viewer accepts GLB, glTF, FBX, OBJ, STL, 3MF, `.wobview` sessions and Wars of Bohemia vehicle manifests. Keep external `.bin` files and textures referenced by glTF at their exported relative paths.
 4. Switch the interface language from **Window**. **Help → Step-by-step Guide** opens the interactive tutorial. **F1** shows input controls and **Ctrl+L** opens the log.
 
 If a surface appears white, check **Materials & diagnostics**. The viewer searches for textures beside the model and up to two levels above it. Use **Load textures…** to choose a folder manually. To use local game materials, keep the `_materialy-z-hry` collection together with its index and `assets` directory.
@@ -109,7 +109,7 @@ $viewer = (Resolve-Path ".\WoB Model Viewer.console.exe").Path
 $LASTEXITCODE
 ```
 
-Use `--format=csv` for CSV. For a single file, pass an argument like `"--export-info=D:\Models\cabin.glb"`. The viewer processes GLB, glTF, FBX, OBJ and STL files in the supplied folder. It creates the output directory when needed and writes one report per model, for example `cabin.glb.json`. It keeps the model extension in the name so a GLB and an FBX with the same stem have distinct outputs. The scan covers the selected folder's immediate children.
+Use `--format=csv` for CSV. For a single file, pass an argument like `"--export-info=D:\Models\cabin.glb"`. The viewer processes GLB, glTF, FBX, OBJ, STL and 3MF files in the supplied folder. It creates the output directory when needed and writes one report per model, for example `cabin.glb.json`. It keeps the model extension in the name so a GLB and an FBX with the same stem have distinct outputs. The scan covers the selected folder's immediate children.
 
 Existing reports are kept unless you add `--overwrite`. The batch continues after a model fails. The last line begins with `WOB_VIEWER_INFO_RESULT` and contains a JSON summary with one result per file. Exit code `0` means all reports were written, `1` means an incomplete export, and `2` means invalid input or an unavailable output directory.
 
@@ -167,4 +167,4 @@ On Windows use `& ".\WoB Model Viewer.exe" --headless -- --viewer-job=analyze.js
 3. Set the scale and choose **STL**, **3MF** or **OBJ**. With scale at 100%, one meter in the viewer becomes 1000 millimeters in the file. Z points up and the lowest point is placed at Z = 0.
 4. Open the file in your slicer to check dimensions, orientation and open edges. The file contains the mesh for one pose. Materials, animation tracks and shader-generated surfaces are outside the exported geometry.
 
-The viewer can also open binary and ASCII STL and Wavefront OBJ. Keep textures referenced by a basic MTL file at their original relative paths. STL uses millimeters. Ordinary OBJ uses the source axes and one unit per meter. The viewer recognizes its own print OBJ header and converts those files back from millimeters.
+The viewer can also open binary and ASCII STL, Wavefront OBJ and 3MF. For 3MF it reads the mesh geometry and build transforms. Keep textures referenced by a basic MTL file at their original relative paths. STL uses millimeters. Ordinary OBJ uses the source axes and one unit per meter. The viewer recognizes its own print OBJ header and converts those files back from millimeters.

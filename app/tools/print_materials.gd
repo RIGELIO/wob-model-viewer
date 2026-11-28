@@ -1,6 +1,7 @@
 extends "res://materials.gd"
 
 const PRINT_OBJ := "# WoB Model Viewer print mesh, millimeters, Z up"
+const ThreeMF = preload("res://tools/three_mf.gd")
 
 var file_bytes := 0
 var _parts: Dictionary
@@ -24,10 +25,19 @@ func prepare_model(path: String, _manifest: RefCounted = null) -> String:
 	if not file:
 		return tr("Soubor nelze přečíst (%s).") % error_string(FileAccess.get_open_error())
 	file_bytes = file.get_length()
-	var valid := _read_stl(file) if path.get_extension().to_lower() == "stl" else _read_obj(file, path.get_base_dir())
-	file.close()
+	var valid := false
+	match path.get_extension().to_lower():
+		"3mf":
+			file.close()
+			valid = _read_3mf(path)
+		"stl":
+			valid = _read_stl(file)
+			file.close()
+		_:
+			valid = _read_obj(file, path.get_base_dir())
+			file.close()
 	if not valid or _parts.is_empty():
-		return tr("Soubor neobsahuje platné trojúhelníky OBJ nebo STL.")
+		return tr("Soubor neobsahuje platnou síť OBJ, STL nebo 3MF.")
 	return ""
 
 
@@ -104,6 +114,27 @@ func _read_stl(file: FileAccess) -> bool:
 	if not part.positions.is_empty():
 		_parts[["STL", ""]] = part
 	return corners.is_empty()
+
+
+func _read_3mf(path: String) -> bool:
+	var objects := ThreeMF.new().read(path)
+	for index in objects.size():
+		var object: Dictionary = objects[index]
+		var part := Part.new()
+		var points: PackedVector3Array = object.points
+		var faces: PackedInt32Array = object.faces
+		var transform: Transform3D = object.transform
+		var mirrored := transform.basis.determinant() < 0.0
+		for offset in range(0, faces.size(), 3):
+			var a := _from_3mf(transform * points[faces[offset]])
+			var b := _from_3mf(transform * points[faces[offset + 1]])
+			var c := _from_3mf(transform * points[faces[offset + 2]])
+			var triangle := PackedVector3Array([a, c, b] if mirrored else [a, b, c])
+			if not _stl_triangle(part, triangle):
+				return false
+		if not part.positions.is_empty():
+			_parts[[object.name, "", index]] = part
+	return not _parts.is_empty()
 
 
 func _stl_triangle(part: Part, corners: PackedVector3Array) -> bool:
@@ -268,3 +299,7 @@ func _vector(fields: PackedStringArray) -> Vector3:
 
 func _from_print(point: Vector3) -> Vector3:
 	return Vector3(point.x, point.z, -point.y) * 0.001
+
+
+func _from_3mf(point: Vector3) -> Vector3:
+	return Vector3(point.x, point.z, -point.y)

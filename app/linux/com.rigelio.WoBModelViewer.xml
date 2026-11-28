@@ -21,6 +21,10 @@
     <comment>STL model</comment>
     <glob pattern="*.stl"/>
   </mime-type>
+  <mime-type type="model/3mf">
+    <comment>3MF model</comment>
+    <glob pattern="*.3mf"/>
+  </mime-type>
   <mime-type type="application/x-wobview">
     <comment>WoB Model Viewer saved view</comment>
     <comment xml:lang="cs">Uložený pohled WoB Model Vieweru</comment>

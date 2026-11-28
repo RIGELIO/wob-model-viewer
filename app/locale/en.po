@@ -1117,14 +1117,14 @@ msgstr "Open or non-manifold edges: %d. Check the model in your slicer."
 msgid "Hrany ke kontrole: %d"
 msgstr "Edges to check: %d"
 
-msgid "Soubor neobsahuje platné trojúhelníky OBJ nebo STL."
-msgstr "The file does not contain valid OBJ or STL triangles."
+msgid "Soubor neobsahuje platnou síť OBJ, STL nebo 3MF."
+msgstr "The file does not contain a valid OBJ, STL or 3MF mesh."
 
-msgid "Vykreslení podle importovaných materiálů OBJ/STL."
-msgstr "Displaying the imported OBJ/STL materials."
+msgid "Vykreslení podle importovaného modelu OBJ, STL nebo 3MF."
+msgstr "Displaying the imported OBJ, STL or 3MF model."
 
-msgid "Otevři GLB, glTF, FBX, OBJ, STL, WOBVIEW, manifest vozu, HDR nebo EXR."
-msgstr "Open GLB, glTF, FBX, OBJ, STL, WOBVIEW, a vehicle manifest, HDR or EXR."
+msgid "Otevři GLB, glTF, FBX, OBJ, STL, 3MF, WOBVIEW, manifest vozu, HDR nebo EXR."
+msgstr "Open GLB, glTF, FBX, OBJ, STL, 3MF, WOBVIEW, a vehicle manifest, HDR or EXR."
 
-msgid "Podporované vstupy jsou GLB, glTF, FBX, OBJ, STL, WOBVIEW a manifest vozu."
-msgstr "Supported inputs are GLB, glTF, FBX, OBJ, STL, WOBVIEW and vehicle manifests."
+msgid "Podporované vstupy jsou GLB, glTF, FBX, OBJ, STL, 3MF, WOBVIEW a manifest vozu."
+msgstr "Supported inputs are GLB, glTF, FBX, OBJ, STL, 3MF, WOBVIEW and vehicle manifests."

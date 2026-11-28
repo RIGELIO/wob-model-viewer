@@ -16,7 +16,7 @@
 
 1. Ve Windows rozbal ZIP s názvem `windows-portable` a spusť **WoB Model Viewer.exe**. Alternativou je **Windows Setup**.
 2. V Linuxu rozbal ZIP s názvem `linux-portable` a spusť `./wob-model-viewer`. Pokud rozbalovací nástroj nepřenese oprávnění, nejprve použij `chmod +x wob-model-viewer wob-gif`. Na Debianu a Ubuntu můžeš použít také balíček DEB.
-3. Přetáhni model do okna nebo použij **Soubor → Otevřít** či **Ctrl+O**. Viewer otevře GLB, glTF, FBX, OBJ, STL, relace `.wobview` a manifesty vozů Wars of Bohemia. U glTF ponech odkazované soubory `.bin` a textury na relativních cestách z exportu.
+3. Přetáhni model do okna nebo použij **Soubor → Otevřít** či **Ctrl+O**. Viewer otevře GLB, glTF, FBX, OBJ, STL, 3MF, relace `.wobview` a manifesty vozů Wars of Bohemia. U glTF ponech odkazované soubory `.bin` a textury na relativních cestách z exportu.
 4. Jazyk přepni v nabídce **Okno**. **Nápověda → Průvodce krok za krokem** otevře interaktivní průvodce přímo v aplikaci. **F1** otevře ovládání a **Ctrl+L** protokol.
 
 Když je po otevření povrch bílý, projdi **Materiály a diagnostika**. Viewer zkouší názvy textur u modelu a nejvýše dvě úrovně nad ním. Chybějící mapy můžeš doplnit přes **Načíst textury…**. Herní textury a shadery lze přiřadit také z místní kolekce `_materialy-z-hry` s indexem a složkou `assets`.
@@ -109,7 +109,7 @@ $viewer = (Resolve-Path ".\WoB Model Viewer.console.exe").Path
 $LASTEXITCODE
 ```
 
-Pro CSV použij `--format=csv`. Pro jediný model můžeš zadat například `"--export-info=Q:\Hotove-modely\chalupa.glb"`. Viewer prochází zadanou složku bez podsložek a zpracuje GLB, glTF, FBX, OBJ a STL. Pokud cílová složka chybí, vytvoří ji. Vznikne jeden soubor na model, například `chalupa.glb.json`. Přípona modelu zůstává v názvu, aby se stejně pojmenované GLB a FBX nepřepsaly.
+Pro CSV použij `--format=csv`. Pro jediný model můžeš zadat například `"--export-info=Q:\Hotove-modely\chalupa.glb"`. Viewer prochází zadanou složku bez podsložek a zpracuje GLB, glTF, FBX, OBJ, STL a 3MF. Pokud cílová složka chybí, vytvoří ji. Vznikne jeden soubor na model, například `chalupa.glb.json`. Přípona modelu zůstává v názvu, aby se stejně pojmenované GLB a FBX nepřepsaly.
 
 Existující výstupy Viewer ponechá, pokud výslovně nepřidáš `--overwrite`. Po chybě jednoho modelu pokračuje dalšími. Poslední řádek začíná `WOB_VIEWER_INFO_RESULT` a obsahuje souhrn JSON s výsledkem každého souboru. Návratový kód `0` znamená kompletní export, `1` neúplný export a `2` chybu zadání nebo cílové složky.
 
@@ -167,4 +167,4 @@ Ve Windows použij `& ".\WoB Model Viewer.exe" --headless -- --viewer-job=analyz
 3. Nastav měřítko a vyber **STL**, **3MF** nebo **OBJ**. Při 100 % odpovídá jeden metr ve Vieweru 1000 mm ve výstupu. Geometrie má osu Z nahoru a její nejnižší bod leží na Z = 0.
 4. Otevři soubor ve sliceru a zkontroluj rozměry, orientaci a případné otevřené hrany. Export ukládá geometrii jedné pózy. Materiály, animace a povrchy generované až shaderem se do tiskové sítě nezapisují.
 
-Viewer otevře také binární i textové STL a Wavefront OBJ. Textury z jednoduchého MTL ulož na původních relativních cestách. U STL předpokládá milimetry. Běžné OBJ otevírá v osách modelu a s jednotkou 1 m, vlastní tiskové OBJ rozpozná pomocí hlavičky a při otevření převádí zpět z milimetrů.
+Viewer otevře také binární i textové STL, Wavefront OBJ a 3MF. Z 3MF načítá síť a transformace objektů. Textury z jednoduchého MTL ulož na původních relativních cestách. U STL předpokládá milimetry. Běžné OBJ otevírá v osách modelu a s jednotkou 1 m, vlastní tiskové OBJ rozpozná pomocí hlavičky a při otevření převádí zpět z milimetrů.
