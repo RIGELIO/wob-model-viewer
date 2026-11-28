@@ -1,4 +1,4 @@
-Unicode true
+﻿Unicode true
 ManifestDPIAware true
 RequestExecutionLevel user
 SetCompressor /SOLID zlib
@@ -7,7 +7,7 @@ SetCompressor /SOLID zlib
 !include "LogicLib.nsh"
 !define APP "WoB Model Viewer"
 !define EXE "WoB Model Viewer.exe"
-!define VERSION "1.5.2"
+!define VERSION "1.5.3"
 !define INSTALLER_SOURCE "${__FILEDIR__}"
 !define UNINSTALL "Software\Microsoft\Windows\CurrentVersion\Uninstall\RIGELIO.WoBModelViewer"
 !define CAP "Software\RIGELIO\WoBModelViewer\Capabilities"
@@ -98,10 +98,10 @@ LangString ViewerCheckFailed ${LANG_ENGLISH} "Setup could not check if WoB Model
 LangString ViewerCheckFailed ${LANG_CZECH} "Nepodařilo se ověřit, zda WoB Model Viewer běží. Zvol Opakovat nebo Storno."
 LangString ViewerDataFailed ${LANG_ENGLISH} "Setup could not remove WoB Model Viewer settings or cache. Click Retry or Cancel."
 LangString ViewerDataFailed ${LANG_CZECH} "Nepodařilo se odstranit nastavení nebo mezipaměť. Zvol Opakovat nebo Storno."
-LangString ChooseDefaults ${LANG_ENGLISH} "Choose default file apps in Windows Settings"
-LangString ChooseDefaults ${LANG_CZECH} "Vybrat výchozí aplikaci pro soubory v Nastavení Windows"
+LangString ChooseDefaults ${LANG_ENGLISH} "Open default app settings"
+LangString ChooseDefaults ${LANG_CZECH} "Otevřít výchozí aplikace"
 LangString ExistingTitle ${LANG_ENGLISH} "WoB Model Viewer is already installed"
-LangString ExistingTitle ${LANG_CZECH} "WoB Model Viewer už je nainstalovaný"
+LangString ExistingTitle ${LANG_CZECH} "Viewer už je nainstalovaný"
 LangString ExistingVersionUnknown ${LANG_ENGLISH} "unknown"
 LangString ExistingVersionUnknown ${LANG_CZECH} "neznámá"
 LangString ExistingUpdate ${LANG_ENGLISH} "Setup will update version $ExistingVersion to ${VERSION} in the existing folder.$\r$\n$\r$\n$ExistingLocation$\r$\n$\r$\nYour settings and saved files will be kept."

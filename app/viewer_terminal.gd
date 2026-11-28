@@ -2,6 +2,7 @@ extends Window
 
 const USAGE := [
 	"help", "clear", "open <path>", "reload", "info [model]",
+	"export info <path.json|path.csv> [model|selection]",
 	"frame [front|side|top]", "view <shaded|wireframe|points|quads>",
 	"grid <on|off>", "floor <on|off>", "clips", "clip <name>",
 	"play", "pause", "seek <seconds>", "speed <0–2>", "loop <on|off>",
@@ -156,6 +157,13 @@ func execute(line: String) -> String:
 			if count == 0 or (count == 1 and value == "model"):
 				var selection: Dictionary = viewer._outline.selection() if count == 0 else {}
 				return viewer._info_report.report(viewer, selection.get("kind", "model"), selection.get("data"))
+		"export":
+			if value == "info" and count in [2, 3] and (count == 2 or args[2] in ["model", "selection"]):
+				var path := _path(args[1])
+				if not path.get_extension().to_lower() in ["json", "csv"]:
+					return tr("Zadej cestu k souboru .json nebo .csv.")
+				var selection: Dictionary = {} if count == 3 and args[2] == "model" else viewer._outline.selection()
+				return viewer._write_object_info(path, selection)
 		"reload":
 			if count == 0:
 				await viewer._reload_model()
