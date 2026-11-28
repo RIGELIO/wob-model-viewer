@@ -5,9 +5,11 @@ SetCompressor /SOLID zlib
 
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
+!include "FileFunc.nsh"
 !define APP "WoB Model Viewer"
 !define EXE "WoB Model Viewer.exe"
-!define VERSION "1.5.6"
+!define VERSION "1.5.7"
+!define DEFAULT_INSTALL_DIR "$LOCALAPPDATA\Programs\${APP}"
 !define INSTALLER_SOURCE "${__FILEDIR__}"
 !define UNINSTALL "Software\Microsoft\Windows\CurrentVersion\Uninstall\RIGELIO.WoBModelViewer"
 !define CAP "Software\RIGELIO\WoBModelViewer\Capabilities"
@@ -59,8 +61,7 @@ Var ExistingVersion
 
 Name "${APP}"
 OutFile "${OUTPUT}"
-InstallDir "$LOCALAPPDATA\Programs\WoB Model Viewer"
-InstallDirRegKey HKCU "${UNINSTALL}" "InstallLocation"
+InstallDir "${DEFAULT_INSTALL_DIR}"
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "${APP}"
 VIAddVersionKey "FileDescription" "WoB Model Viewer Setup"
@@ -109,19 +110,75 @@ LangString ExistingUpdate ${LANG_CZECH} "Instalátor aktualizuje verzi $Existing
 LangString ExistingReinstall ${LANG_ENGLISH} "Setup will reinstall version ${VERSION} in the existing folder.$\r$\n$\r$\n$ExistingLocation$\r$\n$\r$\nYour settings and saved files will be kept."
 LangString ExistingReinstall ${LANG_CZECH} "Instalátor znovu nainstaluje verzi ${VERSION} do stávající složky.$\r$\n$\r$\n$ExistingLocation$\r$\n$\r$\nNastavení a uložené soubory zůstanou k dispozici."
 
+Function NormalizeInstallPath
+    StrCpy $1 $0 1
+    ${If} $1 == '$\"'
+        StrCpy $1 $0 1 -1
+        ${If} $1 != '$\"'
+            StrCpy $0 ""
+            Return
+        ${EndIf}
+        StrCpy $0 $0 -1 1
+    ${EndIf}
+    System::Call 'shlwapi::PathIsRelativeW(w r0) i .r1'
+    ${If} $1 != 0
+        StrCpy $0 ""
+    ${EndIf}
+FunctionEnd
+
+Function TryRegisteredDirectory
+    ${If} $0 == ""
+        Return
+    ${EndIf}
+    GetFullPathName $0 "$0"
+    ${If} $0 == ""
+        Return
+    ${EndIf}
+    IfFileExists "$0\${EXE}" found
+    IfFileExists "$0\PRODUCTION-RESOURCES.json" 0 done
+    IfFileExists "$0\Uninstall.exe" found done
+    found:
+    StrCpy $ExistingLocation $0
+    done:
+FunctionEnd
+
 Function .onInit
     ReadRegStr $0 HKCU "${UNINSTALL}" "InstallLocation"
-    ${If} $0 != ""
-        IfFileExists "$0\${EXE}" 0 fresh_install
-        IfFileExists "$0\Uninstall.exe" 0 fresh_install
-        StrCpy $ExistingLocation $0
-        StrCpy $INSTDIR $ExistingLocation
+    Call NormalizeInstallPath
+    Call TryRegisteredDirectory
+    ${If} $ExistingLocation == ""
+        ReadRegStr $0 HKCU "${UNINSTALL}" "UninstallString"
+        Call NormalizeInstallPath
+        ${GetFileName} "$0" $1
+        ${If} $1 == "Uninstall.exe"
+            ${GetParent} "$0" $0
+            Call TryRegisteredDirectory
+        ${EndIf}
+    ${EndIf}
+    ${If} $ExistingLocation == ""
+        ReadRegStr $0 HKCU "${UNINSTALL}" "DisplayIcon"
+        Call NormalizeInstallPath
+        ${GetFileName} "$0" $1
+        ${If} $1 == "${EXE}"
+            ${GetParent} "$0" $0
+            Call TryRegisteredDirectory
+        ${EndIf}
+    ${EndIf}
+    ${If} $ExistingLocation != ""
         ReadRegStr $ExistingVersion HKCU "${UNINSTALL}" "DisplayVersion"
+    ${Else}
+        # Only recover an unregistered default installation if it has an uninstaller.
+        IfFileExists "${DEFAULT_INSTALL_DIR}\${EXE}" 0 resolved
+        IfFileExists "${DEFAULT_INSTALL_DIR}\Uninstall.exe" 0 resolved
+        StrCpy $ExistingLocation "${DEFAULT_INSTALL_DIR}"
+    ${EndIf}
+    resolved:
+    ${If} $ExistingLocation != ""
+        StrCpy $INSTDIR $ExistingLocation
         ${If} $ExistingVersion == ""
             StrCpy $ExistingVersion "$(ExistingVersionUnknown)"
         ${EndIf}
     ${EndIf}
-    fresh_install:
 FunctionEnd
 
 Function ShowExistingInstallation
@@ -150,6 +207,9 @@ FunctionEnd
 Section "WoB Model Viewer"
     SetShellVarContext current
     !insertmacro RequireViewerClosed install
+    ${If} $ExistingLocation != ""
+        StrCpy $INSTDIR $ExistingLocation
+    ${EndIf}
     SetOutPath "$INSTDIR"
     SetOverwrite on
     File "${EXE}"

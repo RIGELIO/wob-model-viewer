@@ -14,7 +14,7 @@ The Windows installer and executable are unsigned. If SmartScreen prompts on fir
 
 Setup displays the installation terms and MIT license. Updates and uninstall prompt you to close the viewer. Uninstall removes the program, shortcuts, registration and known settings and cache files. Your saved models, views and screenshots stay in their existing folders.
 
-To update on Windows, download and run the newer setup. It detects the registered installation, shows its version and updates the existing folder with your settings intact. Running the same version again reinstalls it in place. On Linux, install the newer DEB through the package manager to upgrade the installed package.
+To update on Windows, download and run the newer setup. It detects the registered installation, shows its version and updates the existing folder with your settings intact. Running the same version again reinstalls it in place. To update a portable copy in a different folder, extract the new portable ZIP. On Linux, install the newer DEB through the package manager to upgrade the installed package.
 
 ## Learn the viewer
 
