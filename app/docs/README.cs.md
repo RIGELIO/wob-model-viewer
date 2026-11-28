@@ -24,6 +24,8 @@ V nabídce **Nápověda → Průvodce krok za krokem** je šest lekcí. Nabídky
 
 V záložce **ⓘ** vedle osvětlení najdeš údaje o výběru ve stromu scény. Kořen zobrazí soubor a celkové statistiky, vrstva vlastní geometrii a atributy. **Ctrl+T** otevře terminál prohlížeče. Zadej `help`, `info model` nebo třeba `cut 0.4 1.2` a `play`.
 
+Záložka **ⓘ** nabízí **Export JSON** a **Export CSV** pro aktuální výběr. V terminálu použij `export info "objekt.json" model` pro celý objekt nebo `export info "vrstva.csv" selection` pro výběr ve stromu.
+
 Viewer 1.5 je zdarma a běží offline bez účtu a aktivace. Pro animovaný model s kostrou otevři **Model → Editor pohybu**. Můžeš vybírat klouby, krokovat po snímcích, zkoušet úpravy a kreslit značky vázané na kost. **Analyzovat pohyb** prověří kontakt chodidel, skoky rotace a návaznost smyčky. Kliknutím na nález přeskočíš na jeho čas. **Export reportu a úprav** výsledky uloží do JSONu.
 
 Pro model bez kostry zvol **Model → Navrhnout novou kostru**. Začni lidskou nebo zvířecí šablonou nebo klikni na **Přidat kloub** a umísti ho do pohledu. Tažením upravíš polohu kloubu. Návrh `.wobrig` můžeš znovu otevřít a kostru vyexportovat do samostatného GLB.

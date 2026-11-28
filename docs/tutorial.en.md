@@ -40,6 +40,13 @@ Click **ⓘ** beside Lighting. The selected row in the Scene tree controls the r
 
 Use **Copy details** to put the report on the clipboard. **Refresh details** reads the current selection again, for example after playing an animation that moves the node. Vertex totals count imported vertices per surface. UV seams and material boundaries can split vertices. Whole-model dimensions use import-time bounds.
 
+### Export JSON and CSV
+
+1. Open **ⓘ** and select the model root to export the whole object, or select a mesh for a single layer.
+2. Click **Export JSON** or **Export CSV** and choose an output file. Selected materials, skeletons and animation clips can be exported in the same way.
+3. JSON contains a schema version, a `scope`, a `source_path` and a `details` object. Counts are numbers and dimensions are arrays of X, Y and Z in meters. Both interface languages use the same keys. Diagnostic messages follow the interface language.
+4. CSV is UTF-8 and uses two columns named `field,value`. For example, `/details/geometry/triangle_count` is the triangle count. Use a comma as the separator when importing into a spreadsheet. Text that resembles a formula is prefixed with an apostrophe to keep it as text. Use JSON to retrieve the original value.
+
 ## Check geometry and materials
 
 1. Press **W** for triangle wireframe, **Q** for inferred quads or **P** for points. Quad inference pairs neighboring triangles to estimate the original topology.
@@ -79,6 +86,13 @@ play
 Replace the sample path and clip name with your own. A typical Linux path is `/home/user/models/character.glb`. Use `info` for the Scene selection and `info model` for the whole object. Use `cut off` to return to the full clip, `pause` to pause or `seek 0.6` to seek to a point. Try `grid on`, `view wireframe` and `screenshot "D:\Models\review.png"`. Run `help` for the full list.
 
 The terminal controls the current Viewer window and interprets input as Viewer commands.
+
+Use the following terminal commands to export. `model` exports the whole object regardless of the Scene tree selection. `selection` exports the current selection and is the default. Use a new output filename.
+
+```text
+export info "D:\Models\object.json" model
+export info "D:\Models\layer.csv" selection
+```
 
 ## Automate from a system terminal
 

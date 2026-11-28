@@ -928,6 +928,21 @@ msgstr "glTF version"
 msgid "Exportér"
 msgstr "Exporter"
 
+msgid "Exportovat údaje o objektu"
+msgstr "Export object information"
+
+msgid "Zadej cestu k souboru .json nebo .csv."
+msgstr "Enter a path to a .json or .csv file."
+
+msgid "Údaje exportovány · %s"
+msgstr "Information exported · %s"
+
+msgid "Soubor už existuje. Vyber jiný název."
+msgstr "The file already exists. Choose another name."
+
+msgid "Údaje nelze exportovat (%s)."
+msgstr "Could not export information (%s)."
+
 msgid "Uzly glTF"
 msgstr "glTF nodes"
 

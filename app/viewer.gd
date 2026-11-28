@@ -295,6 +295,10 @@ var _inspector_tabs: Array[Button]
 var _info_panel: VBoxContainer
 var _info_text: TextEdit
 var _info_report := ObjectInfo.new()
+var _info_export_dialog: FileDialog
+var _info_export_buttons: Array[Button]
+var _info_export_selection: Dictionary
+var _info_export_extension := ""
 var _terminal: ViewerTerminal
 var _light_dial: LightDirectionDial
 var _light_azimuth: SpinBox
@@ -438,6 +442,8 @@ func _ready() -> void:
 	_save_dialog = _dialog("Uložit snímek 3840 × 2160", FileDialog.FILE_MODE_SAVE_FILE, "*.png ; Obraz PNG")
 	_save_dialog.file_selected.connect(_capture)
 	_view_dialog = _dialog("Uložit relaci jako", FileDialog.FILE_MODE_SAVE_FILE, "*.wobview")
+	_info_export_dialog = _dialog("Exportovat údaje o objektu", FileDialog.FILE_MODE_SAVE_FILE, "*.json,*.csv")
+	_info_export_dialog.file_selected.connect(_export_info_from_dialog)
 	_view_dialog.file_selected.connect(_save_view_to)
 	_about = AcceptDialog.new()
 	_about.exclusive = true
@@ -1399,6 +1405,12 @@ func _make_inspector(parent: VBoxContainer) -> PanelContainer:
 	_info_panel.add_child(info_actions)
 	_button(info_actions, "Zkopírovat údaje", func(): DisplayServer.clipboard_set(_info_text.text))
 	_button(info_actions, "Obnovit údaje", _refresh_object_info)
+	var info_exports := HBoxContainer.new()
+	_info_panel.add_child(info_exports)
+	for extension in ["json", "csv"]:
+		var button := _button(info_exports, "Export " + extension.to_upper(), _show_info_export.bind(extension))
+		button.disabled = true
+		_info_export_buttons.append(button)
 	_info_text = TextEdit.new()
 	_info_text.editable = false
 	_info_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
@@ -1698,6 +1710,41 @@ func _refresh_object_info() -> void:
 		return
 	var data := _outline.selection()
 	_info_text.text = _info_report.report(self, data.get("kind", "model"), data.get("data"))
+	for button in _info_export_buttons:
+		button.disabled = stage.model == null
+
+
+func _show_info_export(extension: String) -> void:
+	if not stage.model or _loading or stage.capture_in_progress:
+		return
+	_info_export_selection = _outline.selection()
+	_info_export_extension = extension
+	_info_export_dialog.title = tr("Exportovat údaje o objektu")
+	_info_export_dialog.filters = PackedStringArray(["*.%s ; %s" % [extension, extension.to_upper()]])
+	_info_export_dialog.current_dir = _path.get_base_dir()
+	_info_export_dialog.current_file = "%s-info.%s" % [_path.get_file().get_basename(), extension]
+	_info_export_dialog.popup_centered_ratio(0.6)
+
+
+func _export_info_from_dialog(path: String) -> void:
+	var exact_extension := path.get_extension().to_lower() == _info_export_extension
+	if not exact_extension:
+		path += "." + _info_export_extension
+	_write_object_info(path, _info_export_selection, exact_extension)
+
+
+func _write_object_info(path: String, selection: Dictionary, overwrite := false) -> String:
+	var error := _info_report.write(self, selection, path, overwrite)
+	var message := ""
+	match error:
+		OK:
+			message = tr("Údaje exportovány · %s") % path
+		ERR_ALREADY_EXISTS:
+			message = tr("Soubor už existuje. Vyber jiný název.")
+		_:
+			message = tr("Údaje nelze exportovat (%s).") % error_string(error)
+	_feedback(message, error != OK)
+	return message
 
 
 func _section(parent: VBoxContainer, title: String, foldable := false, expanded := true, glyph := "") -> VBoxContainer:

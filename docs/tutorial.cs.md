@@ -40,6 +40,13 @@ Vpravo nahoře otevři **ⓘ** vedle osvětlení. Označení ve stromu scény ur
 
 **Zkopírovat údaje** přenese zobrazený výpis do schránky. **Obnovit údaje** pořídí nový výpis aktuálního výběru, například po změně polohy v animaci. Počet vrcholů vychází z importované geometrie po površích. Švy UV a hranice materiálů mohou mít samostatné vrcholy. Rozměry celého objektu vycházejí z obálky při importu.
 
+### Export do JSON a CSV
+
+1. V záložce **ⓘ** klikni ve stromu na kořen pro celý model nebo na jednotlivou síť pro jednu vrstvu.
+2. Stiskni **Export JSON** nebo **Export CSV** a vyber cílový soubor. Stejně lze exportovat výpis materiálu, kostry nebo animace, pokud je ve stromu vybraná.
+3. JSON používá verzi schématu, rozsah `scope`, cestu `source_path` a údaje v `details`. Počty jsou čísla a rozměry jsou pole hodnot X, Y a Z v metrech. České a anglické rozhraní používají stejné klíče. Text diagnostiky používá jazyk rozhraní.
+4. CSV je v UTF-8 a má dva sloupce `field,value`. Například `/details/geometry/triangle_count` odpovídá počtu trojúhelníků. Tabulkový editor při importu nastav na oddělovač čárku. Pokud text připomíná vzorec, CSV ho označí apostrofem, aby zůstal textem. Pro nezměněnou hodnotu použij JSON.
+
 ## Kontrola geometrie a materiálů
 
 1. **W** přepne wireframe trojúhelníků. **Q** zapne odhad quadů, který spojuje sousední trojúhelníky. Výsledek je odhad původní topologie. **P** přepne zobrazení vrcholů jako bodů.
@@ -79,6 +86,13 @@ play
 Nahraď cestu a jméno klipu vlastními údaji. Na Linuxu může cesta vypadat například jako `/home/user/modely/postava.glb`. Příkaz `info` vypíše výběr ve stromu a `info model` celý objekt. `cut off` obnoví celý klip, `pause` pozastaví pohyb a `seek 0.6` přejde na konkrétní čas. Mřížku můžeš zapnout přes `grid on`, přepnout drátové zobrazení přes `view wireframe` a uložit pohled přes `screenshot "D:\Modely\kontrola.png"`. Úplný seznam vrátí `help`.
 
 Terminál ovládá aktuální okno Vieweru. Vstup interpretuje jako příkazy aplikace.
+
+Pro export z terminálu zadej například následující příkazy. Přepínač `model` vyexportuje celý objekt bez ohledu na označení ve stromu. `selection` použije aktuální výběr a je výchozí. Příkaz vyžaduje nový název souboru.
+
+```text
+export info "D:\Modely\objekt.json" model
+export info "D:\Modely\vrstva.csv" selection
+```
 
 ## Příkazová řádka a automatizace
 

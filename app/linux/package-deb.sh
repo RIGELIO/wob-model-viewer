@@ -8,7 +8,7 @@ fi
 source_dir=$(cd -- "$(dirname -- "$0")" && pwd -P)
 build=$(cd -- "$1" && pwd -P)
 pkg=wob-model-viewer
-version=1.5.2
+version=1.5.3
 prefix="/opt/$pkg"
 
 # Under WSL, TMPDIR uses the Linux filesystem while the export can stay on a

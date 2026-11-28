@@ -24,6 +24,8 @@ Open **Help → Step-by-step Guide** for six interactive lessons. The **View**, 
 
 Open the **ⓘ** tab beside Lighting for the Scene tree selection. The root shows file details and totals. Individual layers show their own geometry and attributes. Press **Ctrl+T** to open the Viewer Terminal. Try `help`, `info model` or `cut 0.4 1.2` followed by `play`.
 
+The **ⓘ** tab has **Export JSON** and **Export CSV** buttons for the current selection. In the terminal, use `export info "object.json" model` for the whole model or `export info "layer.csv" selection` for the Scene tree selection.
+
 Viewer 1.5 is free and runs offline without an account or activation. Use **Model → Motion Editor** on an animated skeleton to select joints, step frames, preview changes and attach drawing marks. **Analyze Motion** checks the chosen clip for foot contact, rotation spikes and loop continuity. Select a finding to move to its position on the timeline. **Export report and edits** saves the results to JSON.
 
 Use **Model → Draft a new skeleton** on an unrigged model. Start with a human or quadruped template, or choose **Add joint** and click in the viewport. Select and drag your joints to adjust them. Save a `.wobrig` draft to continue later and use a separate GLB for export.
