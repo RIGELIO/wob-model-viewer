@@ -96,6 +96,26 @@ export info "D:\Models\layer.csv" selection
 
 ## Automate from a system terminal
 
+### Export information in bulk without a window
+
+In Windows, open PowerShell in the viewer folder and use the bundled `WoB Model Viewer.console.exe`. Installed copies have it beside the main EXE. You can pass either a folder or a single model.
+
+```powershell
+$viewer = (Resolve-Path ".\WoB Model Viewer.console.exe").Path
+& $viewer --headless -- "--export-info=D:\Models" "--output-dir=D:\Exports\WoB" --format=json
+$LASTEXITCODE
+```
+
+Use `--format=csv` for CSV. For a single file, pass an argument like `"--export-info=D:\Models\cabin.glb"`. The viewer processes GLB, glTF and FBX files in the supplied folder. It creates the output directory when needed and writes one report per model, for example `cabin.glb.json`. It keeps the model extension in the name so a GLB and an FBX with the same stem have distinct outputs. The scan covers the selected folder's immediate children.
+
+Existing reports are kept unless you add `--overwrite`. The batch continues after a model fails. The last line begins with `WOB_VIEWER_INFO_RESULT` and contains a JSON summary with one result per file. Exit code `0` means all reports were written, `1` means an incomplete export, and `2` means invalid input or an unavailable output directory.
+
+```sh
+./wob-model-viewer --headless -- "--export-info=/home/user/models" "--output-dir=/home/user/export" --format=csv
+```
+
+### Open models and capture images
+
 Use `--` to separate viewer arguments. Screenshot capture requires a graphical display. The instance exits with a status code after saving the file.
 
 ```powershell

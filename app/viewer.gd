@@ -2183,7 +2183,7 @@ func _open_path(path: String) -> bool:
 
 
 func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = null,
-		texture_directory := "") -> bool:
+		texture_directory := "", batch_export := false) -> bool:
 	if not _begin_loading(path.get_file(), path):
 		return false
 	var load_started := Time.get_ticks_msec()
@@ -2210,7 +2210,7 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 			if entry.path == path:
 				entry.merge({"vertices": stage.geometry.z, "triangles": stage.geometry.w,
 					"bytes": _model_file_bytes()}, true)
-		if _lod_entries.size() > 1:
+		if not batch_export and _lod_entries.size() > 1:
 			_complete_lod_stats.call_deferred(_lod_entries)
 	_refresh_vehicle_options()
 	_refresh_lod_options()
@@ -2223,7 +2223,7 @@ func _load_model(path: String, keep_lod_family := false, manifest: RefCounted = 
 	if "--debug-load" in OS.get_cmdline_user_args():
 		print("LOAD_TIMING ", path.get_file(), " total=", Time.get_ticks_msec() - load_started,
 			" ms prepare=", prepare_ms, " ms phases=", importer.load_timings)
-	if DisplayServer.get_name() == "headless":
+	if DisplayServer.get_name() == "headless" and not batch_export:
 		print(path.get_file(), " ", stage.geometry, " ", stage.model.counts, " | ", stage.model.notes)
 	return true
 

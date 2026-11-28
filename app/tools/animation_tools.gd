@@ -4,6 +4,7 @@ extends Node
 const MotionEditor = preload("res://tools/motion_editor.gd")
 const MotionReview = preload("res://tools/motion_review.gd")
 const Jobs = preload("res://tools/agent_jobs.gd")
+const InfoCli = preload("res://tools/info_cli.gd")
 const RigEditor = preload("res://tools/rig_editor.gd")
 const RigGlbExport = preload("res://tools/rig_glb_export.gd")
 enum Action { EDIT, RANGE, ANALYZE, FINDINGS, GIF, REPORT, RIG }
@@ -65,7 +66,11 @@ func _helper() -> String:
 
 
 func _start_cli() -> void:
-	for argument in OS.get_cmdline_user_args():
+	var args := OS.get_cmdline_user_args()
+	if InfoCli.requested(args):
+		get_tree().quit(await InfoCli.run(viewer, args))
+		return
+	for argument in args:
 		if argument.begins_with("--viewer-job="):
 			get_tree().quit(await Jobs.run(self, argument.trim_prefix("--viewer-job=")))
 			return
